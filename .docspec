@@ -1,0 +1,67 @@
+dep_version: "0.1.0"
+
+project:
+  name: "Documentation Engineering Protocol"
+  docs_root: "./docs"
+  description: "The DEP standard documented using DEP itself — a self-referential documentation system."
+
+audiences:
+  - id: ai-generator
+    name: "AI Documentation Generator"
+    goal: "Generate DEP-compliant documentation for any domain"
+    context: "Has language capabilities but no DEP knowledge; processes the seed document as foundational input"
+    entry_point: "./seed.md"
+    vocabulary_level: expert
+    time_budget: deep
+    success_criteria: "Produces structurally valid, type-pure documents with complete metadata and graph integrity"
+
+  - id: ai-agent
+    name: "AI Agent Integrator"
+    goal: "Use DEP skills to read, write, and validate documentation within agent workflows"
+    context: "Operates within an agent framework (e.g., Claude Code); needs callable skills, not prose"
+    entry_point: "./docs/tutorials/integrate-dep-into-agent.md"
+    vocabulary_level: expert
+    time_budget: scanning
+    success_criteria: "Can invoke DEP skills to produce and validate documentation without reading the full spec"
+
+  - id: human-author
+    name: "Human Documentation Author"
+    goal: "Write or review documentation that follows DEP standards"
+    context: "Experienced writer; may know Diátaxis or other frameworks; new to DEP specifics"
+    entry_point: "./docs/tutorials/write-your-first-dep-document.md"
+    vocabulary_level: intermediate
+    time_budget: deep
+    success_criteria: "Can author a DEP-compliant document with correct metadata, type purity, and cross-references"
+
+  - id: project-lead
+    name: "Project Lead / Adopter"
+    goal: "Evaluate DEP for adoption and configure it for a new project"
+    context: "Understands documentation pain points; needs to see value quickly; may not write docs directly"
+    entry_point: "./docs/tutorials/bootstrap-dep-for-your-project.md"
+    vocabulary_level: intermediate
+    time_budget: scanning
+    success_criteria: "Can generate a .docspec file and scaffold a documentation structure for their project"
+
+architecture:
+  directory_map:
+    tutorials: docs/tutorials
+    how-to: docs/how-to
+    reference: docs/reference
+    explanation: docs/explanation
+    decision-records: docs/decision-records
+  require_index_files: true
+  link_style: relative
+
+governance:
+  ownership_strategy: per-document
+  fallback_owner: "@dep-core"
+  review_cadence:
+    tutorial: 90
+    how-to: 60
+    reference: 30
+    explanation: 180
+    decision-record: 365
+
+generation:
+  ai_provider: constrained
+  require_human_review: false
