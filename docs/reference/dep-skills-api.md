@@ -1,4 +1,3 @@
-```yaml
 ---
 dep:
   type: reference
@@ -9,8 +8,8 @@ dep:
   confidence: high
   depends_on: [skills/dep-generate.md, skills/dep-validate.md, skills/dep-audit.md]
   tags: [skills, api, agent, integration]
+  links: []
 ---
-```
 
 # DEP Skills API Reference
 

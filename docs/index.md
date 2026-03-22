@@ -1,4 +1,3 @@
-```yaml
 ---
 dep:
   type: reference
@@ -9,8 +8,8 @@ dep:
   confidence: high
   depends_on: [.docspec]
   tags: [navigation, root, index]
+  links: []
 ---
-```
 
 # Documentation Engineering Protocol — Documentation Root
 
@@ -87,3 +86,4 @@ You're evaluating or adopting DEP for your project:
 
 - [DR-001: Five Types Not Four](decision-records/dr-001-five-types-not-four.md)
 - [DR-002: Atomic Files Over Long Documents](decision-records/dr-002-atomic-files-over-long-documents.md)
+- [DR-003: Standard Frontmatter and Explicit Links](decision-records/dr-003-standard-frontmatter-and-explicit-links.md)

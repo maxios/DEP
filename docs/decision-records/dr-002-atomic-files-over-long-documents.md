@@ -1,4 +1,3 @@
-```yaml
 ---
 dep:
   type: decision-record
@@ -9,8 +8,8 @@ dep:
   confidence: high
   depends_on: [seed.md, docs/decision-records/dr-001-five-types-not-four.md]
   tags: [architecture, atomicity, granularity, principle]
+  links: []
 ---
-```
 
 # DR-002: Atomic Files Over Long Documents
 

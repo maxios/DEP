@@ -1,4 +1,3 @@
-```yaml
 ---
 dep:
   type: reference
@@ -9,8 +8,8 @@ dep:
   confidence: high
   depends_on: [seed.md]
   tags: [metadata, schema, reference]
+  links: []
 ---
-```
 
 # DEP Metadata Schema Reference
 
@@ -20,9 +19,8 @@ Every DEP-compliant document begins with a metadata block. This reference define
 
 ## Metadata Block Format
 
-The metadata block is a YAML front matter block wrapped in a fenced code block with `yaml` language identifier:
+The metadata block uses standard YAML frontmatter at the very beginning of the file:
 
-````
 ```yaml
 ---
 dep:
@@ -34,9 +32,11 @@ dep:
   confidence: <level>
   depends_on: <dependency_list>
   tags: <tag_list>
+  links: <link_list>
 ---
 ```
-````
+
+The frontmatter MUST be the first content in the file — no content may precede it. This ensures compatibility with standard markdown tooling (Obsidian, gray-matter, remark, MarkdownDB, etc.).
 
 ---
 
@@ -157,6 +157,50 @@ Tags do not affect validation or lifecycle. They aid discovery.
 
 ---
 
+### `links`
+
+| Property | Value |
+|----------|-------|
+| Required | No (defaults to `[]`) |
+| Type | `DepLink[]` — list of typed relationship objects |
+| Purpose | Declares typed navigation relationships to other documents |
+
+Each entry in the `links` array has two fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `target` | `string` | Yes | Relative path to the target document |
+| `rel` | `string` | Yes | Relationship type |
+
+Valid `rel` values (canonical):
+
+| Relationship | Meaning | Typical source → target |
+|-------------|---------|------------------------|
+| `TEACHES` | Introduces a concept that has a reference entry | tutorial → reference |
+| `USES` | Uses a component defined in a reference | how-to → reference |
+| `EXPLAINS` | Clarifies the rationale behind a reference | explanation → reference |
+| `DECIDES` | Justifies a choice affecting a component | decision-record → any |
+| `REQUIRES` | Must be read before this document | any → any |
+| `NEXT` | Suggested follow-up after this document | any → any |
+
+Custom relationships declared in `.docspec` via `custom_relationships` are also valid.
+
+Example:
+```yaml
+dep:
+  links:
+    - target: ../reference/widget-api.md
+      rel: TEACHES
+    - target: ./basic-setup.md
+      rel: REQUIRES
+    - target: ./your-first-feature.md
+      rel: NEXT
+```
+
+**Backlinks are computed, never stored.** The `links` field only contains forward relationships. Reverse relationships (backlinks) are derived at build time by the `dep` CLI tool.
+
+---
+
 ## Optional Fields
 
 ### `superseded_by`
@@ -195,3 +239,5 @@ Tags do not affect validation or lifecycle. They aid discovery.
 5. `created` must not be in the future.
 6. `last_verified` must not be earlier than `created`.
 7. `depends_on` paths must resolve to existing files (warning if not).
+8. `links[].target` paths must resolve to existing `.md` files.
+9. `links[].rel` must be a canonical relationship type or one declared in `.docspec` `custom_relationships`.

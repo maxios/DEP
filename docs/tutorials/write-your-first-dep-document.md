@@ -1,4 +1,3 @@
-```yaml
 ---
 dep:
   type: tutorial
@@ -9,8 +8,14 @@ dep:
   confidence: high
   depends_on: [seed.md, docs/reference/dep-metadata-schema.md, docs/reference/document-type-signatures.md]
   tags: [getting-started, first-document, tutorial]
+  links:
+    - target: ../reference/dep-metadata-schema.md
+      rel: TEACHES
+    - target: ../reference/document-type-signatures.md
+      rel: TEACHES
+    - target: ./bootstrap-dep-for-your-project.md
+      rel: REQUIRES
 ---
-```
 
 # Tutorial: Write Your First DEP Document
 
@@ -44,7 +49,7 @@ For this tutorial, we'll write a **how-to** guide — the most common document t
 
 ### Step 2 — Write the Metadata Block
 
-Create a new Markdown file in your project's `how-to` directory (check your `.docspec` for the exact path). Start with the metadata block:
+Create a new Markdown file in your project's `how-to` directory (check your `.docspec` for the exact path). The metadata block MUST be the very first thing in the file — standard YAML frontmatter:
 
 ```yaml
 ---
@@ -52,11 +57,12 @@ dep:
   type: how-to
   audience: [your-audience-id]
   owner: "@your-name"
-  created: 2026-03-22
-  last_verified: 2026-03-22
+  created: 2026-03-23
+  last_verified: 2026-03-23
   confidence: medium
   depends_on: []
   tags: []
+  links: []
 ---
 ```
 
@@ -69,6 +75,7 @@ Fill in each field:
 - **confidence**: Start with `medium` — you can upgrade to `high` after review
 - **depends_on**: List any files that, if changed, would make this document wrong
 - **tags**: Add searchable labels
+- **links**: Typed relationships to other docs (add these in Step 5)
 
 **Expected result**: A valid metadata block at the top of your file.
 

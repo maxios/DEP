@@ -1,6 +1,3 @@
-# Documentation Engineering Protocol — Seed Document
-
-```yaml
 ---
 dep:
   type: explanation
@@ -11,8 +8,20 @@ dep:
   confidence: high
   depends_on: []
   tags: [meta, seed, protocol, bootstrap]
+  links:
+    - target: docs/decision-records/dr-001-five-types-not-four.md
+      rel: NEXT
+    - target: docs/decision-records/dr-002-atomic-files-over-long-documents.md
+      rel: NEXT
+    - target: docs/reference/dep-metadata-schema.md
+      rel: NEXT
+    - target: docs/reference/document-type-signatures.md
+      rel: NEXT
+    - target: docs/reference/docspec-schema.md
+      rel: NEXT
 ---
-```
+
+# Documentation Engineering Protocol — Seed Document
 
 ## Purpose of This Document
 

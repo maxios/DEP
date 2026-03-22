@@ -1,4 +1,3 @@
-```yaml
 ---
 dep:
   type: reference
@@ -9,8 +8,8 @@ dep:
   confidence: high
   depends_on: [seed.md, .docspec]
   tags: [docspec, configuration, schema]
+  links: []
 ---
-```
 
 # .docspec Schema Reference
 

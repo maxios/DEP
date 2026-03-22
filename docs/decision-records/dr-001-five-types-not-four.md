@@ -1,4 +1,3 @@
-```yaml
 ---
 dep:
   type: decision-record
@@ -9,8 +8,10 @@ dep:
   confidence: high
   depends_on: [seed.md]
   tags: [architecture, types, taxonomy, diátaxis]
+  links:
+    - target: ../reference/document-type-signatures.md
+      rel: DECIDES
 ---
-```
 
 # DR-001: Five Document Types, Not Four
 
