@@ -90,6 +90,7 @@ Report validation results to the user. Fix any failures before finalizing.
 
 - Never generate documents before the `.docspec` exists
 - Never mix document types — one mental operation per document
+- **Prefer more files over more lines** — if two sections could have different `owner`, `last_verified`, or `depends_on`, they must be separate files (Lifecycle Independence Test)
 - Never skip metadata — every field must be populated
 - Set `confidence: medium` for AI-generated content unless verified against source material
 - Use `depends_on` to track what could invalidate each document

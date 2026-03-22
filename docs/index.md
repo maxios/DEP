@@ -58,10 +58,32 @@ You're evaluating or adopting DEP for your project:
 
 ## By Type
 
-| Type | Documents |
-|------|-----------|
-| Tutorials | [Write Your First DEP Document](tutorials/write-your-first-dep-document.md), [Bootstrap DEP for Your Project](tutorials/bootstrap-dep-for-your-project.md), [Integrate DEP into Your Agent](tutorials/integrate-dep-into-agent.md) |
-| How-To | [Validate a Document](how-to/validate-a-document.md), [Generate a Document Set](how-to/generate-a-document-set.md), [Add DEP Metadata](how-to/add-dep-metadata.md), [Configure Governance](how-to/configure-governance.md) |
-| Reference | [DEP Metadata Schema](reference/dep-metadata-schema.md), [Document Type Signatures](reference/document-type-signatures.md), [.docspec Schema](reference/docspec-schema.md), [DEP Skills API](reference/dep-skills-api.md) |
-| Explanation | [Why Type Purity Matters](explanation/why-type-purity-matters.md), [DEP vs Other Frameworks](explanation/dep-vs-other-frameworks.md) |
-| Decision Records | [DR-001: Five Types Not Four](decision-records/dr-001-five-types-not-four.md) |
+### Tutorials
+
+- [Write Your First DEP Document](tutorials/write-your-first-dep-document.md)
+- [Bootstrap DEP for Your Project](tutorials/bootstrap-dep-for-your-project.md)
+- [Integrate DEP into Your Agent](tutorials/integrate-dep-into-agent.md)
+
+### How-To
+
+- [Validate a Document](how-to/validate-a-document.md)
+- [Generate a Document Set](how-to/generate-a-document-set.md)
+- [Add DEP Metadata](how-to/add-dep-metadata.md)
+- [Configure Governance](how-to/configure-governance.md)
+
+### Reference
+
+- [DEP Metadata Schema](reference/dep-metadata-schema.md)
+- [Document Type Signatures](reference/document-type-signatures.md)
+- [.docspec Schema](reference/docspec-schema.md)
+- [DEP Skills API](reference/dep-skills-api.md)
+
+### Explanation
+
+- [Why Type Purity Matters](explanation/why-type-purity-matters.md)
+- [DEP vs Other Frameworks](explanation/dep-vs-other-frameworks.md)
+
+### Decision Records
+
+- [DR-001: Five Types Not Four](decision-records/dr-001-five-types-not-four.md)
+- [DR-002: Atomic Files Over Long Documents](decision-records/dr-002-atomic-files-over-long-documents.md)

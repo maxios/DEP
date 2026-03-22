@@ -177,6 +177,24 @@ Six canonical relationships connect documents:
 | `REQUIRES` | A document requires another to be read first | Tutorial "Advanced Queries" → Tutorial "Basic Setup" |
 | `NEXT` | A suggested follow-up after completing this document | Tutorial "Basic Setup" → Tutorial "Your First Feature" |
 
+### The Atomicity Principle
+
+**Prefer more files over more lines.** A document should cover one concept, one task, one entry, or one decision. When a document grows to cover multiple distinct items within the same type, split it.
+
+The test for when to split: **if two sections of the same document could have different `owner`, `last_verified`, `confidence`, or `depends_on` values, they should be separate files.** This is the Lifecycle Independence Test — sections that age independently should live independently.
+
+Atomic files enable:
+
+- Precise lifecycle tracking — each file ages independently.
+- Efficient AI consumption — agents load only the atoms they need.
+- Clean git history — changes to one concept don't touch unrelated content.
+- Clear ownership — no ambiguity about who owns what.
+- Composability — documentation sets can be assembled from atoms for different audiences.
+
+Navigation overhead from many files is mitigated by **index files** — one per directory — that provide grouped listings, brief descriptions, and suggested reading order where applicable.
+
+See [DR-002: Atomic Files Over Long Documents](docs/decision-records/dr-002-atomic-files-over-long-documents.md) for the full rationale.
+
 ### Structural Invariants
 
 These rules MUST hold across the entire graph:
@@ -186,6 +204,7 @@ These rules MUST hold across the entire graph:
 3. **Reciprocal Linking**: Every reference entry links back to at least one tutorial or how-to that uses it.
 4. **Decision Traceability**: Every decision record links to the documents it affects, and those documents link back.
 5. **Entry Point Completeness**: Every audience's entry point provides navigation to all documents tagged for that audience.
+6. **Atomicity**: Every document passes the Lifecycle Independence Test — no document contains sections that should have independent lifecycle metadata.
 
 ### AI Instruction
 
