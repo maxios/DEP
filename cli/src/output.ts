@@ -83,6 +83,48 @@ export function formatGraphDot(graph: DepGraph): string {
   return lines.join('\n')
 }
 
+export function formatGraphMermaid(graph: DepGraph): string {
+  const lines: string[] = ['graph LR']
+
+  // Define style classes
+  lines.push('  classDef tutorial fill:#4CAF50,color:#fff,stroke:#388E3C')
+  lines.push('  classDef howto fill:#2196F3,color:#fff,stroke:#1976D2')
+  lines.push('  classDef reference fill:#FF9800,color:#fff,stroke:#F57C00')
+  lines.push('  classDef explanation fill:#9C27B0,color:#fff,stroke:#7B1FA2')
+  lines.push('  classDef decision fill:#F44336,color:#fff,stroke:#D32F2F')
+  lines.push('')
+
+  const typeClass: Record<string, string> = {
+    tutorial: 'tutorial',
+    'how-to': 'howto',
+    reference: 'reference',
+    explanation: 'explanation',
+    'decision-record': 'decision',
+  }
+
+  // Create node IDs (mermaid doesn't like paths with slashes/dots)
+  const nodeId = (path: string) => path.replace(/[/.\\-]/g, '_')
+
+  for (const [, node] of graph.nodes) {
+    const id = nodeId(node.path)
+    const label = node.path.replace(/\.md$/, '').split('/').pop()!
+    const cls = typeClass[node.metadata.type] ?? 'reference'
+    lines.push(`  ${id}["${label}"]:::${cls}`)
+  }
+
+  lines.push('')
+
+  for (const edge of graph.edges) {
+    if (edge.rel === 'INLINE') continue
+    const src = nodeId(edge.source)
+    const tgt = nodeId(edge.target)
+    const style = edge.rel === 'REQUIRES' ? '==>' : '-->'
+    lines.push(`  ${src} ${style}|${edge.rel}| ${tgt}`)
+  }
+
+  return lines.join('\n')
+}
+
 export function formatBacklinks(path: string, backlinks: DepEdge[]): string {
   if (backlinks.length === 0) return `No backlinks found for ${path}`
 

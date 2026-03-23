@@ -38,7 +38,7 @@ const root = getRoot(flags)
 
 switch (command) {
   case 'graph':
-    graphCommand(root, { json: !!flags.json, dot: !!flags.dot })
+    graphCommand(root, { json: !!flags.json, dot: !!flags.dot, mermaid: !!flags.mermaid })
     break
 
   case 'backlinks': {
@@ -76,7 +76,7 @@ switch (command) {
     console.log(`dep — Documentation Engineering Protocol CLI
 
 Usage:
-  dep graph [--json|--dot]              Build and display the documentation graph
+  dep graph [--json|--dot|--mermaid]     Build and display the documentation graph
   dep backlinks <file> [--json]         Show what links to a document
   dep validate [--json]                 Validate all documents and graph integrity
   dep query [filters] [--json]          Query documents by metadata

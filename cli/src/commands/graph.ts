@@ -1,8 +1,13 @@
 import { buildGraph } from '../graph'
-import { formatGraphTree, formatGraphDot } from '../output'
+import { formatGraphTree, formatGraphDot, formatGraphMermaid } from '../output'
 
-export function graphCommand(root: string, flags: { json?: boolean; dot?: boolean }) {
+export function graphCommand(root: string, flags: { json?: boolean; dot?: boolean; mermaid?: boolean }) {
   const graph = buildGraph(root)
+
+  if (flags.mermaid) {
+    console.log(formatGraphMermaid(graph))
+    return
+  }
 
   if (flags.json) {
     const serializable = {
