@@ -3,8 +3,8 @@ dep:
   type: tutorial
   audience: [human-author]
   owner: "@dep-core"
-  created: 2026-03-22
-  last_verified: 2026-03-22
+  created: 2026-03-22T23:36:54+02:00
+  last_verified: 2026-03-23T21:49:13+02:00
   confidence: high
   depends_on: [seed.md, docs/reference/dep-metadata-schema.md, docs/reference/document-type-signatures.md]
   tags: [getting-started, first-document, tutorial]
@@ -57,8 +57,8 @@ dep:
   type: how-to
   audience: [your-audience-id]
   owner: "@your-name"
-  created: 2026-03-23
-  last_verified: 2026-03-23
+  created: 2026-03-23T14:30:00+02:00
+  last_verified: 2026-03-23T14:30:00+02:00
   confidence: medium
   depends_on: []
   tags: []
@@ -70,7 +70,7 @@ Fill in each field:
 - **type**: `how-to` (we chose this in Step 1)
 - **audience**: Look up the audience IDs in your `.docspec` and pick the ones this document serves
 - **owner**: Your name or team — you're accountable for keeping this accurate
-- **created**: Today's date
+- **created**: Current datetime with timezone (e.g., `2026-03-23T14:30:00+02:00`)
 - **last_verified**: Same as created for new documents
 - **confidence**: Start with `medium` — you can upgrade to `high` after review
 - **depends_on**: List any files that, if changed, would make this document wrong

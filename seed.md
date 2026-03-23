@@ -3,8 +3,8 @@ dep:
   type: explanation
   audience: [ai-generator]
   owner: "@dep-core"
-  created: 2026-03-22
-  last_verified: 2026-03-22
+  created: 2026-03-22T23:36:54+02:00
+  last_verified: 2026-03-23T21:49:13+02:00
   confidence: high
   depends_on: []
   tags: [meta, seed, protocol, bootstrap]
@@ -18,6 +18,10 @@ dep:
     - target: docs/reference/document-type-signatures.md
       rel: NEXT
     - target: docs/reference/docspec-schema.md
+      rel: NEXT
+    - target: docs/decision-records/dr-003-standard-frontmatter-and-explicit-links.md
+      rel: NEXT
+    - target: docs/decision-records/dr-004-timestamp-precision-for-lifecycle-fields.md
       rel: NEXT
 ---
 
@@ -277,7 +281,7 @@ Documents are never silently deleted. The protocol is:
 When generating documentation, always populate the lifecycle metadata:
 
 - `owner`: who is accountable for this document's accuracy.
-- `last_verified`: the date the content was confirmed accurate.
+- `last_verified`: the datetime the content was confirmed accurate (ISO 8601 with timezone).
 - `confidence`: your honest assessment — `high` if generated from verified source material, `medium` if inferred, `low` if speculative.
 - `depends_on`: list every document or external artifact that, if changed, could invalidate this document.
 

@@ -105,6 +105,19 @@ function validateDocument(
     message: node.lifecycle === 'STALE' ? 'Document exceeds review cadence' : undefined,
   })
 
+  // Date format validity
+  for (const field of ['created', 'last_verified'] as const) {
+    const value = meta[field]
+    if (value) {
+      const parsed = new Date(value)
+      checks.push({
+        name: `Date format: ${field}`,
+        passed: !isNaN(parsed.getTime()),
+        message: isNaN(parsed.getTime()) ? `Invalid ISO 8601: "${value}"` : undefined,
+      })
+    }
+  }
+
   // Confidence
   checks.push({
     name: 'Confidence valid',

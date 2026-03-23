@@ -1,13 +1,20 @@
 ---
 dep:
   type: reference
-  audience: [ai-generator, ai-agent, human-author]
+  audience:
+    - ai-generator
+    - ai-agent
+    - human-author
   owner: "@dep-core"
-  created: 2026-03-22
-  last_verified: 2026-03-22
+  created: 2026-03-22T23:36:54+02:00
+  last_verified: 2026-03-23T21:49:13+02:00
   confidence: high
-  depends_on: [seed.md]
-  tags: [metadata, schema, reference]
+  depends_on:
+    - seed.md
+  tags:
+    - metadata
+    - schema
+    - reference
   links: []
 ---
 
@@ -27,8 +34,8 @@ dep:
   type: <type>
   audience: <audience_list>
   owner: <owner>
-  created: <date>
-  last_verified: <date>
+  created: <datetime>
+  last_verified: <datetime>
   confidence: <level>
   depends_on: <dependency_list>
   tags: <tag_list>
@@ -86,11 +93,11 @@ Ownership is not authorship. The owner ensures the document stays accurate over 
 | Property | Value |
 |----------|-------|
 | Required | Yes |
-| Type | `string` — ISO 8601 date |
-| Format | `YYYY-MM-DD` |
-| Purpose | The date the document was first created |
+| Type | `string` — ISO 8601 datetime |
+| Format | `YYYY-MM-DDTHH:MM:SS±HH:MM` |
+| Purpose | The datetime the document was first created |
 
-Immutable after creation.
+Immutable after creation. Includes timezone offset for precise ordering of same-day events.
 
 ---
 
@@ -99,11 +106,11 @@ Immutable after creation.
 | Property | Value |
 |----------|-------|
 | Required | Yes |
-| Type | `string` — ISO 8601 date |
-| Format | `YYYY-MM-DD` |
-| Purpose | The date the content was last confirmed accurate |
+| Type | `string` — ISO 8601 datetime |
+| Format | `YYYY-MM-DDTHH:MM:SS±HH:MM` |
+| Purpose | The datetime the content was last confirmed accurate |
 
-Updated during review. Drives the lifecycle state machine:
+Updated during review. Full timestamp precision enables same-day staleness detection when comparing against git commit timestamps. Drives the lifecycle state machine:
 - `FRESH`: `last_verified` is within `review_cadence` for the document's type.
 - `AGING`: `last_verified` is approaching the cadence deadline (within 2x).
 - `STALE`: `last_verified` exceeds the cadence, or a dependency has changed.

@@ -88,7 +88,7 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
     `  audience: [${config.audiences.map((a) => a.id).join(', ')}]`,
     '  owner: "@dep-core"',
     `  created: 2026-03-22`,
-    `  last_verified: ${new Date().toISOString().split('T')[0]}`,
+    `  last_verified: ${new Date().toISOString()}`,
     '  confidence: high',
     '  depends_on: [.docspec]',
     '  tags: [navigation, root, index]',

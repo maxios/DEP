@@ -3,17 +3,17 @@ dep:
   type: reference
   audience: [ai-agent]
   owner: "@dep-core"
-  created: 2026-03-22
-  last_verified: 2026-03-22
+  created: 2026-03-22T23:36:54+02:00
+  last_verified: 2026-03-23T21:49:13+02:00
   confidence: high
-  depends_on: [skills/dep-generate.md, skills/dep-validate.md, skills/dep-audit.md]
+  depends_on: [skills/dep-generate.md, skills/dep-validate.md, skills/dep-audit.md, skills/dep-sync.md]
   tags: [skills, api, agent, integration]
   links: []
 ---
 
 # DEP Skills API Reference
 
-DEP provides three skills that AI agents can invoke to generate, validate, and audit documentation. Skills follow the Claude Code skill convention.
+DEP provides four skills that AI agents can invoke to generate, validate, audit, and sync documentation. Skills follow the Claude Code skill convention.
 
 ---
 
@@ -98,6 +98,52 @@ DEP provides three skills that AI agents can invoke to generate, validate, and a
 
 ---
 
+## `/dep-sync`
+
+| Property | Value |
+|----------|-------|
+| File | `skills/dep-sync.md` |
+| Trigger | User asks to sync documentation freshness with code changes |
+| Input | Project root with `.docspec`, optional date range or commit range |
+| Output | Sync report identifying stale docs with proposed updates |
+
+### Workflow
+
+1. Load `.docspec` and determine docs root
+2. Analyze git history to find file changes since each doc's `last_verified` date
+3. Cross-reference changes against `depends_on` declarations and doc content
+4. Generate a sync report: which docs are stale, why, and what to update
+5. Apply approved updates and bump `last_verified` dates
+6. Run validation on updated docs
+
+### When to Use
+
+- After a burst of code changes that may have outdated documentation
+- As a periodic sync check (e.g., weekly or before releases)
+- When onboarding to a project and wanting to verify doc freshness against recent activity
+
+---
+
+## CLI Integration
+
+All skills leverage the `dep` CLI tool for automated checks. Available commands:
+
+| Command | Purpose | Output Formats |
+|---------|---------|----------------|
+| `graph` | Visualize the documentation graph | `--json`, `--dot`, `--mermaid` |
+| `backlinks <file>` | Find what links to a document | `--json` |
+| `validate` | Check metadata, links, lifecycle, orphans, cycles | `--json` |
+| `query` | Filter documents by metadata fields | `--json` |
+| `index` | Auto-generate index files from metadata | `--dry` for preview |
+
+Run from the `cli/` directory:
+
+```bash
+cd cli && bun run src/index.ts <command> --root <project-root>
+```
+
+---
+
 ## Skill Installation
 
 To make DEP skills available in a Claude Code project, add to your project's `CLAUDE.md`:
@@ -108,6 +154,7 @@ To make DEP skills available in a Claude Code project, add to your project's `CL
 - `/dep-generate` — Generate DEP-compliant documentation
 - `/dep-validate` — Validate documentation against DEP standards
 - `/dep-audit` — Audit and migrate existing documentation to DEP
+- `/dep-sync` — Sync documentation freshness with code changes
 ```
 
 Or copy the skill files from `skills/` into your project's `.claude/skills/` directory.

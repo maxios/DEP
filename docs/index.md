@@ -3,8 +3,8 @@ dep:
   type: reference
   audience: [ai-generator, ai-agent, human-author, project-lead]
   owner: "@dep-core"
-  created: 2026-03-22
-  last_verified: 2026-03-22
+  created: 2026-03-22T23:36:54+02:00
+  last_verified: 2026-03-23T21:49:13+02:00
   confidence: high
   depends_on: [.docspec]
   tags: [navigation, root, index]
@@ -87,3 +87,4 @@ You're evaluating or adopting DEP for your project:
 - [DR-001: Five Types Not Four](decision-records/dr-001-five-types-not-four.md)
 - [DR-002: Atomic Files Over Long Documents](decision-records/dr-002-atomic-files-over-long-documents.md)
 - [DR-003: Standard Frontmatter and Explicit Links](decision-records/dr-003-standard-frontmatter-and-explicit-links.md)
+- [DR-004: Timestamp Precision for Lifecycle Fields](decision-records/dr-004-timestamp-precision-for-lifecycle-fields.md)
