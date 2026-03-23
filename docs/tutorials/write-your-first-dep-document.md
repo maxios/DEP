@@ -125,7 +125,7 @@ If you find any of these, extract them:
 - Reference tables → new reference document
 - Historical context → explanation or decision record
 
-Replace the extracted content with a link: `See [Why We Use Blue-Green Deploys](../explanation/why-blue-green-deploys.md)`.
+Replace the extracted content with a link: `See [Why Type Purity Matters](../explanation/why-type-purity-matters.md)`.
 
 **Expected result**: Your document contains only goal, prerequisites, steps, and verification.
 
@@ -138,8 +138,8 @@ At the bottom of your document, add a Related section linking to:
 
 ```markdown
 ## Related
-- [CLI Reference](../reference/cli-reference.md) — full flag documentation
-- [Why Blue-Green Deploys](../explanation/why-blue-green-deploys.md) — context for this approach
+- [DEP Metadata Schema](../reference/dep-metadata-schema.md) — full field documentation
+- [Why Type Purity Matters](../explanation/why-type-purity-matters.md) — context for type separation
 ```
 
 **Expected result**: Your document links to at least one other document. No orphans.
