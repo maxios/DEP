@@ -4,7 +4,7 @@ dep:
   audience: [human-author, ai-generator]
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-23T14:00:00+02:00
+  last_verified: 2026-03-24T00:00:00+02:00
   confidence: high
   depends_on: [seed.md, docs/reference/document-type-signatures.md]
   tags: [type-purity, architecture, principles]

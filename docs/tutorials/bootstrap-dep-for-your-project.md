@@ -4,7 +4,7 @@ dep:
   audience: [project-lead]
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-23T14:00:00+02:00
+  last_verified: 2026-03-24T00:00:00+02:00
   confidence: high
   depends_on: [docs/reference/docspec-schema.md, seed.md]
   tags: [getting-started, bootstrap, tutorial, adoption]

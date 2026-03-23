@@ -7,7 +7,7 @@ dep:
     - human-author
   owner: "@dep-core"
   created: 2026-03-22T23:36:54+02:00
-  last_verified: 2026-03-23T21:49:13+02:00
+  last_verified: 2026-03-24T00:00:00+02:00
   confidence: high
   depends_on:
     - seed.md
