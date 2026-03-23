@@ -4,7 +4,7 @@ dep:
   audience: [ai-agent]
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-23T14:00:00+02:00
+  last_verified: 2026-03-24T00:00:00+02:00
   confidence: high
   depends_on: [skills/dep-generate/SKILL.md, skills/dep-validate/SKILL.md, skills/dep-audit/SKILL.md, skills/dep-sync/SKILL.md]
   tags: [agent, integration, tutorial, skills]
@@ -113,24 +113,41 @@ The sync skill:
 
 **Expected result**: A sync report showing which documents need attention, with updates applied.
 
-### Step 6 — Use the CLI for Programmatic Access
+### Step 6 — Install and Use the CLI
 
-All skills use the DEP CLI under the hood. For direct access:
+All skills use the DEP CLI under the hood. Install the standalone binary for direct access:
 
 ```bash
-cd cli && bun install
+curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
+export PATH="$HOME/.dep/bin:$PATH"
+```
 
+Then run commands directly:
+
+```bash
 # Validate
-bun run src/index.ts validate --root .. --json
+dep validate --root . --json
 
 # View graph
-bun run src/index.ts graph --root .. --mermaid
+dep graph --root . --mermaid
 
 # Find backlinks
-bun run src/index.ts backlinks docs/reference/some-doc.md --root ..
+dep backlinks docs/reference/some-doc.md --root .
 
 # Query by metadata
-bun run src/index.ts query --type how-to --root ..
+dep query --type how-to --root .
+
+# Search across documents
+dep search "lifecycle" --root .
+
+# Explore document neighborhoods
+dep neighbors seed.md --depth 2 --root .
+
+# View audience learning path
+dep roadmap ai-agent --root .
+
+# Check prerequisite chains
+dep prereqs docs/tutorials/write-your-first-dep-document.md --root .
 ```
 
 **Expected result**: CLI commands run successfully and return structured output.

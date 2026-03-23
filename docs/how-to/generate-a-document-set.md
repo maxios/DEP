@@ -4,7 +4,7 @@ dep:
   audience: [ai-agent, human-author]
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-23T14:00:00+02:00
+  last_verified: 2026-03-24T00:00:00+02:00
   confidence: high
   depends_on: [skills/dep-generate/SKILL.md, docs/reference/docspec-schema.md]
   tags: [generation, cli, workflow]
@@ -52,17 +52,27 @@ dep:
 6. Run validation on the generated set:
 
    ```bash
-   cd cli && bun run src/index.ts validate --root ..
+   dep validate --root .
    ```
 
 7. Fix any validation issues flagged in the report.
+
+8. Verify the documentation is well-connected using navigation commands:
+
+   ```bash
+   # Check each audience has a coherent learning path
+   dep roadmap <audience-id> --root .
+
+   # Verify prerequisite chains are sensible
+   dep prereqs <tutorial-file> --root .
+   ```
 
 ## Verification
 
 Run `validate` and confirm all documents pass. Run `graph` to visualize the documentation structure and verify no orphans exist:
 
 ```bash
-cd cli && bun run src/index.ts graph --root ..
+dep graph --root .
 ```
 
 ## Related

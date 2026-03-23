@@ -4,7 +4,7 @@ dep:
   audience: [ai-agent]
   owner: "@dep-core"
   created: 2026-03-22T23:36:54+02:00
-  last_verified: 2026-03-23T21:49:13+02:00
+  last_verified: 2026-03-24T00:00:00+02:00
   confidence: high
   depends_on: [skills/dep-generate/SKILL.md, skills/dep-validate/SKILL.md, skills/dep-audit/SKILL.md, skills/dep-sync/SKILL.md]
   tags: [skills, api, agent, integration]
@@ -126,7 +126,16 @@ DEP provides four skills that AI agents can invoke to generate, validate, audit,
 
 ## CLI Integration
 
-All skills leverage the `dep` CLI tool for automated checks. Available commands:
+All skills leverage the `dep` CLI tool for automated checks. The CLI is available as a standalone binary (no runtime dependencies) or can be run from source.
+
+### Install the Standalone Binary
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
+export PATH="$HOME/.dep/bin:$PATH"
+```
+
+### Available Commands
 
 | Command | Purpose | Output Formats |
 |---------|---------|----------------|
@@ -135,10 +144,18 @@ All skills leverage the `dep` CLI tool for automated checks. Available commands:
 | `validate` | Check metadata, links, lifecycle, orphans, cycles | `--json` |
 | `query` | Filter documents by metadata fields | `--json` |
 | `index` | Auto-generate index files from metadata | `--dry` for preview |
+| `search <query>` | Full-text search across documents | `--json` |
+| `neighbors <file>` | Transitive graph traversal | `--depth`, `--direction`, `--json` |
+| `roadmap <audience>` | Audience-specific learning path | `--json` |
+| `prereqs <file>` | Prerequisite reading chain | `--json` |
 
-Run from the `cli/` directory:
+### Running
 
 ```bash
+# Standalone binary
+dep <command> --root <project-root>
+
+# From source
 cd cli && bun run src/index.ts <command> --root <project-root>
 ```
 
