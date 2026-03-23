@@ -92,12 +92,22 @@ Produce a structured plan:
 
 ## CLI Integration
 
+### Prerequisites
+
+The `dep` CLI binary must be available. Resolve in order:
+
+1. Check: `which dep || test -x ~/.dep/bin/dep`
+2. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+3. If installed to `~/.dep/bin`, ensure it's in PATH: `export PATH="$HOME/.dep/bin:$PATH"`
+
+### Analysis Commands
+
 Use the `dep` CLI to accelerate analysis:
 
 ```bash
-cd cli && bun run src/index.ts graph --json --root <project-root>   # understand current state
-cd cli && bun run src/index.ts validate --root <project-root>       # find structural issues
-cd cli && bun run src/index.ts query --lifecycle STALE --root <project-root>  # find stale docs
+dep graph --json --root <project-root>   # understand current state
+dep validate --root <project-root>       # find structural issues
+dep query --lifecycle STALE --root <project-root>  # find stale docs
 ```
 
 After migration, use `dep index` to auto-generate navigation files.
@@ -108,16 +118,16 @@ Use navigation commands to assess the current documentation's navigability and f
 
 ```bash
 # Search for topics to identify undocumented areas or duplicates
-cd cli && bun run src/index.ts search "<key-concept>" --root <project-root>
+dep search "<key-concept>" --root <project-root>
 
 # Map the neighborhood of each document to assess connectivity
-cd cli && bun run src/index.ts neighbors <file> --depth 2 --root <project-root>
+dep neighbors <file> --depth 2 --root <project-root>
 
 # Evaluate learning paths per audience — sparse paths indicate gaps
-cd cli && bun run src/index.ts roadmap <audience-id> --root <project-root>
+dep roadmap <audience-id> --root <project-root>
 
 # Check prerequisite depth — deep chains may need restructuring
-cd cli && bun run src/index.ts prereqs <file> --root <project-root>
+dep prereqs <file> --root <project-root>
 ```
 
 **When to use each:**

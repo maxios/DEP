@@ -9,6 +9,8 @@
   },
   "scripts": {
     "dev": "bun run src/index.ts",
+    "build": "bun run scripts/build.ts",
+    "build:local": "bun build --compile ./src/index.ts --outfile dist/dep",
     "test": "bun test"
   },
   "private": true,

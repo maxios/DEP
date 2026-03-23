@@ -86,11 +86,21 @@ Report validation results to the user. Fix any failures before finalizing.
 
 ## CLI Integration
 
+### Prerequisites
+
+The `dep` CLI binary must be available. Resolve in order:
+
+1. Check: `which dep || test -x ~/.dep/bin/dep`
+2. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+3. If installed to `~/.dep/bin`, ensure it's in PATH: `export PATH="$HOME/.dep/bin:$PATH"`
+
+### Validation and Index Generation
+
 After generating documents, run validation and index generation:
 
 ```bash
-cd cli && bun run src/index.ts validate --root <project-root>
-cd cli && bun run src/index.ts index --root <project-root>
+dep validate --root <project-root>
+dep index --root <project-root>
 ```
 
 Use `dep graph --dot` to visualize the documentation graph after generation.
@@ -101,16 +111,16 @@ After generating, use navigation commands to verify the documentation set is wel
 
 ```bash
 # Search for existing docs before creating duplicates
-cd cli && bun run src/index.ts search "<topic>" --root <project-root>
+dep search "<topic>" --root <project-root>
 
 # Verify new docs are reachable from their neighbors
-cd cli && bun run src/index.ts neighbors <new-doc> --depth 2 --root <project-root>
+dep neighbors <new-doc> --depth 2 --root <project-root>
 
 # Validate learning paths are coherent per audience
-cd cli && bun run src/index.ts roadmap <audience-id> --root <project-root>
+dep roadmap <audience-id> --root <project-root>
 
 # Check prerequisite chains are sensible (not too deep, no gaps)
-cd cli && bun run src/index.ts prereqs <tutorial-or-howto> --root <project-root>
+dep prereqs <tutorial-or-howto> --root <project-root>
 ```
 
 **When to use each:**

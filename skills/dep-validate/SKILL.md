@@ -87,10 +87,20 @@ Across the full documentation set:
 
 ## CLI Integration
 
+### Prerequisites
+
+The `dep` CLI binary must be available. Resolve in order:
+
+1. Check: `which dep || test -x ~/.dep/bin/dep`
+2. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+3. If installed to `~/.dep/bin`, ensure it's in PATH: `export PATH="$HOME/.dep/bin:$PATH"`
+
+### Automated Validation
+
 Before performing manual checks, run the `dep` CLI tool for automated validation:
 
 ```bash
-cd cli && bun run src/index.ts validate --root <project-root>
+dep validate --root <project-root>
 ```
 
 The CLI checks: metadata completeness, type validity, audience validity, link resolution, relationship type validity, lifecycle state, orphan detection, cycle detection, and entry point completeness.
@@ -105,16 +115,16 @@ Use navigation commands to verify structural quality beyond basic pass/fail:
 
 ```bash
 # Check that each document is well-connected (not weakly linked)
-cd cli && bun run src/index.ts neighbors <file> --depth 2 --root <project-root>
+dep neighbors <file> --depth 2 --root <project-root>
 
 # Verify prerequisite chains aren't broken or too deep
-cd cli && bun run src/index.ts prereqs <file> --root <project-root>
+dep prereqs <file> --root <project-root>
 
 # Validate each audience has a complete, coherent learning path
-cd cli && bun run src/index.ts roadmap <audience-id> --root <project-root>
+dep roadmap <audience-id> --root <project-root>
 
 # Search for potential duplicates or overlapping content
-cd cli && bun run src/index.ts search "<topic>" --root <project-root>
+dep search "<topic>" --root <project-root>
 ```
 
 **When to use each:**

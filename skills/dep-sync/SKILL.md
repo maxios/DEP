@@ -109,27 +109,37 @@ After the user reviews and approves the sync report:
 Run `/dep-validate` or the CLI validator to confirm no regressions:
 
 ```bash
-cd cli && bun run src/index.ts validate --root <project-root>
+dep validate --root <project-root>
 ```
 
 Confirm all updated documents pass validation and no new orphans or broken links were introduced.
 
 ## CLI Integration
 
+### Prerequisites
+
+The `dep` CLI binary must be available. Resolve in order:
+
+1. Check: `which dep || test -x ~/.dep/bin/dep`
+2. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+3. If installed to `~/.dep/bin`, ensure it's in PATH: `export PATH="$HOME/.dep/bin:$PATH"`
+
+### Analysis Commands
+
 Use the `dep` CLI tool to accelerate analysis:
 
 ```bash
 # Check current validation status
-cd cli && bun run src/index.ts validate --root <project-root>
+dep validate --root <project-root>
 
 # List documents by lifecycle state
-cd cli && bun run src/index.ts query --lifecycle STALE --root <project-root>
+dep query --lifecycle STALE --root <project-root>
 
 # Full graph with lifecycle states
-cd cli && bun run src/index.ts graph --json --root <project-root>
+dep graph --json --root <project-root>
 
 # Check what links to a specific document
-cd cli && bun run src/index.ts backlinks <file> --root <project-root>
+dep backlinks <file> --root <project-root>
 ```
 
 ### Navigation Commands for Impact Analysis
@@ -138,13 +148,13 @@ Use navigation commands to understand the blast radius of code changes and find 
 
 ```bash
 # Search for references to changed files, APIs, or features
-cd cli && bun run src/index.ts search "<changed-feature>" --root <project-root>
+dep search "<changed-feature>" --root <project-root>
 
 # Find all documents affected by a change (transitive neighbors)
-cd cli && bun run src/index.ts neighbors <changed-doc> --depth 2 --direction in --root <project-root>
+dep neighbors <changed-doc> --depth 2 --direction in --root <project-root>
 
 # Check if audience learning paths are broken by stale docs
-cd cli && bun run src/index.ts roadmap <audience-id> --root <project-root>
+dep roadmap <audience-id> --root <project-root>
 ```
 
 **When to use each:**

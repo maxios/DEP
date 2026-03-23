@@ -8,30 +8,51 @@ DEP (Documentation Engineering Protocol) is a universal documentation standard f
 
 ## CLI Commands
 
-The CLI is a Bun + TypeScript tool in `cli/`. All commands are run from the `cli/` directory:
+### Using the standalone binary
+
+Install the `dep` binary (no runtime dependencies needed):
 
 ```bash
-# Install dependencies
-cd cli && bun install
+curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
+export PATH="$HOME/.dep/bin:$PATH"
+```
 
+Then run commands directly:
+
+```bash
 # Core commands (all support --json for machine-readable output)
-bun run src/index.ts graph --root ..              # documentation graph (also: --dot, --mermaid)
-bun run src/index.ts backlinks <file> --root ..   # what links to a document
-bun run src/index.ts validate --root ..           # validate documents + graph integrity
-bun run src/index.ts query --type reference --root ..  # filter by metadata
-bun run src/index.ts index --root ..              # auto-generate index files (--dry for preview)
+dep graph --root .              # documentation graph (also: --dot, --mermaid)
+dep backlinks <file> --root .   # what links to a document
+dep validate --root .           # validate documents + graph integrity
+dep query --type reference --root .  # filter by metadata
+dep index --root .              # auto-generate index files (--dry for preview)
 
 # Navigation commands
-bun run src/index.ts search "lifecycle" --root ..                    # full-text search with scoring
-bun run src/index.ts neighbors seed.md --depth 2 --root ..          # transitive graph traversal
-bun run src/index.ts roadmap ai-agent --root ..                     # audience learning path
-bun run src/index.ts prereqs docs/tutorials/write-your-first-dep-document.md --root ..  # prerequisite chain
+dep search "lifecycle" --root .                    # full-text search with scoring
+dep neighbors seed.md --depth 2 --root .           # transitive graph traversal
+dep roadmap ai-agent --root .                      # audience learning path
+dep prereqs docs/tutorials/write-your-first-dep-document.md --root .  # prerequisite chain
+```
+
+### Development (from source)
+
+The CLI is a Bun + TypeScript tool in `cli/`:
+
+```bash
+cd cli && bun install
+
+# Run from source
+bun run src/index.ts validate --root ..
+
+# Build standalone binary for current platform
+bun run build:local
+
+# Build for all platforms (macOS + Linux, arm64 + x64)
+bun run build
 
 # Run tests
 bun test
 ```
-
-No build step — Bun runs TypeScript directly.
 
 ## CLI Architecture
 
