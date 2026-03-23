@@ -132,6 +132,27 @@ cd cli && bun run src/index.ts graph --json --root <project-root>
 cd cli && bun run src/index.ts backlinks <file> --root <project-root>
 ```
 
+### Navigation Commands for Impact Analysis
+
+Use navigation commands to understand the blast radius of code changes and find content-stale docs:
+
+```bash
+# Search for references to changed files, APIs, or features
+cd cli && bun run src/index.ts search "<changed-feature>" --root <project-root>
+
+# Find all documents affected by a change (transitive neighbors)
+cd cli && bun run src/index.ts neighbors <changed-doc> --depth 2 --direction in --root <project-root>
+
+# Check if audience learning paths are broken by stale docs
+cd cli && bun run src/index.ts roadmap <audience-id> --root <project-root>
+```
+
+**When to use each:**
+
+- `search` — During content relevance check (Step 5): search for names of changed files, CLI flags, API endpoints, or features to find docs that reference them
+- `neighbors --direction in` — During impact analysis: find all documents that link TO a changed document (inbound neighbors). These are likely affected by the change and may need updates
+- `roadmap` — After identifying stale docs: run roadmaps to check if stale documents block any audience's learning path. Prioritize updating stale docs that appear in roadmaps
+
 ## Constraints
 
 - Always present the sync report to the user before making any changes

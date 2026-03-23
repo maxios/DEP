@@ -102,6 +102,31 @@ cd cli && bun run src/index.ts query --lifecycle STALE --root <project-root>  # 
 
 After migration, use `dep index` to auto-generate navigation files.
 
+### Navigation Commands for Audit Analysis
+
+Use navigation commands to assess the current documentation's navigability and find structural gaps:
+
+```bash
+# Search for topics to identify undocumented areas or duplicates
+cd cli && bun run src/index.ts search "<key-concept>" --root <project-root>
+
+# Map the neighborhood of each document to assess connectivity
+cd cli && bun run src/index.ts neighbors <file> --depth 2 --root <project-root>
+
+# Evaluate learning paths per audience — sparse paths indicate gaps
+cd cli && bun run src/index.ts roadmap <audience-id> --root <project-root>
+
+# Check prerequisite depth — deep chains may need restructuring
+cd cli && bun run src/index.ts prereqs <file> --root <project-root>
+```
+
+**When to use each:**
+
+- `search` — During inventory (Step 1): search for key system concepts to find what's documented vs missing
+- `neighbors` — During gap analysis (Step 5): documents with 0-1 neighbors are poorly connected and likely missing links
+- `roadmap` — During audience mapping (Step 4): run for each identified audience to see if they have a viable learning path. Empty roadmaps = audience not served
+- `prereqs` — During contamination analysis (Step 3): prerequisite chains that skip levels may indicate a document is trying to teach too much (contamination)
+
 ## Constraints
 
 - Do not modify existing documents during audit — only analyze and plan

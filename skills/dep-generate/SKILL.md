@@ -95,6 +95,31 @@ cd cli && bun run src/index.ts index --root <project-root>
 
 Use `dep graph --dot` to visualize the documentation graph after generation.
 
+### Navigation Commands for Quality Checks
+
+After generating, use navigation commands to verify the documentation set is well-connected and navigable:
+
+```bash
+# Search for existing docs before creating duplicates
+cd cli && bun run src/index.ts search "<topic>" --root <project-root>
+
+# Verify new docs are reachable from their neighbors
+cd cli && bun run src/index.ts neighbors <new-doc> --depth 2 --root <project-root>
+
+# Validate learning paths are coherent per audience
+cd cli && bun run src/index.ts roadmap <audience-id> --root <project-root>
+
+# Check prerequisite chains are sensible (not too deep, no gaps)
+cd cli && bun run src/index.ts prereqs <tutorial-or-howto> --root <project-root>
+```
+
+**When to use each:**
+
+- `search` — Before generating a new document, search to confirm no existing doc already covers the topic
+- `neighbors` — After generation, verify each new document is connected to the graph (not isolated)
+- `roadmap` — After generation, verify each audience has a coherent learning path from their entry point
+- `prereqs` — After generation, verify prerequisite chains are reasonable (recommended max depth: 3-4)
+
 ## Constraints
 
 - Never generate documents before the `.docspec` exists

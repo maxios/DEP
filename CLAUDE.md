@@ -21,6 +21,12 @@ bun run src/index.ts validate --root ..           # validate documents + graph i
 bun run src/index.ts query --type reference --root ..  # filter by metadata
 bun run src/index.ts index --root ..              # auto-generate index files (--dry for preview)
 
+# Navigation commands
+bun run src/index.ts search "lifecycle" --root ..                    # full-text search with scoring
+bun run src/index.ts neighbors seed.md --depth 2 --root ..          # transitive graph traversal
+bun run src/index.ts roadmap ai-agent --root ..                     # audience learning path
+bun run src/index.ts prereqs docs/tutorials/write-your-first-dep-document.md --root ..  # prerequisite chain
+
 # Run tests
 bun test
 ```
@@ -37,7 +43,7 @@ The CLI parses markdown files with YAML frontmatter, builds a directed graph of 
 - `cli/src/config.ts` — Loads `.docspec` YAML config from project root
 - `cli/src/types.ts` — All TypeScript interfaces (`DepMetadata`, `DepGraph`, `DepNode`, `DocspecConfig`, etc.)
 - `cli/src/output.ts` — Output formatting
-- `cli/src/commands/` — One file per command (graph, backlinks, validate, query, index-gen)
+- `cli/src/commands/` — One file per command (graph, backlinks, validate, query, index-gen, search, neighbors, roadmap, prereqs)
 
 Key data flow: `.docspec` defines project config → `parser.ts` reads each `.md` file's `dep:` frontmatter block → `graph.ts` assembles nodes/edges/orphans/cycles → commands query or display the graph.
 

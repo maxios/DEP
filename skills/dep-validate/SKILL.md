@@ -99,6 +99,31 @@ Use `--json` for machine-readable output. Exit code 0 = all pass, 1 = failures e
 
 After CLI validation, perform manual checks that require judgment: type purity (content structure), vocabulary level matching, and contamination detection.
 
+### Navigation Commands for Deeper Validation
+
+Use navigation commands to verify structural quality beyond basic pass/fail:
+
+```bash
+# Check that each document is well-connected (not weakly linked)
+cd cli && bun run src/index.ts neighbors <file> --depth 2 --root <project-root>
+
+# Verify prerequisite chains aren't broken or too deep
+cd cli && bun run src/index.ts prereqs <file> --root <project-root>
+
+# Validate each audience has a complete, coherent learning path
+cd cli && bun run src/index.ts roadmap <audience-id> --root <project-root>
+
+# Search for potential duplicates or overlapping content
+cd cli && bun run src/index.ts search "<topic>" --root <project-root>
+```
+
+**When to use each:**
+
+- `neighbors` — Check connectivity: a well-documented node should have 2+ neighbors at depth 1. Isolated nodes may indicate missing links
+- `prereqs` — Validate REQUIRES chains: chains deeper than 4 may indicate poor document organization
+- `roadmap` — Run for every audience after validation: if the roadmap is empty or has only 1 step, the audience's learning path is incomplete
+- `search` — Search for key concepts: if a concept appears in body text but has no dedicated reference entry, flag a reference coverage gap
+
 ## Constraints
 
 - Report findings factually — do not fix documents unless asked
