@@ -1,0 +1,5 @@
+{
+  "name": "dep",
+  "description": "Documentation Engineering Protocol — generate, validate, audit, and sync DEP-compliant documentation",
+  "version": "0.1.0"
+}

@@ -72,10 +72,12 @@ Documents without a `dep:` block in frontmatter are skipped by the parser.
 - **Audience IDs** must reference personas defined in `.docspec` (`ai-generator`, `ai-agent`, `human-author`, `project-lead`).
 - **Lifecycle states** (FRESH → AGING → STALE) are computed from `last_verified` vs `review_cadence` in `.docspec` governance config.
 
-## Skills
+## Plugin & Skills
 
-Four Claude Code skills in `skills/`:
+DEP is packaged as a Claude Code plugin (`.claude-plugin/`). Four skills in `skills/`:
 - `/dep-generate` — Generate DEP-compliant documentation for any system
 - `/dep-validate` — Validate documents against DEP
 - `/dep-audit` — Audit existing docs and plan DEP migration
 - `/dep-sync` — Sync documentation freshness with code changes
+
+Install via marketplace: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketplace`

@@ -1,7 +1,5 @@
 ---
-name: dep-generate
 description: Generate DEP-compliant documentation for a system or domain. Follows the DEP bootstrap sequence — audience modeling, .docspec creation, scaffolding, generation, and validation.
-user_invocable: true
 ---
 
 # DEP Generate Skill

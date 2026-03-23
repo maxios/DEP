@@ -6,14 +6,14 @@ dep:
   created: 2026-03-22T23:36:54+02:00
   last_verified: 2026-03-23T21:49:13+02:00
   confidence: high
-  depends_on: [skills/dep-generate.md, skills/dep-validate.md, skills/dep-audit.md, skills/dep-sync.md]
+  depends_on: [skills/dep-generate/SKILL.md, skills/dep-validate/SKILL.md, skills/dep-audit/SKILL.md, skills/dep-sync/SKILL.md]
   tags: [skills, api, agent, integration]
   links: []
 ---
 
 # DEP Skills API Reference
 
-DEP provides four skills that AI agents can invoke to generate, validate, audit, and sync documentation. Skills follow the Claude Code skill convention.
+DEP provides four skills that AI agents can invoke to generate, validate, audit, and sync documentation. DEP is packaged as a Claude Code plugin with a marketplace for distribution.
 
 ---
 
@@ -21,7 +21,7 @@ DEP provides four skills that AI agents can invoke to generate, validate, audit,
 
 | Property | Value |
 |----------|-------|
-| File | `skills/dep-generate.md` |
+| File | `skills/dep-generate/SKILL.md` |
 | Trigger | User asks to generate documentation for a system or domain |
 | Input | System description, optional `.docspec` |
 | Output | Complete DEP-compliant documentation set |
@@ -45,7 +45,7 @@ DEP provides four skills that AI agents can invoke to generate, validate, audit,
 
 | Property | Value |
 |----------|-------|
-| File | `skills/dep-validate.md` |
+| File | `skills/dep-validate/SKILL.md` |
 | Trigger | User asks to validate, audit, review, or check documentation |
 | Input | File path (single doc) or docs root / `.docspec` (full set) |
 | Output | Validation report with pass/warn/fail per check |
@@ -75,7 +75,7 @@ DEP provides four skills that AI agents can invoke to generate, validate, audit,
 
 | Property | Value |
 |----------|-------|
-| File | `skills/dep-audit.md` |
+| File | `skills/dep-audit/SKILL.md` |
 | Trigger | User asks to audit or migrate existing (non-DEP) documentation |
 | Input | Path to existing documentation directory |
 | Output | Migration plan with phases |
@@ -102,7 +102,7 @@ DEP provides four skills that AI agents can invoke to generate, validate, audit,
 
 | Property | Value |
 |----------|-------|
-| File | `skills/dep-sync.md` |
+| File | `skills/dep-sync/SKILL.md` |
 | Trigger | User asks to sync documentation freshness with code changes |
 | Input | Project root with `.docspec`, optional date range or commit range |
 | Output | Sync report identifying stale docs with proposed updates |
@@ -144,17 +144,21 @@ cd cli && bun run src/index.ts <command> --root <project-root>
 
 ---
 
-## Skill Installation
+## Plugin Installation
 
-To make DEP skills available in a Claude Code project, add to your project's `CLAUDE.md`:
+DEP is packaged as a Claude Code plugin. Install via the marketplace:
 
-```markdown
-## Skills
+```bash
+# Add the DEP marketplace (from GitHub)
+/plugin marketplace add owner/dep
 
-- `/dep-generate` — Generate DEP-compliant documentation
-- `/dep-validate` — Validate documentation against DEP standards
-- `/dep-audit` — Audit and migrate existing documentation to DEP
-- `/dep-sync` — Sync documentation freshness with code changes
+# Install the DEP plugin
+/plugin install dep@dep-marketplace
 ```
 
-Or copy the skill files from `skills/` into your project's `.claude/skills/` directory.
+For local development, add the marketplace from a local path:
+
+```bash
+/plugin marketplace add ./path/to/dep
+/plugin install dep@dep-marketplace
+```

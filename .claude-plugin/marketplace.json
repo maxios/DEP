@@ -1,0 +1,13 @@
+{
+  "name": "dep-marketplace",
+  "owner": {
+    "name": "dep-core"
+  },
+  "plugins": [
+    {
+      "name": "dep",
+      "source": "./",
+      "description": "Documentation Engineering Protocol — generate, validate, audit, and sync DEP-compliant documentation"
+    }
+  ]
+}

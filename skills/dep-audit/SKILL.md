@@ -1,7 +1,5 @@
 ---
-name: dep-audit
 description: Audit existing documentation and retrofit DEP compliance. Analyzes unstructured docs, identifies types, detects contamination, and produces a migration plan.
-user_invocable: true
 ---
 
 # DEP Audit Skill

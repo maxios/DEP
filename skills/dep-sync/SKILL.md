@@ -1,7 +1,5 @@
 ---
-name: dep-sync
 description: Sync documentation freshness with code changes by comparing git history against doc metadata, identifying stale docs, and applying targeted updates.
-user_invocable: true
 ---
 
 # DEP Sync Skill

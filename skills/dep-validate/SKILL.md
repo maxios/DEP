@@ -1,7 +1,5 @@
 ---
-name: dep-validate
 description: Validate DEP-compliant documents and documentation sets. Checks metadata, type purity, graph integrity, and lifecycle freshness.
-user_invocable: true
 ---
 
 # DEP Validate Skill
