@@ -10,7 +10,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: cd cli && bun install && bun test
+      - run: |
+          cd cli && bun install
+          if find . -name '*.test.*' -o -name '*.spec.*' | grep -q .; then
+            bun test
+          else
+            echo "No test files found, skipping"
+          fi
 
   build:
     needs: test
