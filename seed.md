@@ -23,6 +23,16 @@ dep:
       rel: NEXT
     - target: docs/decision-records/dr-004-timestamp-precision-for-lifecycle-fields.md
       rel: NEXT
+    - target: docs/explanation/docspec-file.md
+      rel: NEXT
+    - target: docs/explanation/domain-generalization.md
+      rel: NEXT
+    - target: docs/explanation/anti-patterns.md
+      rel: NEXT
+    - target: docs/explanation/bootstrap-sequence.md
+      rel: NEXT
+    - target: docs/explanation/extension-points.md
+      rel: NEXT
 ---
 
 # Documentation Engineering Protocol — Seed Document
@@ -358,264 +368,19 @@ When generating a documentation set (multiple documents), additionally run graph
 
 ---
 
-## 8 — The `.docspec` File
+## Further Reading
 
-### The Abstraction
+The following topics have been extracted into dedicated documents for independent lifecycle management:
 
-The `.docspec` file is the machine-readable root configuration for a documentation system. It encodes all five layers into a single file that tooling, AI generators, and validators consume.
-
-Think of `.docspec` as the constitution of a documentation system. Individual documents are laws that must be consistent with the constitution. Validators are the judiciary. Generators are the legislature operating within constitutional constraints.
-
-### Structure
-
-```yaml
-dep_version: "0.1.0"
-
-project:
-  name: "[System Name]"
-  docs_root: "[Path to documentation root]"
-
-audiences:
-  - id: [machine-readable-id]
-    name: "[Human-readable name]"
-    goal: "[What this audience is trying to accomplish]"
-    context: "[What this audience already knows]"
-    entry_point: "[Path to their starting document]"
-    vocabulary_level: [non-technical | intermediate | advanced | expert]
-    time_budget: [deep | scanning | urgent]
-    success_criteria: "[Measurable outcome of successful documentation]"
-
-architecture:
-  directory_map:
-    tutorials: [path]
-    how-to: [path]
-    reference: [path]
-    explanation: [path]
-    decision-record: [path]
-  require_index_files: true
-  link_style: relative
-
-governance:
-  ownership_strategy: [per-document | per-directory | per-component]
-  fallback_owner: "[Default owner]"
-  review_cadence:
-    tutorial: [days]
-    how-to: [days]
-    reference: [days]
-    explanation: [days]
-    decision-record: [days]
-
-generation:
-  ai_provider: [constrained | disabled]
-  require_human_review: [true | false]
-```
-
-### AI Instruction
-
-When asked to create documentation for any system:
-
-1. **FIRST**: Generate the `.docspec` file. This forces you to define audiences, structure, and governance before writing a single document.
-2. **SECOND**: Generate the root `index.md` that routes each audience to their entry point.
-3. **THIRD**: Generate the entry point document for each audience.
-4. **FOURTH**: Generate documents in dependency order — if Document B requires Document A, generate A first.
-5. **LAST**: Run graph-level validation across the full set.
-
-Never generate documents before the `.docspec` exists. The spec constrains everything downstream.
+- [The `.docspec` File](docs/explanation/docspec-file.md) — The machine-readable root configuration abstraction
+- [Domain Generalization](docs/explanation/domain-generalization.md) — How DEP applies across any domain
+- [Anti-Patterns](docs/explanation/anti-patterns.md) — The six most common documentation failures DEP prevents
+- [Bootstrap Sequence for AI](docs/explanation/bootstrap-sequence.md) — The operational protocol for generating DEP-compliant documentation
+- [Extension Points](docs/explanation/extension-points.md) — Custom types, validators, and relationships
 
 ---
 
-## 9 — Domain Generalization
-
-### The Abstraction
-
-DEP is domain-agnostic. The five document types map to universal cognitive operations, not software-specific artifacts. Here is the mapping across domains:
-
-| Mental Operation | Software | Medicine | Law | Hardware | Organization |
-|-----------------|----------|----------|-----|----------|-------------|
-| **Construct** (Tutorial) | "Build your first API endpoint" | "Perform your first patient intake" | "File your first motion" | "Assemble the base unit" | "Complete your first sprint as a new hire" |
-| **Execute** (How-To) | "Deploy to production" | "Administer IV sedation" | "Submit a FOIA request" | "Replace the power supply" | "Submit an expense report" |
-| **Lookup** (Reference) | "API endpoint parameters" | "Drug interaction table" | "Statute 42 USC § 1983" | "Component specifications" | "PTO policy details" |
-| **Understand** (Explanation) | "Why we chose event sourcing" | "Why this drug targets TNF-α" | "Why strict scrutiny applies" | "Why aluminum over steel for this frame" | "Why we use OKRs instead of KPIs" |
-| **Decide** (Decision Record) | "DR: Chose PostgreSQL over MongoDB" | "Protocol selection: chose immunotherapy over chemo" | "Precedent analysis: applied Sullivan test" | "Material choice: titanium for joint replacement" | "Strategy decision: entered MENA market first" |
-
-The types are universal because the mental operations are universal. Every mind — regardless of domain — learns, does, looks up, seeks understanding, and makes decisions.
-
-### AI Instruction
-
-When applying DEP to a new domain:
-
-1. Replace the examples and vocabulary — not the structure.
-2. The five types remain the same. The six relationships remain the same. The five layers remain the same.
-3. Only the audience personas, vocabulary levels, review cadences, and directory names change.
-4. If a domain seems to need a "new" type, it is almost always a subtype of one of the five. Model it as a variant with additional required patterns, not as a sixth type.
-
----
-
-## 10 — Anti-Patterns
-
-These are the most common failures DEP prevents. An AI system should monitor for and actively avoid each one.
-
-### 10.1 — The Wall of Text
-
-**Symptom**: A single document of 5,000+ words covering everything from introduction to advanced troubleshooting.
-
-**DEP diagnosis**: Multiple types collapsed into one document. Audience not declared — the writer tried to serve everyone.
-
-**Fix**: Decompose. Identify the distinct mental operations present in the text. Extract each into its own document of the correct type. Link them.
-
-### 10.2 — The Orphan Graveyard
-
-**Symptom**: A `/docs` folder with 200 files, no index, no navigation, discoverable only through full-text search.
-
-**DEP diagnosis**: Layer 3 was never implemented. Documents were created without being placed in the graph.
-
-**Fix**: Build the graph. Create index files. Establish audience entry points. Run orphan detection. Link or archive every orphan.
-
-### 10.3 — The Confident Fossil
-
-**Symptom**: A beautifully written document that was accurate 18 months ago. The system has changed. The document has not. New engineers follow it and break things.
-
-**DEP diagnosis**: Layer 4 was never implemented. No ownership, no review cadence, no dependency tracking.
-
-**Fix**: Add lifecycle metadata. Establish staleness detection. Wire notifications. The document's confidence should have degraded to `stale` automatically.
-
-### 10.4 — The LLM Flood
-
-**Symptom**: An LLM was pointed at a codebase and generated 50 pages of documentation overnight. It looks professional. It is structurally incoherent — tutorials with reference tables, how-tos with architectural digressions, everything written for a generic "developer" audience.
-
-**DEP diagnosis**: Layer 5 was not applied. The LLM operated without constraints. No type declaration, no audience constraint, no validation.
-
-**Fix**: Do not regenerate. Instead: retroactively apply DEP metadata, run type contamination detection, decompose contaminated documents, validate the graph. Then constrain all future generation through `.docspec`.
-
-### 10.5 — The Vocabulary Mismatch
-
-**Symptom**: An ops engineer in an incident can't find the fix because the runbook uses theoretical language. A business stakeholder can't understand the overview because it's written in implementation jargon.
-
-**DEP diagnosis**: Layer 1 failure. The audience's `vocabulary_level` and `time_budget` were not considered. A `deep` document was written for an `urgent` audience, or an `expert` vocabulary was used for a `non-technical` reader.
-
-**Fix**: Verify the document's vocabulary and pacing against its declared audience. Rewrite to match. If the mismatch exists because the document serves multiple audiences, split it into audience-specific variants.
-
-### 10.6 — The Recursive Reference
-
-**Symptom**: To understand Document A, you need to read Document B. But Document B assumes you've read Document A.
-
-**DEP diagnosis**: Layer 3 failure. Circular `REQUIRES` dependency. The graph has a cycle.
-
-**Fix**: Identify which document is truly foundational. Break the cycle by removing one dependency direction and restructuring the dependent document to be self-contained on the overlapping content.
-
----
-
-## 11 — Bootstrap Sequence for AI
-
-This section is the operational protocol for an AI system using this seed document to generate DEP-compliant documentation for a new domain.
-
-### Input
-
-You receive: a description of a system (codebase, organization, product, protocol, knowledge domain) and a request to produce documentation.
-
-### Step 1 — Domain Analysis
-
-Before writing anything:
-
-- Identify the **system boundaries**: what is inside scope, what is outside.
-- Identify the **agents** that interact with the system: who uses it, who maintains it, who evaluates it, who decides about it.
-- Identify the **knowledge artifacts** that already exist: code, specs, policies, tribal knowledge.
-
-### Step 2 — Audience Modeling (L1)
-
-For each agent identified:
-
-- Define their goal (what are they trying to accomplish?).
-- Define their context (what do they already know?).
-- Define their time budget (are they learning, scanning, or firefighting?).
-- Define their success criteria (what does "the docs worked" look like?).
-- Assign a vocabulary level.
-- Declare an entry point path.
-
-### Step 3 — Architecture Scaffolding (L2 + L3)
-
-- Create the `.docspec` file with all audiences.
-- Define the directory structure per type.
-- Create the root `index.md`.
-- Create each audience's entry point document.
-- Plan the document set: list every document needed, its type, its audience, and its relationships.
-
-### Step 4 — Document Generation (L2 + L5)
-
-For each planned document, in dependency order:
-
-1. Declare the type and audience.
-2. Verify you have the required generation inputs for that type.
-3. Generate the content following the type signature strictly.
-4. Populate all metadata fields.
-5. Insert all cross-reference links.
-6. Run document-level validation.
-
-### Step 5 — Graph Validation (L3 + L5)
-
-After all documents are generated:
-
-1. Run orphan detection.
-2. Verify reference coverage.
-3. Verify reciprocal linking.
-4. Verify entry point completeness.
-5. Fix any failures before presenting the output.
-
-### Step 6 — Governance Initialization (L4)
-
-- Assign owners to all documents.
-- Set initial `confidence` levels honestly (based on source quality).
-- Populate `depends_on` for every document.
-- Declare review cadences.
-
----
-
-## 12 — Extension Points
-
-DEP is designed to be extended without breaking the core protocol.
-
-### Custom Types
-
-If a domain genuinely requires a document type that is not one of the five, it can be defined as an extension of an existing type:
-
-```yaml
-custom_types:
-  - id: runbook
-    extends: how-to
-    additional_required_patterns: [severity_classification, escalation_path, rollback_procedure]
-```
-
-The custom type inherits all rules of its parent and adds additional constraints. It does NOT replace the parent type in the taxonomy.
-
-### Custom Validators
-
-Domain-specific validation rules can be added alongside the standard validators:
-
-```yaml
-validation:
-  custom_rules:
-    - path: validators/medical-terminology-check.py
-    - path: validators/legal-citation-format.py
-```
-
-### Custom Relationships
-
-If the six canonical relationships are insufficient, additional typed relationships can be defined:
-
-```yaml
-custom_relationships:
-  - id: SUPERSEDES
-    meaning: "This document replaces an older version"
-    inverse: SUPERSEDED_BY
-```
-
-### AI Instruction on Extensions
-
-Use extensions sparingly. Before creating a custom type, verify that the need cannot be met by one of the five canonical types with additional metadata. The test: does the custom type perform a fundamentally different *mental operation* on the reader? If not — if it's the same operation with domain-specific content — it's a variant, not a new type.
-
----
-
-## 13 — Meta-Compliance
+## 8 — Meta-Compliance
 
 This document complies with its own protocol:
 
@@ -631,9 +396,7 @@ This document complies with its own protocol:
 | Narrative structure with conceptual depth | ✓ |
 | Tradeoffs and alternatives discussed | ✓ |
 
-This document does not contain tutorials, reference tables, or how-to procedures. It *explains*. For the procedural "how to implement DEP," see the How-To guides (planned). For the complete `.docspec` schema reference, see the Reference docs (planned). For the tutorial "Build Your First DEP-Compliant Doc Set," see the Tutorials (planned).
-
-The cross-references above point to documents that do not yet exist. That is correct: this is the seed. Those documents are the next generation. This document's existence — and its structural integrity — is what makes their generation possible.
+This document does not contain tutorials, reference tables, or how-to procedures. It *explains*. Sections covering the `.docspec` file, domain generalization, anti-patterns, bootstrap sequence, and extension points have been extracted into dedicated explanation documents (see Further Reading above) to respect the Lifecycle Independence Test.
 
 ---
 

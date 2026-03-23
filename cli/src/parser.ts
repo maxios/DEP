@@ -1,6 +1,6 @@
-import { readFileSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
 import matter from 'gray-matter'
-import { resolve, dirname, relative } from 'path'
+import { resolve, dirname, relative, basename, join } from 'path'
 import type { DepMetadata, DepEdge } from './types'
 
 export interface ParsedDocument {
@@ -65,4 +65,27 @@ function resolveRelativePath(fromPath: string, toPath: string): string {
   const resolved = resolve(fromDir, toPath)
   // Make it relative to project root (remove leading /)
   return relative(process.cwd(), resolved)
+}
+
+export function extractTitle(filePath: string): string {
+  try {
+    if (!existsSync(filePath)) return basename(filePath, '.md')
+    const content = readFileSync(filePath, 'utf-8')
+    const { content: body } = matter(content)
+    const match = body.match(/^#\s+(.+)$/m)
+    return match ? match[1] : basename(filePath, '.md')
+  } catch {
+    return basename(filePath, '.md')
+  }
+}
+
+export function extractBody(filePath: string): string {
+  try {
+    if (!existsSync(filePath)) return ''
+    const content = readFileSync(filePath, 'utf-8')
+    const { content: body } = matter(content)
+    return body
+  } catch {
+    return ''
+  }
 }

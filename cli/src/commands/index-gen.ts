@@ -1,8 +1,8 @@
 import { buildGraph } from '../graph'
 import { loadDocspec } from '../config'
-import { writeFileSync, readFileSync, existsSync } from 'fs'
+import { extractTitle as extractTitleFromPath } from '../parser'
+import { writeFileSync } from 'fs'
 import { join, relative, dirname, basename } from 'path'
-import matter from 'gray-matter'
 import type { DepNode } from '../types'
 
 export function indexCommand(root: string, flags: { json?: boolean; dry?: boolean }) {
@@ -108,7 +108,9 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
   for (const audience of config.audiences) {
     lines.push(`### ${audience.name}`)
     lines.push('')
-    lines.push(`**Entry point**: [${basename(audience.entry_point)}](${audience.entry_point.replace(/^\.\//, '').replace(/^docs\//, '')})`)
+    const epPath = audience.entry_point.replace(/^\.\//, '')
+    const epRelPath = relative(config.project.docs_root, epPath)
+    lines.push(`**Entry point**: [${basename(audience.entry_point)}](${epRelPath})`)
     lines.push('')
 
     // Find all docs for this audience
@@ -153,17 +155,8 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
 }
 
 function extractTitle(node: DepNode): string {
-  // Try to read the first heading from the file
-  try {
-    const fullPath = join(process.cwd(), node.path)
-    if (!existsSync(fullPath)) return basename(node.path, '.md')
-    const content = readFileSync(fullPath, 'utf-8')
-    const { content: body } = matter(content)
-    const match = body.match(/^#\s+(.+)$/m)
-    return match ? match[1] : basename(node.path, '.md')
-  } catch {
-    return basename(node.path, '.md')
-  }
+  const fullPath = join(process.cwd(), node.path)
+  return extractTitleFromPath(fullPath)
 }
 
 function capitalize(s: string): string {

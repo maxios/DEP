@@ -66,7 +66,7 @@ Index files are the table of contents. Atomic files are the pages. Humans naviga
 
 ### Alternative A: No granularity guidance (leave it to authors)
 
-**Rejected because**: Without a default, AI generators produce monolithic documents (the LLM Flood anti-pattern from seed.md Section 10.4). Humans produce documents that grow unbounded over time. A stated default prevents both failure modes.
+**Rejected because**: Without a default, AI generators produce monolithic documents (the LLM Flood anti-pattern from [Anti-Patterns](../explanation/anti-patterns.md)). Humans produce documents that grow unbounded over time. A stated default prevents both failure modes.
 
 ### Alternative B: Optimize for human reading (fewer, longer files)
 
