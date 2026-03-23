@@ -87,6 +87,20 @@ Across the full documentation set:
 2. Create reference entry for "Widget API"
 ```
 
+## CLI Integration
+
+Before performing manual checks, run the `dep` CLI tool for automated validation:
+
+```bash
+cd cli && bun run src/index.ts validate --root <project-root>
+```
+
+The CLI checks: metadata completeness, type validity, audience validity, link resolution, relationship type validity, lifecycle state, orphan detection, cycle detection, and entry point completeness.
+
+Use `--json` for machine-readable output. Exit code 0 = all pass, 1 = failures exist.
+
+After CLI validation, perform manual checks that require judgment: type purity (content structure), vocabulary level matching, and contamination detection.
+
 ## Constraints
 
 - Report findings factually — do not fix documents unless asked

@@ -86,11 +86,24 @@ After generating all documents:
 
 Report validation results to the user. Fix any failures before finalizing.
 
+## CLI Integration
+
+After generating documents, run validation and index generation:
+
+```bash
+cd cli && bun run src/index.ts validate --root <project-root>
+cd cli && bun run src/index.ts index --root <project-root>
+```
+
+Use `dep graph --dot` to visualize the documentation graph after generation.
+
 ## Constraints
 
 - Never generate documents before the `.docspec` exists
 - Never mix document types — one mental operation per document
 - **Prefer more files over more lines** — if two sections could have different `owner`, `last_verified`, or `depends_on`, they must be separate files (Lifecycle Independence Test)
+- Use standard YAML frontmatter (`---`) — NOT fenced code blocks
+- Always populate the `links` field with typed relationships (TEACHES, USES, EXPLAINS, DECIDES, REQUIRES, NEXT)
 - Never skip metadata — every field must be populated
 - Set `confidence: medium` for AI-generated content unless verified against source material
 - Use `depends_on` to track what could invalidate each document

@@ -92,6 +92,18 @@ Produce a structured plan:
 - [ ] Set review cadences
 ```
 
+## CLI Integration
+
+Use the `dep` CLI to accelerate analysis:
+
+```bash
+cd cli && bun run src/index.ts graph --json --root <project-root>   # understand current state
+cd cli && bun run src/index.ts validate --root <project-root>       # find structural issues
+cd cli && bun run src/index.ts query --lifecycle STALE --root <project-root>  # find stale docs
+```
+
+After migration, use `dep index` to auto-generate navigation files.
+
 ## Constraints
 
 - Do not modify existing documents during audit — only analyze and plan

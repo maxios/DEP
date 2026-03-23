@@ -1,0 +1,25 @@
+{
+  "name": "@dep/cli",
+  "version": "0.1.0",
+  "description": "CLI tool for the Documentation Engineering Protocol",
+  "module": "src/index.ts",
+  "type": "module",
+  "bin": {
+    "dep": "src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "test": "bun test"
+  },
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "yaml": "^2.8.3"
+  }
+}
