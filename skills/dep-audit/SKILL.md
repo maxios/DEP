@@ -12,148 +12,101 @@ The user asks you to audit, assess, or migrate existing documentation to DEP sta
 
 ## Prerequisites
 
-The `dep` CLI binary must be available. Resolve in order:
+Both the `dep` and `dap` CLI binaries must be available. Resolve in order:
 
 1. Check: `which dep || test -x ~/.dep/bin/dep`
-2. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
-3. If installed to `~/.dep/bin`, ensure it's in PATH: `export PATH="$HOME/.dep/bin:$PATH"`
+2. Check: `which dap || test -x ~/.dap/bin/dap`
+3. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+4. Ensure PATH: `export PATH="$HOME/.dep/bin:$HOME/.dap/bin:$PATH"`
 
 ## CLI-First Principle
 
-**Always use the `dep` CLI as the primary tool for querying, navigating, and analyzing DEP documentation.** Run CLI commands first to understand the existing state, then apply manual judgment for checks that require human reasoning (type classification, contamination analysis, vocabulary assessment).
+**Always use the `dep` CLI for documentation queries and the `dap` CLI for decision navigation.** These are your primary tools — never read YAML frontmatter directly or hardcode decision logic.
 
-- Prefer `--json` when results will be processed programmatically
-- Never read YAML frontmatter directly for metadata — use `dep query`, `dep graph --json`, or `dep backlinks`
+- Use `dep` for querying, navigating, and analyzing documentation (`dep graph`, `dep validate`, `dep query`, `dep search`, `dep neighbors`, `dep roadmap`, `dep prereqs`, etc.)
+- Use `dap` for navigating decisions (`dap resolve`, `dap node`) — load one node at a time, evaluate conditions, follow branches
+- Prefer `--json` when processing results programmatically
 - Never edit YAML frontmatter directly — use `dep set`, `dep bump`, `dep tag`, or `dep link`
 
 ## Protocol
 
-### Step 1 — Inventory
+### Step 1 — Resolve the DAP Decision Tree
 
-Start by checking if any existing docs already have DEP metadata:
+Find the appropriate decision tree for auditing:
 
 ```bash
-# If any docs have DEP metadata, load the current graph state
-dep graph --json --root <project-root>
-
-# Run validation to find structural issues in existing DEP docs
-dep validate --json --root <project-root>
-
-# Check for stale documents
-dep query --lifecycle STALE --root <project-root>
+dap resolve "audit documentation" --json --root <dap-root>
 ```
 
-Parse the CLI output to catalog existing DEP-compliant documents — their types, audiences, lifecycle states, and any validation failures.
+This returns the `audit-existing-docs` tree (ID: `audit-existing-docs`, entry node: `inventory-docs`).
 
-For documents without DEP metadata, scan the directory manually and catalog:
-
-- File path
-- Approximate word count
-- Detected language/format (markdown, rst, plain text, etc.)
-- Whether it has any metadata/frontmatter
-
-### Step 2 — Type Classification
-
-This step requires manual analysis — the CLI cannot classify document types from content.
-
-For each document, determine which DEP type it most closely matches:
-
-- Does it teach through guided steps? -> `tutorial`
-- Does it enable a specific task? -> `how-to`
-- Does it list facts for lookup? -> `reference`
-- Does it explain concepts or reasoning? -> `explanation`
-- Does it record a decision? -> `decision-record`
-- Does it mix multiple types? -> `contaminated` (list which types are present)
-
-### Step 3 — Contamination Analysis
-
-For contaminated documents, identify:
-
-- Which sections belong to which type
-- Where extraction boundaries should be
-- What new documents would be created from extraction
-
-Use CLI to supplement manual analysis for documents already in the graph:
+### Step 2 ��� Load the Entry Node
 
 ```bash
-# Prerequisite chains that skip levels may indicate a document is trying to teach too much
+dap node audit-existing-docs inventory-docs --json --root <dap-root>
+```
+
+This returns the first node — an **observe** node that instructs you to inventory existing documentation. Execute the action.
+
+### Step 3 �� Follow the Decision Tree
+
+After executing each node's action, load the next node:
+
+```bash
+dap node audit-existing-docs <next-node-id> --json --root <dap-root>
+```
+
+At each node:
+
+- **observe `[?]`** — Gather information. For inventory steps, use DEP CLI first:
+  ```bash
+  dep graph --json --root <project-root>
+  dep validate --json --root <project-root>
+  dep query --lifecycle STALE --root <project-root>
+  ```
+  For documents without DEP metadata, scan the directory manually.
+
+- **decide `[>]`** — Evaluate conditions against collected outputs. Follow the matching branch (e.g., scope decision, contamination severity).
+
+- **act `[!]`** — Execute the terminal action. For audit, this produces reports or migration plans.
+
+- **delegate `[@]`** — Transfer control to another DAP tree (e.g., `validate-and-fix` after migration).
+
+### Step 4 — Handle Gates
+
+The audit tree includes gates for:
+
+- **Scope selection** — Audit all docs or a subset
+- **Migration approach** — Phase-by-phase or all-at-once
+- **Plan approval** — Present the migration plan for user sign-off
+
+When the tree presents a gate node, present the prompt and options to the user. Wait for their decision before continuing.
+
+### Step 5 — Apply Manual Judgment Where Needed
+
+Some audit steps require manual analysis that the DAP tree routes you through but cannot automate:
+
+1. **Type classification** — Read document content to determine which DEP type it matches (tutorial, how-to, reference, explanation, decision-record, or contaminated)
+2. **Contamination analysis** — Identify which sections belong to which type and where extraction boundaries should be
+3. **Vocabulary assessment** — Check if documents match their intended audience level
+
+Use `dep` CLI to supplement manual analysis:
+
+```bash
+# Prerequisite chains that skip levels may indicate contamination
 dep prereqs <file> --root <project-root>
-```
 
-### Step 4 — Audience Mapping
-
-For documents already in the graph, check how well each audience is served:
-
-```bash
-# Run for each identified audience — empty or sparse roadmaps = audience not served
+# Check audience learning paths — sparse paths indicate gaps
 dep roadmap <audience-id> --root <project-root>
-```
 
-Then supplement with manual analysis:
-
-- Who are these documents written for?
-- Are there vocabulary mismatches?
-- Are there missing audiences (people who need docs but don't have them)?
-
-### Step 5 — Gap Analysis
-
-Start with CLI to find structural gaps:
-
-```bash
-# Search for key system concepts to find what's documented vs missing
+# Search for concepts to find documented vs. missing areas
 dep search "<key-concept>" --root <project-root>
 
-# Documents with 0-1 neighbors are poorly connected and likely missing links
+# Assess connectivity — 0-1 neighbors = poorly connected
 dep neighbors <file> --depth 2 --root <project-root>
-
-# Check prerequisite depth — deep chains may need restructuring
-dep prereqs <file> --root <project-root>
 ```
 
-Then identify what's missing manually:
-
-- Concepts introduced but never given reference entries
-- Tasks mentioned but no how-to exists
-- Decisions implied but not recorded
-- Audiences identified but no entry point exists
-
-### Step 6 — Migration Plan
-
-Produce a structured plan:
-
-```markdown
-## DEP Migration Plan
-
-### Current State
-- Total documents: N
-- Pure (single type): N
-- Contaminated (multiple types): N
-- Unclassifiable: N
-
-### Audiences Identified
-1. [audience-id]: [description]
-
-### Actions Required
-
-#### Phase 1: Metadata (add DEP headers to existing docs)
-- [ ] [file] -> type: [type], audience: [audiences]
-
-#### Phase 2: Extraction (split contaminated documents)
-- [ ] [file] -> extract lines N-M into [new-file] (type: [type])
-
-#### Phase 3: Gap Fill (create missing documents)
-- [ ] Create [type]: [title] for audience [audience]
-
-#### Phase 4: Graph Construction (link everything)
-- [ ] Create index.md
-- [ ] Create audience entry points
-- [ ] Add cross-references
-
-#### Phase 5: Governance Setup
-- [ ] Create .docspec
-- [ ] Assign owners
-- [ ] Set review cadences
-```
+### Step 6 — Post-Migration Verification
 
 After the user executes the migration plan, verify compliance:
 
@@ -162,9 +115,16 @@ dep validate --root <project-root>
 dep index --root <project-root>
 ```
 
+Or delegate to the validation tree:
+
+```bash
+dap node validate-and-fix run-validation --json --root <dap-root>
+```
+
 ## Constraints
 
 - Do not modify existing documents during audit — only analyze and plan
 - Present the plan to the user for approval before any changes
 - Preserve all existing content — migration should not delete information
 - Flag documents that may be outdated but let the owner decide
+- Always traverse the DAP tree node-by-node — never skip nodes or hardcode decision paths

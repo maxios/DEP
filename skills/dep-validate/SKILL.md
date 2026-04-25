@@ -12,91 +12,71 @@ The user asks you to validate, audit, review, or check documentation against DEP
 
 ## Prerequisites
 
-The `dep` CLI binary must be available. Resolve in order:
+Both the `dep` and `dap` CLI binaries must be available. Resolve in order:
 
 1. Check: `which dep || test -x ~/.dep/bin/dep`
-2. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
-3. If installed to `~/.dep/bin`, ensure it's in PATH: `export PATH="$HOME/.dep/bin:$PATH"`
+2. Check: `which dap || test -x ~/.dap/bin/dap`
+3. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+4. Ensure PATH: `export PATH="$HOME/.dep/bin:$HOME/.dap/bin:$PATH"`
 
 ## CLI-First Principle
 
-**Always use the `dep` CLI as the primary tool for querying, navigating, and validating DEP documentation.** Run CLI commands first, then apply manual judgment only for checks that require human reasoning (type purity, vocabulary matching, contamination detection).
+**Always use the `dep` CLI for documentation queries and the `dap` CLI for decision navigation.** These are your primary tools — never read YAML frontmatter directly or hardcode decision logic.
 
-- Prefer `--json` when results will be processed programmatically
-- Never read YAML frontmatter directly for metadata — use `dep query`, `dep graph --json`, or `dep backlinks`
+- Use `dep` for querying, navigating, and modifying documentation (`dep validate`, `dep graph`, `dep query`, `dep search`, `dep neighbors`, etc.)
+- Use `dap` for navigating decisions (`dap resolve`, `dap node`) — load one node at a time, evaluate conditions, follow branches
+- Prefer `--json` when processing results programmatically
 - Never edit YAML frontmatter directly — use `dep set`, `dep bump`, `dep tag`, or `dep link`
 
 ## Protocol
 
-### Input Modes
+### Step 1 — Resolve the DAP Decision Tree
 
-1. **Single document**: User provides a file path. Run document-level checks.
-2. **Full documentation set**: User points to a docs root or `.docspec`. Run document-level AND graph-level checks.
-3. **Pre-commit check**: User is about to commit. Validate only changed files.
-
-### Step 1 — Automated CLI Validation
-
-Run the CLI validator first to cover all machine-checkable rules:
+Find the appropriate decision tree for validation:
 
 ```bash
-dep validate --json --root <project-root>
+dap resolve "validate documentation" --json --root <dap-root>
 ```
 
-This checks: metadata completeness, type validity, audience validity, link resolution, relationship type validity, lifecycle state, date formats, and confidence levels. Exit code 0 = all pass, 1 = failures exist.
+This returns the `validate-and-fix` tree (ID: `validate-and-fix`, entry node: `run-validation`).
 
-Parse the JSON output. For each document, note PASS/WARN/FAIL status and which checks failed.
-
-### Step 2 — Graph Integrity (CLI)
-
-Load the full documentation graph:
+### Step 2 — Load the Entry Node
 
 ```bash
-dep graph --json --root <project-root>
+dap node validate-and-fix run-validation --json --root <dap-root>
 ```
 
-From the JSON output, check:
-- **Orphans**: `graph.orphans` array should be empty
-- **Cycles**: `graph.cycles` array should be empty (no circular REQUIRES)
-- **Stats**: Review `graph.stats` for overall health
+This returns the first node — an **observe** node that instructs you to run `dep validate --json`. Execute the tool call specified in the node.
 
-Then run targeted navigation commands:
+### Step 3 — Follow the Decision Tree
+
+After executing each node's action, load the next node:
 
 ```bash
-# Verify each audience has a complete learning path
-dep roadmap <audience-id> --root <project-root>
-
-# Check connectivity — well-documented nodes should have 2+ neighbors at depth 1
-dep neighbors <file> --depth 2 --root <project-root>
-
-# Verify prerequisite chains aren't broken or too deep (max 4)
-dep prereqs <file> --root <project-root>
-
-# Search for potential duplicates or overlapping content
-dep search "<topic>" --root <project-root>
+dap node validate-and-fix <next-node-id> --json --root <dap-root>
 ```
 
-**When to use each:**
-- `roadmap` — Run for every audience: if the roadmap is empty or has only 1 step, the learning path is incomplete
-- `neighbors` — Isolated nodes (0-1 neighbors) indicate missing links
-- `prereqs` — Chains deeper than 4 may indicate poor document organization
-- `search` — If a concept appears in body text but has no dedicated reference entry, flag a reference coverage gap
+At each node:
 
-### Step 3 — Manual Judgment Checks
+- **observe `[?]`** — Gather information. Run the specified tool call or gate prompt, capture outputs.
+- **decide `[>]`** — Evaluate conditions against collected outputs. Follow the matching branch.
+- **act `[!]`** — Execute the terminal action (tool call, document reference, or intent). If `on_success` / `on_failure` paths exist, follow them.
+- **delegate `[@]`** — Transfer control to another DAP tree.
 
-These checks require reading the document body — the CLI cannot automate them:
+### Step 4 — Handle Gates
 
-1. **Type purity**: Does the document structure match its declared type signature?
-   - Check for required patterns (must be present)
-   - Check for violation patterns (must be absent)
-   - Report contamination with specific line references
+When the tree presents a **gate** node (observe with `method: gate`), present the prompt and options to the user. Wait for their decision before continuing to the next node.
 
-2. **Reference coverage**: Does every concept introduced in a tutorial have a corresponding reference entry?
+### Step 5 — Apply Manual Judgment Where Needed
 
-3. **Reciprocal linking**: Does every reference entry link back to at least one tutorial or how-to?
+The DAP tree handles routing and fix decisions, but some checks require manual analysis that no CLI can automate:
 
-4. **Vocabulary level**: Does the document's language match its declared audience's vocabulary level?
+1. **Type purity** — Read the document body and check that the structure matches its declared type signature. Look for contamination patterns.
+2. **Vocabulary level** — Verify the document's language matches its declared audience's vocabulary level.
 
-### Output Format
+Report these findings alongside the DAP-driven validation results.
+
+## Output Format
 
 ```markdown
 ## DEP Validation Report
@@ -134,3 +114,4 @@ These checks require reading the document body — the CLI cannot automate them:
 - Distinguish between FAIL (structural violation) and WARN (best practice suggestion)
 - Always check for `.docspec` first — without it, audience and cadence checks cannot run
 - For lifecycle checks, use today's date as the reference point
+- Always traverse the DAP tree node-by-node — never skip nodes or hardcode decision paths

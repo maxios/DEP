@@ -12,138 +12,108 @@ The user asks you to generate documentation for a system, project, codebase, or 
 
 ## Prerequisites
 
-The `dep` CLI binary must be available. Resolve in order:
+Both the `dep` and `dap` CLI binaries must be available. Resolve in order:
 
 1. Check: `which dep || test -x ~/.dep/bin/dep`
-2. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
-3. If installed to `~/.dep/bin`, ensure it's in PATH: `export PATH="$HOME/.dep/bin:$PATH"`
+2. Check: `which dap || test -x ~/.dap/bin/dap`
+3. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+4. Ensure PATH: `export PATH="$HOME/.dep/bin:$HOME/.dap/bin:$PATH"`
 
 ## CLI-First Principle
 
-**Always use the `dep` CLI as the primary tool for querying, navigating, and modifying DEP documentation.** Run CLI commands first, then apply manual judgment only for checks that require human reasoning (type purity, vocabulary matching, content accuracy).
+**Always use the `dep` CLI for documentation queries and the `dap` CLI for decision navigation.** These are your primary tools — never read YAML frontmatter directly or hardcode decision logic.
 
-- Prefer `--json` when results will be processed programmatically
-- Never read YAML frontmatter directly for metadata — use `dep query`, `dep graph --json`, or `dep backlinks`
+- Use `dep` for querying, navigating, and modifying documentation (`dep validate`, `dep graph`, `dep query`, `dep search`, `dep set`, `dep tag`, `dep link`, `dep bump`, etc.)
+- Use `dap` for navigating decisions (`dap resolve`, `dap node`) — load one node at a time, evaluate conditions, follow branches
+- Prefer `--json` when processing results programmatically
 - Never edit YAML frontmatter directly — use `dep set`, `dep bump`, `dep tag`, or `dep link`
 
 ## Protocol
 
-### Step 1 — Load Existing State
+### Step 1 — Resolve the DAP Decision Tree
 
-Check if a `.docspec` and existing documentation already exist:
+Find the appropriate decision tree for generation:
 
 ```bash
-dep graph --json --root <project-root>
+dap resolve "generate documentation" --json --root <dap-root>
 ```
 
-If this succeeds, parse the JSON to understand the current documentation state — existing documents, types, audiences, and gaps. Skip to Step 3.
+This returns the `generate-doc-set` tree (ID: `generate-doc-set`, entry node: `check-docspec`).
 
-If this fails (no `.docspec`), proceed to Step 2 to bootstrap.
-
-### Step 2 — Bootstrap (only if no .docspec exists)
-
-Ask the user for:
-
-1. **System name**: What is being documented?
-2. **System description**: One sentence.
-3. **Audiences**: Who interacts with this system? For each, determine:
-   - ID, name, goal, context, vocabulary level, time budget, success criteria
-
-Then generate:
-
-1. The `.docspec` file
-2. The directory structure per the architecture config
-3. The root `index.md`
-4. Entry point documents for each audience
-
-### Step 3 — Plan the Document Set
-
-Before planning, check what already exists to avoid duplicates:
+### Step 2 — Load the Entry Node
 
 ```bash
-# Search for each planned topic to check for existing coverage
+dap node generate-doc-set check-docspec --json --root <dap-root>
+```
+
+This returns the first node — an **observe** node that checks if a `.docspec` exists. Execute the check.
+
+### Step 3 — Follow the Decision Tree
+
+After executing each node's action, load the next node:
+
+```bash
+dap node generate-doc-set <next-node-id> --json --root <dap-root>
+```
+
+At each node:
+
+- **observe `[?]`** — Gather information. Run the specified tool call or gate prompt, capture outputs.
+- **decide `[>]`** — Evaluate conditions against collected outputs. Follow the matching branch.
+- **act `[!]`** — Execute the terminal action. For document generation, this means writing content and setting metadata via CLI.
+- **delegate `[@]`** — Transfer control to another DAP tree (e.g., `validate-and-fix` after generation).
+
+### Step 4 — Handle Gates
+
+The generation tree includes critical human gates:
+
+- **Audience approval gate** — Present modeled audiences for user confirmation
+- **Document plan gate** — Present the planned document set for user approval before generating
+- **Final review gate** — Present generated documents for user sign-off
+
+When the tree presents a gate node, present the prompt and options to the user. Wait for their decision before continuing.
+
+### Step 5 — Execute Actions with DEP CLI
+
+When the DAP tree instructs you to create documents or modify metadata, always use the `dep` CLI:
+
+```bash
+# Set metadata on generated documents
+dep set <file> --type <type> --audience <ids> --owner <owner> --confidence medium --root <project-root>
+dep tag <file> --add <tags> --root <project-root>
+dep link <file> --target <path> --rel TEACHES --root <project-root>
+dep bump <file> --root <project-root>
+
+# Check for duplicates before creating
 dep search "<topic>" --root <project-root>
 
-# See what documents of each type already exist
-dep query --type <type> --root <project-root>
-```
-
-Based on the system and audiences, list every document needed:
-
-- Document title
-- Type (tutorial, how-to, reference, explanation, decision-record)
-- Target audience(s)
-- Dependencies (which docs must exist first)
-
-Present this plan to the user for approval before generating.
-
-### Step 4 — Generate Documents
-
-For each document, in dependency order:
-
-1. **Declare type and audience** before writing content.
-2. **Check generation inputs** — each type requires specific inputs (see seed.md Section 7). If inputs are missing, ask.
-3. **Write the document content** following the type signature strictly — include all required patterns, exclude all violation patterns.
-4. **Set metadata via CLI** — never write YAML frontmatter manually:
-
-   ```bash
-   dep set <file> --type <type> --audience <ids> --owner <owner> --confidence medium --root <project-root>
-   dep tag <file> --add <tags> --root <project-root>
-   dep link <file> --target <path> --rel TEACHES --root <project-root>
-   dep bump <file> --root <project-root>
-   ```
-
-5. **Insert cross-reference links** to related documents using the CLI:
-
-   ```bash
-   dep link <file> --target <related-doc> --rel <REL> --root <project-root>
-   ```
-
-### Step 5 — Validate
-
-After generating all documents, run CLI validation:
-
-```bash
-# Automated validation of all documents and graph integrity
-dep validate --json --root <project-root>
-
-# Verify each new document is connected to the graph (not isolated)
+# Verify connectivity after generation
 dep neighbors <new-doc> --depth 2 --root <project-root>
 
-# Validate learning paths are coherent per audience
+# Validate learning paths
 dep roadmap <audience-id> --root <project-root>
 
-# Check prerequisite chains are sensible (recommended max depth: 3-4)
-dep prereqs <tutorial-or-howto> --root <project-root>
-
-# Auto-generate navigation index files
+# Auto-generate navigation
 dep index --root <project-root>
-
-# Visualize the documentation graph
-dep graph --dot --root <project-root>
 ```
 
-After CLI validation, perform manual checks that require judgment:
+### Step 6 — Delegation to Validation
 
-- [ ] Structure matches type signature (no contamination)
-- [ ] No type mixing within any document
-- [ ] Vocabulary level matches declared audience
-
-Report validation results to the user. Fix any failures before finalizing — use CLI commands for metadata fixes:
+The generation tree delegates to `validate-and-fix` after generation. When you hit a **delegate** node, switch to the referenced tree:
 
 ```bash
-dep set <file> --confidence <level> --root <project-root>
-dep tag <file> --add <tag> --root <project-root>
-dep link <file> --target <path> --rel <REL> --root <project-root>
+dap node validate-and-fix run-validation --json --root <dap-root>
 ```
+
+Continue traversing the validation tree until it terminates.
 
 ## Constraints
 
 - Never generate documents before the `.docspec` exists
 - Never mix document types — one mental operation per document
 - **Prefer more files over more lines** — if two sections could have different `owner`, `last_verified`, or `depends_on`, they must be separate files (Lifecycle Independence Test)
-- Use standard YAML frontmatter (`---`) — NOT fenced code blocks
 - Always populate the `links` field with typed relationships (TEACHES, USES, EXPLAINS, DECIDES, REQUIRES, NEXT)
 - Never skip metadata — every field must be populated
 - Set `confidence: medium` for AI-generated content unless verified against source material
 - Use `depends_on` to track what could invalidate each document
+- Always traverse the DAP tree node-by-node — never skip nodes or hardcode decision paths
