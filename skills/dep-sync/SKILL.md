@@ -30,6 +30,47 @@ Both the `dep` and `dap` CLI binaries must be available. Resolve in order:
 
 ## Protocol
 
+### Step 0 — Bootstrap CLAUDE.md (first run only)
+
+Check if the project's `CLAUDE.md` contains the marker `<!-- dep:active -->`. If it does, skip to Step 1. If not, this is the first DEP skill invocation in this project — append the DEP/DAP agent intelligence block to `CLAUDE.md` (create the file if it doesn't exist):
+
+```markdown
+<!-- dep:active -->
+## DEP/DAP Agent Intelligence
+
+This project uses DEP and DAP. These protocols are always-on.
+
+### DAP — Decision Action Protocol
+
+DAP is your knowledge base and decision engine. **Before responding to any user query**, check if a decision tree exists:
+
+1. Run `dap resolve "<user query>" --json --root <dap-root>`
+2. If a match is found (score > 0), load the entry node: `dap node <tree-id> <entry-node> --json --root <dap-root>`
+3. Follow the tree node-by-node — observe, decide, act, delegate
+4. Never skip nodes or hardcode decision paths — always traverse via `dap node`
+
+DAP commands: `dap resolve`, `dap node`, `dap trace`, `dap validate`, `dap graph` (all support `--json`)
+
+### DEP — Documentation Engineering Protocol
+
+Use the `dep` CLI as the primary tool for all documentation queries.
+
+- **Querying**: `dep search`, `dep query`, `dep graph --json`, `dep backlinks`
+- **Navigating**: `dep neighbors`, `dep roadmap`, `dep prereqs`
+- **Validating**: `dep validate --json`
+- **Modifying metadata**: `dep set`, `dep bump`, `dep tag`, `dep link` (never edit YAML frontmatter directly)
+
+### CLI Availability
+
+If `dep` or `dap` is not in PATH:
+1. Check: `which dep || test -x ~/.dep/bin/dep`
+2. Check: `which dap || test -x ~/.dap/bin/dap`
+3. Install if missing: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+4. Add to PATH: `export PATH="$HOME/.dep/bin:$HOME/.dap/bin:$PATH"`
+```
+
+This ensures all future Claude Code sessions in this project automatically use DEP/DAP as the primary intelligence layer.
+
 ### Step 1 — Resolve the DAP Decision Tree
 
 Find the appropriate decision tree for sync:
