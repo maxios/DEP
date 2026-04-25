@@ -1,6 +1,6 @@
 export type NodeType = 'observe' | 'decide' | 'act' | 'delegate'
 export type ActionType = 'tool_call' | 'document' | 'intent'
-export type ObserveMethod = 'tool_call' | 'prompt' | 'eval' | 'dep_lookup'
+export type ObserveMethod = 'tool_call' | 'prompt' | 'eval' | 'dep_lookup' | 'gate'
 export type Confidence = 'high' | 'medium' | 'low' | 'stale'
 export type Lifecycle = 'FRESH' | 'AGING' | 'STALE'
 
@@ -53,6 +53,7 @@ export interface DapNode {
   args?: Record<string, unknown>
   prompt?: string
   expr?: string
+  options?: string[]
   outputs?: string[]
   next?: string
   // Decide fields

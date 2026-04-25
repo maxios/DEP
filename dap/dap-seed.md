@@ -101,10 +101,11 @@ Every node in a DAP tree performs exactly one of four operations:
 
 Description of what to observe.
 
-- **method**: tool_call | prompt | eval | dep_lookup
+- **method**: tool_call | prompt | eval | dep_lookup | gate
 - **tool**: <tool_name>          # if method is tool_call
 - **args**: { ... }              # if method is tool_call
-- **prompt**: "question"         # if method is prompt
+- **prompt**: "question"         # if method is prompt or gate
+- **options**: opt1, opt2, opt3  # if method is gate (structured choices)
 - **expr**: "expression"         # if method is eval
 - **outputs**: var1, var2        # variables added to context
 - **next**: <node-id>
@@ -115,9 +116,31 @@ Observation methods:
 | Method | Description |
 | --- | --- |
 | `tool_call` | Invoke a tool to gather data |
-| `prompt` | Ask the user for input |
+| `prompt` | Ask the user for input (open-ended) |
+| `gate` | Present assessment and wait for human approval/choice (structured options) |
 | `eval` | Evaluate an expression against existing context |
 | `dep_lookup` | Query the DEP graph for document status or content |
+
+### The Gate Pattern (Human Checkpoints)
+
+A `gate` is a special observe method for **human-in-the-loop** decisions. Unlike `prompt` (which gathers information), a gate presents the AI's assessment and asks for approval or a choice before proceeding. Unlike `escalate` (which terminates the tree), a gate **continues** based on the human's response.
+
+```markdown
+## confirm-deploy [?]
+
+Present deployment plan for human approval.
+
+- **method**: gate
+- **prompt**: "Ready to deploy v{{ version }}. {{ migration_count }} migrations pending. Approve?"
+- **options**: approve, reject, defer
+- **outputs**: decision
+- **next**: decide-approval
+```
+
+Use gates when:
+- The action is irreversible or high-impact (deployments, bulk updates, deletions)
+- The AI's classification needs human verification before acting
+- Regulatory or compliance requirements demand human approval
 
 #### Decide Node `[>]`
 

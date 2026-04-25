@@ -84,12 +84,27 @@ function validateTree(
     message: unreachableNodes.length > 0 ? `Orphan nodes: ${unreachableNodes.join(', ')}` : undefined,
   })
 
-  // 5. Acyclicity
+  // 5. Acyclicity — allow revision loops (cycles through decide nodes with exit branches)
   const nodeCycles = detectNodeCycles(tree)
+  const trueCycles = nodeCycles.filter((cycle) => {
+    // A cycle is a "revision loop" (allowed) if it passes through a decide node
+    // that has at least one exit branch not in the cycle
+    return !cycle.some((nodeId) => {
+      const node = tree.nodes.get(nodeId)
+      if (node?.type !== 'decide' || !node.conditions) return false
+      const cycleSet = new Set(cycle)
+      return node.conditions.some((c) => !cycleSet.has(c.next))
+    })
+  })
+  const revisionLoops = nodeCycles.length - trueCycles.length
   checks.push({
     name: 'Acyclicity (DAG)',
-    passed: nodeCycles.length === 0,
-    message: nodeCycles.length > 0 ? `Cycles: ${nodeCycles.map((c) => c.join(' -> ')).join('; ')}` : undefined,
+    passed: trueCycles.length === 0,
+    message: trueCycles.length > 0
+      ? `True cycles: ${trueCycles.map((c) => c.join(' -> ')).join('; ')}`
+      : revisionLoops > 0
+        ? `${revisionLoops} revision loop(s) detected (allowed: all pass through decide nodes with exit branches)`
+        : undefined,
   })
 
   // 6. Terminal coverage

@@ -1,9 +1,9 @@
 dap_version: "0.1.0"
 
 project:
-  name: "DAP"
+  name: "DAP for DEP"
   trees_root: "./trees"
-  description: "Decision Action Protocol - context-engineered decision trees for AI agency"
+  description: "Decision trees for acting upon DEP-documented systems - authoring, validation, sync, generation, and migration"
 
 dep_integration:
   docspec_path: "../.docspec"
@@ -11,18 +11,33 @@ dep_integration:
 
 intent_registry:
   - id: escalate
-    description: "Escalate to human operator"
+    description: "Escalate to human operator when automated resolution fails"
     required_params: [reason]
-  - id: notify
-    description: "Send notification"
-    required_params: [severity, message]
   - id: report_success
-    description: "Report successful completion"
+    description: "Report successful completion of a workflow"
     required_params: [message]
+  - id: present_report
+    description: "Present a detailed report for human review"
+    required_params: [report]
   - id: begin_authoring
     description: "Begin authoring DAP trees"
     required_params: [protocol, start_with]
+  - id: classify_document
+    description: "Classify content into a DEP document type"
+    required_params: []
+  - id: validate_docs
+    description: "Run DEP validation and fix issues"
+    required_params: []
+  - id: sync_docs
+    description: "Sync documentation freshness after code changes"
+    required_params: []
+  - id: generate_docs
+    description: "Generate DEP documentation for a system"
+    required_params: []
+  - id: audit_docs
+    description: "Audit and migrate existing docs to DEP"
+    required_params: []
 
 governance:
   review_cadence: 60
-  fallback_owner: "@dap-core"
+  fallback_owner: "@dep-core"

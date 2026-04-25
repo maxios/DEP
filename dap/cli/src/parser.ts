@@ -96,6 +96,7 @@ function parseNodeSection(id: string, type: NodeType, section: string): DapNode 
     if (props.args) node.args = parseJsonValue(props.args)
     if (props.prompt) node.prompt = props.prompt
     if (props.expr) node.expr = props.expr
+    if (props.options) node.options = props.options.split(',').map((s) => s.trim())
     if (props.outputs) node.outputs = props.outputs.split(',').map((s) => s.trim())
     if (props.next) node.next = props.next
   } else if (type === 'decide') {

@@ -25,6 +25,7 @@ export function formatNode(node: DapNode, treeId: string): string {
     if (node.args) lines.push(`- **args**: ${JSON.stringify(node.args)}`)
     if (node.prompt) lines.push(`- **prompt**: ${node.prompt}`)
     if (node.expr) lines.push(`- **expr**: ${node.expr}`)
+    if (node.options) lines.push(`- **options**: ${node.options.join(', ')}`)
     if (node.outputs) lines.push(`- **outputs**: ${node.outputs.join(', ')}`)
     if (node.next) lines.push(`- **next**: ${node.next}`)
   } else if (node.type === 'decide') {
