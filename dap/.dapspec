@@ -1,0 +1,28 @@
+dap_version: "0.1.0"
+
+project:
+  name: "DAP"
+  trees_root: "./trees"
+  description: "Decision Action Protocol - context-engineered decision trees for AI agency"
+
+dep_integration:
+  docspec_path: "../.docspec"
+  resolve_dep_refs: true
+
+intent_registry:
+  - id: escalate
+    description: "Escalate to human operator"
+    required_params: [reason]
+  - id: notify
+    description: "Send notification"
+    required_params: [severity, message]
+  - id: report_success
+    description: "Report successful completion"
+    required_params: [message]
+  - id: begin_authoring
+    description: "Begin authoring DAP trees"
+    required_params: [protocol, start_with]
+
+governance:
+  review_cadence: 60
+  fallback_owner: "@dap-core"
