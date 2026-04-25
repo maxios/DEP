@@ -32,6 +32,13 @@ dep search "lifecycle" --root .                    # full-text search with scori
 dep neighbors seed.md --depth 2 --root .           # transitive graph traversal
 dep roadmap ai-agent --root .                      # audience learning path
 dep prereqs docs/tutorials/write-your-first-dep-document.md --root .  # prerequisite chain
+
+# Metadata write commands (use these instead of editing YAML directly)
+dep set docs/ref/schema.md --confidence high --root .   # set metadata field(s)
+dep bump docs/ref/schema.md --root .                    # bump last_verified to now
+dep bump --all --lifecycle STALE --root .                # bulk bump with filters
+dep tag docs/ref/schema.md --add cli --root .            # add/remove tags
+dep link docs/ref/schema.md --target other.md --rel TEACHES --root .  # manage links
 ```
 
 ### Development (from source)

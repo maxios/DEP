@@ -105,6 +105,20 @@ dep index --root <project-root>
 
 Use `dep graph --dot` to visualize the documentation graph after generation.
 
+### Metadata Corrections via CLI
+
+If validation reveals metadata issues after generation, fix them via CLI instead of editing YAML directly:
+
+```bash
+dep set <file> --confidence medium --root <project-root>
+dep set <file> --audience ai-generator,human-author --root <project-root>
+dep tag <file> --add ai-generated --root <project-root>
+dep link <file> --target <path> --rel TEACHES --root <project-root>
+dep bump <file> --root <project-root>
+```
+
+**Important**: Never edit YAML frontmatter metadata directly. Always use `dep set`, `dep bump`, `dep tag`, or `dep link` CLI commands.
+
 ### Navigation Commands for Quality Checks
 
 After generating, use navigation commands to verify the documentation set is well-connected and navigable:

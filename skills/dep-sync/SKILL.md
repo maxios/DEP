@@ -99,10 +99,38 @@ Present a structured report to the user:
 
 After the user reviews and approves the sync report:
 
-1. For each stale document, apply the proposed content changes
-2. Bump `last_verified` to today's date
-3. Add any missing `depends_on` entries discovered during analysis
-4. If new artifacts were created that should be linked, add appropriate `links` entries
+1. For content changes to the markdown body, edit the document directly
+2. For metadata updates, **use CLI commands instead of editing YAML frontmatter directly** — this saves tokens and avoids formatting issues:
+   ```bash
+   # Bump verified timestamp after confirming content accuracy
+   dep bump <file> --root <project-root>
+
+   # Update confidence level
+   dep set <file> --confidence <level> --root <project-root>
+
+   # Add missing depends_on entries
+   dep set <file> --depends_on "src/parser.ts,src/graph.ts" --root <project-root>
+
+   # Add/remove tags
+   dep tag <file> --add <tag> --root <project-root>
+   dep tag <file> --remove <tag> --root <project-root>
+
+   # Add/update/remove links
+   dep link <file> --target <path> --rel <REL> --root <project-root>
+   dep link <file> --target <path> --remove --root <project-root>
+   ```
+
+3. For bulk operations after a major sync:
+
+   ```bash
+   # Bump all stale documents at once
+   dep bump --all --lifecycle STALE --root <project-root>
+
+   # Bump all docs of a specific type
+   dep bump --all --type reference --root <project-root>
+   ```
+
+**Important**: Never edit YAML frontmatter metadata directly. Always use `dep set`, `dep bump`, `dep tag`, or `dep link` CLI commands.
 
 ### Step 9 — Validate
 

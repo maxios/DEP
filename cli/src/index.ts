@@ -10,6 +10,10 @@ import { searchCommand } from './commands/search'
 import { neighborsCommand } from './commands/neighbors'
 import { roadmapCommand } from './commands/roadmap'
 import { prereqsCommand } from './commands/prereqs'
+import { setCommand } from './commands/set'
+import { bumpCommand } from './commands/bump'
+import { tagCommand } from './commands/tag'
+import { linkCommand } from './commands/link'
 
 const args = process.argv.slice(2)
 const command = args[0]
@@ -129,6 +133,70 @@ switch (command) {
     break
   }
 
+  case 'set': {
+    const setFile = args[1]
+    if (!setFile || setFile.startsWith('--')) {
+      console.error('Usage: dep set <file> --<field> <value> [--dry] [--json]')
+      process.exit(1)
+    }
+    const setFlags = parseFlags(args.slice(2))
+    const setRoot = getRoot(setFlags)
+    setCommand(setRoot, setFile, { ...setFlags })
+    break
+  }
+
+  case 'bump': {
+    const bumpTarget = args[1]
+    const hasBumpTarget = bumpTarget && !bumpTarget.startsWith('--')
+    const bumpFlags = parseFlags(hasBumpTarget ? args.slice(2) : args.slice(1))
+    const bumpRoot = getRoot(bumpFlags)
+    bumpCommand(bumpRoot, hasBumpTarget ? bumpTarget : undefined, {
+      json: !!bumpFlags.json,
+      dry: !!bumpFlags.dry,
+      all: !!bumpFlags.all,
+      type: bumpFlags.type as string | undefined,
+      audience: bumpFlags.audience as string | undefined,
+      tag: bumpFlags.tag as string | undefined,
+      confidence: bumpFlags.confidence as string | undefined,
+      lifecycle: bumpFlags.lifecycle as string | undefined,
+      owner: bumpFlags.owner as string | undefined,
+    })
+    break
+  }
+
+  case 'tag': {
+    const tagFile = args[1]
+    if (!tagFile || tagFile.startsWith('--')) {
+      console.error('Usage: dep tag <file> --add <tag> [--remove <tag>] [--json]')
+      process.exit(1)
+    }
+    const tFlags = parseFlags(args.slice(2))
+    const tagRoot = getRoot(tFlags)
+    tagCommand(tagRoot, tagFile, {
+      add: tFlags.add as string | undefined,
+      remove: tFlags.remove as string | undefined,
+      json: !!tFlags.json,
+    })
+    break
+  }
+
+  case 'link': {
+    const linkFile = args[1]
+    if (!linkFile || linkFile.startsWith('--')) {
+      console.error('Usage: dep link <file> --target <path> --rel <REL> [--remove] [--json]')
+      process.exit(1)
+    }
+    const lFlags = parseFlags(args.slice(2))
+    const linkRoot = getRoot(lFlags)
+    linkCommand(linkRoot, linkFile, {
+      target: lFlags.target as string | undefined,
+      rel: lFlags.rel as string | undefined,
+      remove: !!lFlags.remove,
+      json: !!lFlags.json,
+    })
+    break
+  }
+
   default:
     console.log(`dep — Documentation Engineering Protocol CLI
 
@@ -144,6 +212,12 @@ Usage:
                                         Transitive graph traversal
   dep roadmap <audience_id> [--json]    Audience-specific learning path
   dep prereqs <file> [--json]           Prerequisite reading chain
+
+Metadata commands:
+  dep set <file> --<field> <value>      Set metadata field(s) on a document
+  dep bump <file|glob> [--all]          Bump last_verified to now
+  dep tag <file> --add/--remove <tag>   Add or remove tags
+  dep link <file> --target <p> --rel <R>  Add, update, or remove links
 
 Query filters:
   --type <type>                         Filter by document type
