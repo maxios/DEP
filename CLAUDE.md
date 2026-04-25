@@ -108,10 +108,90 @@ Documents without a `dep:` block in frontmatter are skipped by the parser.
 
 ## Plugin & Skills
 
-DEP is packaged as a Claude Code plugin (`.claude-plugin/`). Four skills in `skills/`:
-- `/dep-generate` — Generate DEP-compliant documentation for any system
-- `/dep-validate` — Validate documents against DEP
-- `/dep-audit` — Audit existing docs and plan DEP migration
-- `/dep-sync` — Sync documentation freshness with code changes
+DEP is packaged as a Claude Code plugin (`.claude-plugin/`). Four skills in `skills/`, each delegating decision logic to a DAP tree:
+
+- `/dep-validate` — Validate documents against DEP → `dap://validate-and-fix`
+- `/dep-generate` — Generate DEP-compliant documentation → `dap://generate-doc-set`
+- `/dep-audit` — Audit existing docs and plan DEP migration → `dap://audit-existing-docs`
+- `/dep-sync` — Sync documentation freshness with code changes → `dap://sync-stale-docs`
 
 Install via marketplace: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketplace`
+
+## DAP CLI Commands
+
+DAP (Decision Action Protocol) is the companion protocol to DEP. While DEP structures knowledge, DAP structures decisions. The AI agent uses DAP trees as its decision engine — traversing nodes one at a time via CLI for progressive context loading.
+
+### DAP standalone binary
+
+```bash
+# Core commands (all support --json for machine-readable output)
+dap resolve "<query>" --root dap/        # find matching decision tree for a trigger
+dap node <tree-id> <node-id> --root dap/ # load a single node (progressive context)
+dap trace <tree-id> --root dap/          # ASCII visualization of a decision tree
+dap validate --root dap/                 # validate all trees and graph integrity
+dap graph --root dap/                    # delegation graph between trees
+```
+
+### DAP development (from source)
+
+The DAP CLI is a Bun + TypeScript tool in `dap/cli/`:
+
+```bash
+cd dap/cli && bun install
+
+# Run from source
+bun run src/index.ts validate --root ..
+
+# Run tests
+bun test
+```
+
+## DAP Architecture
+
+The DAP CLI parses markdown files with YAML frontmatter (`dap:` key), builds a directed graph of decision trees, and runs operations on it.
+
+- `dap/cli/src/index.ts` — Entry point, arg parsing, command dispatch
+- `dap/cli/src/parser.ts` — Parses markdown with `gray-matter`, extracts frontmatter and structured nodes
+- `dap/cli/src/tree-builder.ts` — Graph builder: assembles trees, detects orphan nodes, cycles, validates terminal coverage
+- `dap/cli/src/config.ts` — Loads `.dapspec` YAML config
+- `dap/cli/src/types.ts` — All TypeScript interfaces (`DapMetadata`, `DapNode`, `DapTree`, `DapGraph`, etc.)
+- `dap/cli/src/commands/` — One file per command (validate, resolve, node, trace, graph)
+
+Key data flow: `.dapspec` defines project config → `parser.ts` reads each tree's `dap:` frontmatter + node sections → `tree-builder.ts` assembles the decision graph → commands query or traverse it.
+
+## Decision Tree Format
+
+DAP trees use YAML frontmatter with a `dap:` key, followed by markdown sections for each node:
+
+```yaml
+---
+dap:
+  id: validate-and-fix
+  version: 1
+  trigger: "validate DEP documentation and fix issues"
+  trigger_patterns:
+    - "validate documentation"
+    - intent: validate_docs
+  audience: [ai-agent]
+  entry_node: run-validation
+---
+```
+
+### Four Node Types
+
+- **observe `[?]`** — Gather information via tool call or human gate
+- **decide `[>]`** — Branch based on conditions (markdown table with condition/next columns)
+- **act `[!]`** — Execute terminal action (tool_call, document reference, or intent)
+- **delegate `[@]`** — Transfer control to another DAP tree
+
+## Decision Trees
+
+Five trees in `dap/trees/`:
+
+| Tree | Trigger | Entry Node |
+| --- | --- | --- |
+| `validate-and-fix` | validate DEP documentation and fix issues | `run-validation` |
+| `generate-doc-set` | generate documentation for a new system | `check-docspec` |
+| `audit-existing-docs` | migrate existing documentation to DEP | `inventory-docs` |
+| `sync-stale-docs` | documentation may be out of date | `check-staleness` |
+| `choose-document-type` | determine what type a DEP document should be | `identify-reader-question` |
