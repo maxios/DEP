@@ -29,6 +29,9 @@ dep index --root .              # auto-generate index files (--dry for preview)
 
 # Navigation commands
 dep search "lifecycle" --root .                    # full-text search with scoring
+dep search "lifecycle" --semantic --root .          # semantic search (requires vectorize first)
+dep search "lifecycle" --hybrid --root .            # combined full-text + semantic
+dep vectorize --root .                             # build/rebuild vector index for semantic search
 dep neighbors seed.md --depth 2 --root .           # transitive graph traversal
 dep roadmap ai-agent --root .                      # audience learning path
 dep prereqs docs/tutorials/write-your-first-dep-document.md --root .  # prerequisite chain
@@ -59,6 +62,9 @@ bun run build
 
 # Run tests
 bun test
+
+# Run a single test file (tests are co-located as *.test.ts)
+bun test src/dap/parser.test.ts
 ```
 
 ## CLI Architecture
@@ -71,9 +77,13 @@ The CLI parses markdown files with YAML frontmatter, builds a directed graph of 
 - `cli/src/config.ts` — Loads `.docspec` YAML config from project root
 - `cli/src/types.ts` — All TypeScript interfaces (`DepMetadata`, `DepGraph`, `DepNode`, `DocspecConfig`, etc.)
 - `cli/src/output.ts` — Output formatting
-- `cli/src/commands/` — One file per command (graph, backlinks, validate, query, index-gen, search, neighbors, roadmap, prereqs)
+- `cli/src/commands/` — One file per command (graph, backlinks, validate, query, index-gen, search, vectorize, neighbors, roadmap, prereqs, set, bump, tag, link)
+- `cli/src/embeddings/` — Embedding providers for semantic search (`local.ts` uses @huggingface/transformers, `openai.ts` for OpenAI API, `provider.ts` factory)
+- `cli/src/vectorstore/` — SQLite-backed vector store (`db.ts` for storage, `chunker.ts` for document splitting, `similarity.ts` for cosine similarity)
 
 Key data flow: `.docspec` defines project config → `parser.ts` reads each `.md` file's `dep:` frontmatter block → `graph.ts` assembles nodes/edges/orphans/cycles → commands query or display the graph.
+
+Semantic search flow: `dep vectorize` chunks documents → embeds via provider → stores in `.dep-vectors.db` (SQLite). `dep search --semantic` embeds the query → cosine similarity against stored vectors. `--hybrid` combines full-text and semantic scores.
 
 ## Document Metadata Format
 
