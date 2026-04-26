@@ -1,13 +1,22 @@
 ---
 dep:
   type: tutorial
-  audience: [ai-agent]
+  audience:
+    - ai-agent
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-04-26T20:29:13.252+03:00
   confidence: high
-  depends_on: [skills/dep-generate/SKILL.md, skills/dep-validate/SKILL.md, skills/dep-audit/SKILL.md, skills/dep-sync/SKILL.md]
-  tags: [agent, integration, tutorial, skills]
+  depends_on:
+    - skills/dep-generate/SKILL.md
+    - skills/dep-validate/SKILL.md
+    - skills/dep-audit/SKILL.md
+    - skills/dep-sync/SKILL.md
+  tags:
+    - agent
+    - integration
+    - tutorial
+    - skills
   links:
     - target: ../reference/dep-skills-api.md
       rel: TEACHES
@@ -115,7 +124,7 @@ The sync skill:
 
 ### Step 6 — Install and Use the CLI
 
-All skills use the DEP CLI under the hood. Install the standalone binary for direct access:
+All skills use the DEP CLI under the hood and will auto-install it if missing (Step 0). You can also install the standalone binary manually for direct access:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
@@ -148,19 +157,52 @@ dep roadmap ai-agent --root .
 
 # Check prerequisite chains
 dep prereqs docs/tutorials/write-your-first-dep-document.md --root .
+
+# Metadata write commands (use instead of editing YAML directly)
+dep set docs/ref/schema.md --confidence high --root .
+dep bump docs/ref/schema.md --root .
+dep tag docs/ref/schema.md --add cli --root .
+dep link docs/ref/schema.md --target other.md --rel TEACHES --root .
+
+# Semantic search (requires vectorization)
+dep vectorize --root .
+dep search "lifecycle" --root .
 ```
 
 **Expected result**: CLI commands run successfully and return structured output.
 
+### Step 7 — Use DAP for Decision Navigation
+
+Skills delegate their decision logic to DAP (Decision Action Protocol) trees. You can interact with DAP directly:
+
+```bash
+# Find a decision tree matching a query
+dep dap resolve "validate documentation" --json --root .
+
+# Load a specific node from a tree
+dep dap node validate-and-fix run-validation --json --root .
+
+# Visualize a decision tree
+dep dap trace validate-and-fix --root .
+
+# Check tree integrity
+dep dap validate --root .
+```
+
+DAP trees guide the agent through observe/decide/act/delegate nodes — providing structured decision-making for documentation workflows.
+
+**Expected result**: DAP commands return decision tree data that agents can traverse programmatically.
+
 ## What You Built
 
 You integrated DEP into your agent workflow with four skills:
+
 - `/dep-audit` — assess existing documentation
 - `/dep-generate` — create new documentation sets
 - `/dep-validate` — check documentation quality
 - `/dep-sync` — keep documentation fresh as code changes
 
-These skills form a complete documentation lifecycle: audit → generate → validate → sync.
+These skills form a complete documentation lifecycle: audit → generate → validate → sync. Each skill self-bootstraps the CLI, uses `dep` commands for all queries and metadata writes, and delegates decision logic to DAP trees via `dep dap`.
 
 ## Next Steps
 

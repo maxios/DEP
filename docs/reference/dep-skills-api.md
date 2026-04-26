@@ -1,19 +1,34 @@
 ---
 dep:
   type: reference
-  audience: [ai-agent]
+  audience:
+    - ai-agent
   owner: "@dep-core"
   created: 2026-03-22T23:36:54+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-04-26T20:29:05.791+03:00
   confidence: high
-  depends_on: [skills/dep-generate/SKILL.md, skills/dep-validate/SKILL.md, skills/dep-audit/SKILL.md, skills/dep-sync/SKILL.md]
-  tags: [skills, api, agent, integration]
+  depends_on:
+    - skills/dep-generate/SKILL.md
+    - skills/dep-validate/SKILL.md
+    - skills/dep-audit/SKILL.md
+    - skills/dep-sync/SKILL.md
+  tags:
+    - skills
+    - api
+    - agent
+    - integration
   links: []
 ---
 
 # DEP Skills API Reference
 
 DEP provides four skills that AI agents can invoke to generate, validate, audit, and sync documentation. DEP is packaged as a Claude Code plugin with a marketplace for distribution.
+
+All skills share common behaviors:
+
+- **Self-bootstrapping**: Each skill auto-installs the `dep` CLI binary if not found in PATH (Step 0)
+- **CLI-first**: Skills use the `dep` CLI for all documentation queries and metadata writes — never editing YAML frontmatter directly
+- **DAP delegation**: Decision logic is handled by DAP (Decision Action Protocol) trees via `dep dap` subcommands, enabling structured, node-by-node decision traversal
 
 ---
 
@@ -148,6 +163,16 @@ export PATH="$HOME/.dep/bin:$PATH"
 | `neighbors <file>` | Transitive graph traversal | `--depth`, `--direction`, `--json` |
 | `roadmap <audience>` | Audience-specific learning path | `--json` |
 | `prereqs <file>` | Prerequisite reading chain | `--json` |
+| `set <file>` | Set metadata fields (confidence, owner, etc.) | — |
+| `bump <file>` | Bump `last_verified` to now | `--all`, `--lifecycle` filter |
+| `tag <file>` | Add or remove tags | `--add`, `--remove` |
+| `link <file>` | Add or remove links | `--target`, `--rel` |
+| `vectorize` | Build semantic search index from documents | — |
+| `dap resolve` | Find matching DAP decision tree for a query | `--json` |
+| `dap node` | Load a single DAP tree node | `--json` |
+| `dap trace` | Visualize a DAP decision tree | — |
+| `dap validate` | Validate DAP tree integrity | `--json` |
+| `dap graph` | Show delegation graph between DAP trees | `--json` |
 
 ### Running
 

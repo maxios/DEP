@@ -1,13 +1,21 @@
 ---
 dep:
   type: reference
-  audience: [ai-generator, ai-agent, human-author]
+  audience:
+    - ai-generator
+    - ai-agent
+    - human-author
   owner: "@dep-core"
   created: 2026-03-23T21:49:13+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-04-26T20:29:13.792+03:00
   confidence: high
-  depends_on: [seed.md]
-  tags: [types, decision-record, validation, structure]
+  depends_on:
+    - seed.md
+  tags:
+    - types
+    - decision-record
+    - validation
+    - structure
   links:
     - target: ./document-type-signatures.md
       rel: REQUIRES

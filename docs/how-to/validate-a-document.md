@@ -1,13 +1,20 @@
 ---
 dep:
   type: how-to
-  audience: [ai-agent, human-author]
+  audience:
+    - ai-agent
+    - human-author
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-04-26T20:29:13.306+03:00
   confidence: high
-  depends_on: [cli/src/commands/validate.ts, docs/reference/dep-metadata-schema.md]
-  tags: [validation, cli, workflow]
+  depends_on:
+    - cli/src/commands/validate.ts
+    - docs/reference/dep-metadata-schema.md
+  tags:
+    - validation
+    - cli
+    - workflow
   links:
     - target: ../reference/dep-metadata-schema.md
       rel: USES
@@ -23,18 +30,24 @@ dep:
 
 ## Prerequisites
 
-- Bun installed (`bun --version`)
-- CLI dependencies installed (`cd cli && bun install`)
+- The `dep` CLI binary installed (standalone — no runtime dependencies needed)
 - A project with a `.docspec` file at the root
+
+Install the standalone binary if not already available:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
+export PATH="$HOME/.dep/bin:$PATH"
+```
 
 ## Steps
 
 ### Single Document Validation
 
-1. Run the validator from the `cli/` directory:
+1. Run the validator:
 
    ```bash
-   cd cli && bun run src/index.ts validate --root ..
+   dep validate --root .
    ```
 
 2. Review the output. Each document gets a status:
@@ -45,8 +58,10 @@ dep:
 3. For machine-readable output, add `--json`:
 
    ```bash
-   bun run src/index.ts validate --root .. --json
+   dep validate --root . --json
    ```
+
+**From source** (alternative): `cd cli && bun install && bun run src/index.ts validate --root ..`
 
 ### Using the `/dep-validate` Skill
 

@@ -1,13 +1,20 @@
 ---
 dep:
   type: how-to
-  audience: [ai-agent, human-author]
+  audience:
+    - ai-agent
+    - human-author
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-04-26T20:29:13.394+03:00
   confidence: high
-  depends_on: [skills/dep-generate/SKILL.md, docs/reference/docspec-schema.md]
-  tags: [generation, cli, workflow]
+  depends_on:
+    - skills/dep-generate/SKILL.md
+    - docs/reference/docspec-schema.md
+  tags:
+    - generation
+    - cli
+    - workflow
   links:
     - target: ../reference/docspec-schema.md
       rel: USES

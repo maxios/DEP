@@ -1,13 +1,20 @@
 ---
 dep:
   type: tutorial
-  audience: [project-lead]
+  audience:
+    - project-lead
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-04-26T20:29:13.349+03:00
   confidence: high
-  depends_on: [docs/reference/docspec-schema.md, seed.md]
-  tags: [getting-started, bootstrap, tutorial, adoption]
+  depends_on:
+    - docs/reference/docspec-schema.md
+    - seed.md
+  tags:
+    - getting-started
+    - bootstrap
+    - tutorial
+    - adoption
   links:
     - target: ../reference/docspec-schema.md
       rel: TEACHES
@@ -156,16 +163,20 @@ Follow the type signature from the [Document Type Signatures](../reference/docum
 
 ### Step 6 — Install and Run the CLI
 
+Install the standalone binary (no runtime dependencies needed):
+
 ```bash
-# Clone the DEP CLI (or copy the cli/ directory to your project)
-cd cli && bun install
+curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
+export PATH="$HOME/.dep/bin:$PATH"
 
 # Validate your documentation
-bun run src/index.ts validate --root ..
+dep validate --root .
 
 # View the documentation graph
-bun run src/index.ts graph --root ..
+dep graph --root .
 ```
+
+Alternatively, run from source: `cd cli && bun install && bun run src/index.ts validate --root ..`
 
 **Expected result**: The validator runs and reports the status of your documents.
 
