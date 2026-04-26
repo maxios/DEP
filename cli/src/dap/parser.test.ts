@@ -2,7 +2,7 @@ import { describe, test, expect } from 'bun:test'
 import { parseTreeFile } from './parser'
 import { join } from 'path'
 
-const DAP_ROOT = join(import.meta.dir, '..', '..')
+const DAP_ROOT = join(import.meta.dir, '..', '..', '..', 'dap')
 
 describe('parser', () => {
   test('parses choose-document-type tree', () => {

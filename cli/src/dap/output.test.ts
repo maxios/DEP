@@ -3,7 +3,7 @@ import { formatTrace, formatNode, formatDelegationGraph } from './output'
 import { buildDapGraph } from './tree-builder'
 import { join } from 'path'
 
-const DAP_ROOT = join(import.meta.dir, '..', '..')
+const DAP_ROOT = join(import.meta.dir, '..', '..', '..', 'dap')
 
 describe('output', () => {
   test('formatTrace renders ASCII tree for choose-document-type', () => {

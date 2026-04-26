@@ -117,45 +117,29 @@ DEP is packaged as a Claude Code plugin (`.claude-plugin/`). Four skills in `ski
 
 Install via marketplace: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketplace`
 
-## DAP CLI Commands
+## DAP Commands (via `dep dap`)
 
-DAP (Decision Action Protocol) is the companion protocol to DEP. While DEP structures knowledge, DAP structures decisions. The AI agent uses DAP trees as its decision engine — traversing nodes one at a time via CLI for progressive context loading.
-
-### DAP standalone binary
+DAP (Decision Action Protocol) is the companion protocol to DEP. While DEP structures knowledge, DAP structures decisions. The AI agent uses DAP trees as its decision engine — traversing nodes one at a time via CLI for progressive context loading. DAP is integrated into the `dep` CLI as a subcommand group.
 
 ```bash
 # Core commands (all support --json for machine-readable output)
-dap resolve "<query>" --root dap/        # find matching decision tree for a trigger
-dap node <tree-id> <node-id> --root dap/ # load a single node (progressive context)
-dap trace <tree-id> --root dap/          # ASCII visualization of a decision tree
-dap validate --root dap/                 # validate all trees and graph integrity
-dap graph --root dap/                    # delegation graph between trees
-```
-
-### DAP development (from source)
-
-The DAP CLI is a Bun + TypeScript tool in `dap/cli/`:
-
-```bash
-cd dap/cli && bun install
-
-# Run from source
-bun run src/index.ts validate --root ..
-
-# Run tests
-bun test
+dep dap resolve "<query>" --root .        # find matching decision tree for a trigger
+dep dap node <tree-id> <node-id> --root . # load a single node (progressive context)
+dep dap trace <tree-id> --root .          # ASCII visualization of a decision tree
+dep dap validate --root .                 # validate all trees and graph integrity
+dep dap graph --root .                    # delegation graph between trees
 ```
 
 ## DAP Architecture
 
-The DAP CLI parses markdown files with YAML frontmatter (`dap:` key), builds a directed graph of decision trees, and runs operations on it.
+The DAP module lives within the DEP CLI at `cli/src/dap/`. It parses markdown files with YAML frontmatter (`dap:` key), builds a directed graph of decision trees, and runs operations on it.
 
-- `dap/cli/src/index.ts` — Entry point, arg parsing, command dispatch
-- `dap/cli/src/parser.ts` — Parses markdown with `gray-matter`, extracts frontmatter and structured nodes
-- `dap/cli/src/tree-builder.ts` — Graph builder: assembles trees, detects orphan nodes, cycles, validates terminal coverage
-- `dap/cli/src/config.ts` — Loads `.dapspec` YAML config
-- `dap/cli/src/types.ts` — All TypeScript interfaces (`DapMetadata`, `DapNode`, `DapTree`, `DapGraph`, etc.)
-- `dap/cli/src/commands/` — One file per command (validate, resolve, node, trace, graph)
+- `cli/src/dap/index.ts` — DAP subcommand dispatcher
+- `cli/src/dap/parser.ts` — Parses markdown with `gray-matter`, extracts frontmatter and structured nodes
+- `cli/src/dap/tree-builder.ts` — Graph builder: assembles trees, detects orphan nodes, cycles, validates terminal coverage
+- `cli/src/dap/config.ts` — Loads `.dapspec` YAML config
+- `cli/src/dap/types.ts` — All TypeScript interfaces (`DapMetadata`, `DapNode`, `DapTree`, `DapGraph`, etc.)
+- `cli/src/dap/commands/` — One file per command (validate, resolve, node, trace, graph)
 
 Key data flow: `.dapspec` defines project config → `parser.ts` reads each tree's `dap:` frontmatter + node sections → `tree-builder.ts` assembles the decision graph → commands query or traverse it.
 

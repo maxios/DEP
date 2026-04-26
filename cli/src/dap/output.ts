@@ -11,7 +11,7 @@ export function lifecycleIcon(state: Lifecycle): string {
 }
 
 /**
- * Render a single node for the `dap node` command.
+ * Render a single node for the `dep dap node` command.
  */
 export function formatNode(node: DapNode, treeId: string): string {
   const symbol = NODE_TYPE_SYMBOLS[node.type]
@@ -57,7 +57,7 @@ export function formatNode(node: DapNode, treeId: string): string {
 }
 
 /**
- * Render ASCII tree visualization for `dap trace`.
+ * Render ASCII tree visualization for `dep dap trace`.
  */
 export function formatTrace(tree: DapTree): string {
   const lines: string[] = [tree.metadata.id]
@@ -157,7 +157,7 @@ function getNodeDetail(node: DapNode): string {
 }
 
 /**
- * Render delegation graph between trees for `dap graph`.
+ * Render delegation graph between trees for `dep dap graph`.
  */
 export function formatDelegationGraph(graph: DapGraph): string {
   const lines: string[] = ['DAP Delegation Graph', '']

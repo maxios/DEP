@@ -14,6 +14,7 @@ import { setCommand } from './commands/set'
 import { bumpCommand } from './commands/bump'
 import { tagCommand } from './commands/tag'
 import { linkCommand } from './commands/link'
+import { dapCommand } from './dap/index'
 
 const args = process.argv.slice(2)
 const command = args[0]
@@ -180,6 +181,12 @@ switch (command) {
     break
   }
 
+  case 'dap': {
+    const dapRoot = resolve(root, 'dap')
+    dapCommand(args.slice(1), dapRoot)
+    break
+  }
+
   case 'link': {
     const linkFile = args[1]
     if (!linkFile || linkFile.startsWith('--')) {
@@ -218,6 +225,13 @@ Metadata commands:
   dep bump <file|glob> [--all]          Bump last_verified to now
   dep tag <file> --add/--remove <tag>   Add or remove tags
   dep link <file> --target <p> --rel <R>  Add, update, or remove links
+
+DAP (Decision Action Protocol):
+  dep dap validate [--json]              Validate all trees and graph integrity
+  dep dap resolve <query> [--json]       Find matching tree for a trigger
+  dep dap node <tree> <node> [--json]    Load a single node (progressive context)
+  dep dap trace <tree> [--json]          ASCII visualization of a decision tree
+  dep dap graph [--json]                 Delegation graph between trees
 
 Query filters:
   --type <type>                         Filter by document type

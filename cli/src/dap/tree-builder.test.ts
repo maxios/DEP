@@ -2,7 +2,7 @@ import { describe, test, expect } from 'bun:test'
 import { buildDapGraph, detectNodeCycles, detectOrphanNodes } from './tree-builder'
 import { join } from 'path'
 
-const DAP_ROOT = join(import.meta.dir, '..', '..')
+const DAP_ROOT = join(import.meta.dir, '..', '..', '..', 'dap')
 
 describe('tree-builder', () => {
   test('builds graph from all tree files', () => {

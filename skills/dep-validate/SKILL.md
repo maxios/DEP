@@ -12,19 +12,18 @@ The user asks you to validate, audit, review, or check documentation against DEP
 
 ## Prerequisites
 
-Both the `dep` and `dap` CLI binaries must be available. Resolve in order:
+The `dep` CLI binary must be available. Resolve in order:
 
 1. Check: `which dep || test -x ~/.dep/bin/dep`
-2. Check: `which dap || test -x ~/.dap/bin/dap`
-3. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
-4. Ensure PATH: `export PATH="$HOME/.dep/bin:$HOME/.dap/bin:$PATH"`
+2. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+3. Ensure PATH: `export PATH="$HOME/.dep/bin:$PATH"`
 
 ## CLI-First Principle
 
-**Always use the `dep` CLI for documentation queries and the `dap` CLI for decision navigation.** These are your primary tools — never read YAML frontmatter directly or hardcode decision logic.
+**Always use the `dep` CLI for documentation queries and decision navigation.** This is your primary tool — never read YAML frontmatter directly or hardcode decision logic.
 
 - Use `dep` for querying, navigating, and modifying documentation (`dep validate`, `dep graph`, `dep query`, `dep search`, `dep neighbors`, etc.)
-- Use `dap` for navigating decisions (`dap resolve`, `dap node`) — load one node at a time, evaluate conditions, follow branches
+- Use `dep dap` for navigating decisions (`dep dep dap resolve`, `dep dep dap node`) — load one node at a time, evaluate conditions, follow branches
 - Prefer `--json` when processing results programmatically
 - Never edit YAML frontmatter directly — use `dep set`, `dep bump`, `dep tag`, or `dep link`
 
@@ -44,12 +43,12 @@ This project uses DEP and DAP. These protocols are always-on.
 
 DAP is your knowledge base and decision engine. **Before responding to any user query**, check if a decision tree exists:
 
-1. Run `dap resolve "<user query>" --json --root <dap-root>`
-2. If a match is found (score > 0), load the entry node: `dap node <tree-id> <entry-node> --json --root <dap-root>`
+1. Run `dep dep dap resolve "<user query>" --json --root <project-root>`
+2. If a match is found (score > 0), load the entry node: `dep dep dap node <tree-id> <entry-node> --json --root <project-root>`
 3. Follow the tree node-by-node — observe, decide, act, delegate
-4. Never skip nodes or hardcode decision paths — always traverse via `dap node`
+4. Never skip nodes or hardcode decision paths — always traverse via `dep dep dap node`
 
-DAP commands: `dap resolve`, `dap node`, `dap trace`, `dap validate`, `dap graph` (all support `--json`)
+DAP commands: `dep dep dap resolve`, `dep dep dap node`, `dep dap trace`, `dep dap validate`, `dep dap graph` (all support `--json`)
 
 ### DEP — Documentation Engineering Protocol
 
@@ -62,11 +61,10 @@ Use the `dep` CLI as the primary tool for all documentation queries.
 
 ### CLI Availability
 
-If `dep` or `dap` is not in PATH:
+If `dep` is not in PATH:
 1. Check: `which dep || test -x ~/.dep/bin/dep`
-2. Check: `which dap || test -x ~/.dap/bin/dap`
-3. Install if missing: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
-4. Add to PATH: `export PATH="$HOME/.dep/bin:$HOME/.dap/bin:$PATH"`
+2. Install if missing: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+3. Add to PATH: `export PATH="$HOME/.dep/bin:$PATH"`
 ```
 
 This ensures all future Claude Code sessions in this project automatically use DEP/DAP as the primary intelligence layer.
@@ -76,7 +74,7 @@ This ensures all future Claude Code sessions in this project automatically use D
 Find the appropriate decision tree for validation:
 
 ```bash
-dap resolve "validate documentation" --json --root <dap-root>
+dep dap resolve "validate documentation" --json --root <dap-root>
 ```
 
 This returns the `validate-and-fix` tree (ID: `validate-and-fix`, entry node: `run-validation`).
@@ -84,7 +82,7 @@ This returns the `validate-and-fix` tree (ID: `validate-and-fix`, entry node: `r
 ### Step 2 — Load the Entry Node
 
 ```bash
-dap node validate-and-fix run-validation --json --root <dap-root>
+dep dap node validate-and-fix run-validation --json --root <dap-root>
 ```
 
 This returns the first node — an **observe** node that instructs you to run `dep validate --json`. Execute the tool call specified in the node.
@@ -94,7 +92,7 @@ This returns the first node — an **observe** node that instructs you to run `d
 After executing each node's action, load the next node:
 
 ```bash
-dap node validate-and-fix <next-node-id> --json --root <dap-root>
+dep dap node validate-and-fix <next-node-id> --json --root <dap-root>
 ```
 
 At each node:
