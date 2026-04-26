@@ -14,6 +14,7 @@ import { setCommand } from './commands/set'
 import { bumpCommand } from './commands/bump'
 import { tagCommand } from './commands/tag'
 import { linkCommand } from './commands/link'
+import { vectorizeCommand } from './commands/vectorize'
 import { dapCommand } from './dap/index'
 
 const args = process.argv.slice(2)
@@ -84,14 +85,26 @@ switch (command) {
   case 'search': {
     const query = args[1]
     if (!query || query.startsWith('--')) {
-      console.error('Usage: dep search <query> [--type <type>] [--audience <id>] [--json]')
+      console.error('Usage: dep search <query> [--semantic|--hybrid] [--type <type>] [--audience <id>] [--json]')
       process.exit(1)
     }
     const searchFlags = parseFlags(args.slice(2))
-    searchCommand(root, query, {
+    await searchCommand(root, query, {
       type: searchFlags.type as string | undefined,
       audience: searchFlags.audience as string | undefined,
       json: !!searchFlags.json,
+      semantic: !!searchFlags.semantic,
+      hybrid: !!searchFlags.hybrid,
+    })
+    break
+  }
+
+  case 'vectorize': {
+    await vectorizeCommand(root, {
+      json: !!flags.json,
+      force: !!flags.force,
+      provider: flags.provider as string | undefined,
+      dry: !!flags.dry,
     })
     break
   }
@@ -213,8 +226,10 @@ Usage:
   dep validate [--json]                 Validate all documents and graph integrity
   dep query [filters] [--json]          Query documents by metadata
   dep index [--dry|--json]              Auto-generate index files from metadata
-  dep search <query> [--type] [--audience] [--json]
-                                        Full-text search across documents
+  dep search <query> [--semantic|--hybrid] [--type] [--audience] [--json]
+                                        Full-text or semantic search across documents
+  dep vectorize [--force] [--provider local|openai] [--dry] [--json]
+                                        Build/rebuild vector index for semantic search
   dep neighbors <file> [--depth=N] [--follow=RELS] [--direction=in|out|both] [--json]
                                         Transitive graph traversal
   dep roadmap <audience_id> [--json]    Audience-specific learning path

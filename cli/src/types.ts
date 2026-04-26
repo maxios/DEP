@@ -74,4 +74,31 @@ export interface DocspecConfig {
   }
   custom_types?: Array<{ id: string; extends: string; additional_required_patterns: string[] }>
   custom_relationships?: Array<{ id: string; meaning: string; inverse?: string }>
+  vectorization?: VectorizationConfig
+}
+
+// Vector types
+
+export interface VectorizationConfig {
+  provider: 'local' | 'openai'
+  model?: string
+  chunk_max_tokens?: number
+}
+
+export interface VectorChunk {
+  id: number
+  docPath: string
+  chunkIndex: number
+  headingPath: string
+  content: string
+  embedding: Float32Array
+  tokenCount: number
+}
+
+export interface VectorSearchResult {
+  docPath: string
+  chunkIndex: number
+  headingPath: string
+  content: string
+  score: number
 }
