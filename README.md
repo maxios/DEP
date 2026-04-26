@@ -63,6 +63,8 @@ Your content here.
 
 All commands support `--json` for machine-readable output.
 
+### Core commands
+
 | Command | Description |
 |---------|-------------|
 | `dep validate --root .` | Validate documents and graph integrity |
@@ -70,10 +72,34 @@ All commands support `--json` for machine-readable output.
 | `dep backlinks <file> --root .` | Find what links to a document |
 | `dep query --type reference --root .` | Filter documents by metadata |
 | `dep index --root .` | Auto-generate index files (`--dry` for preview) |
-| `dep search "term" --root .` | Full-text search with relevance scoring |
+| `dep search "term" --root .` | Full-text search with relevance scoring (`--semantic`, `--hybrid`) |
+| `dep vectorize --root .` | Build/rebuild vector index for semantic search (`--force`, `--provider`) |
 | `dep neighbors <file> --depth 2 --root .` | Transitive graph traversal |
 | `dep roadmap <audience> --root .` | Learning path for an audience persona |
 | `dep prereqs <file> --root .` | Prerequisite chain for a document |
+
+### Metadata write commands
+
+Use these instead of editing YAML frontmatter directly.
+
+| Command | Description |
+|---------|-------------|
+| `dep set <file> --<field> <value>` | Set metadata field(s) on a document |
+| `dep bump <file> --root .` | Bump `last_verified` to now (`--all` for bulk, with filters) |
+| `dep tag <file> --add <tag> --root .` | Add or remove tags |
+| `dep link <file> --target <path> --rel <REL> --root .` | Add, update, or remove links |
+
+### DAP commands (Decision Action Protocol)
+
+DAP is the companion protocol to DEP. While DEP structures knowledge, DAP structures decisions. The AI agent uses DAP trees as its decision engine — traversing nodes one at a time via CLI for progressive context loading.
+
+| Command | Description |
+|---------|-------------|
+| `dep dap resolve "<query>" --root .` | Find matching decision tree for a trigger |
+| `dep dap node <tree> <node> --root .` | Load a single node (progressive context) |
+| `dep dap trace <tree> --root .` | ASCII visualization of a decision tree |
+| `dep dap validate --root .` | Validate all trees and graph integrity |
+| `dep dap graph --root .` | Delegation graph between trees |
 
 ## The Five Document Types
 
@@ -84,6 +110,27 @@ All commands support `--json` for machine-readable output.
 | **Reference** | Look up precise details | "DEP metadata schema" |
 | **Explanation** | Reshape conceptual understanding | "Why type purity matters" |
 | **Decision Record** | Preserve reasoning behind choices | "Five types, not four" |
+
+## The Four DAP Node Types
+
+| Node | Operation | Description |
+|------|-----------|-------------|
+| **observe** `[?]` | Gather information | Tool call or human gate |
+| **decide** `[>]` | Branch on conditions | Condition table with next-node routing |
+| **act** `[!]` | Execute terminal action | Tool call, document reference, or intent |
+| **delegate** `[@]` | Transfer control | Hand off to another DAP tree |
+
+## Decision Trees
+
+Five trees in `dap/trees/`:
+
+| Tree | Trigger | Entry Node |
+|------|---------|------------|
+| `validate-and-fix` | Validate DEP documentation and fix issues | `run-validation` |
+| `generate-doc-set` | Generate documentation for a new system | `check-docspec` |
+| `audit-existing-docs` | Migrate existing documentation to DEP | `inventory-docs` |
+| `sync-stale-docs` | Documentation may be out of date | `check-staleness` |
+| `choose-document-type` | Determine what type a DEP document should be | `identify-reader-question` |
 
 ## Project Structure
 
@@ -97,6 +144,10 @@ All commands support `--json` for machine-readable output.
 │   ├── reference/           # Lookup documentation
 │   ├── explanation/         # Conceptual understanding
 │   └── decision-records/    # Rationale behind decisions
+├── dap/                     # Decision Action Protocol
+│   ├── .dapspec             # DAP project config
+│   ├── dap-seed.md          # The foundational DAP specification
+│   └── trees/               # Decision trees (one .md per tree)
 ├── cli/                     # TypeScript/Bun CLI tool
 └── skills/                  # Claude Code plugin skills
 ```
@@ -110,6 +161,13 @@ The `.docspec` file is your project's documentation configuration. It defines:
 - **Audiences** — who reads your docs (with entry points, vocabulary level, time budget)
 - **Architecture** — directory layout and link style
 - **Governance** — review cadences per document type, ownership strategy
+
+### `.dapspec`
+
+The `.dapspec` file is the DAP project configuration. It defines:
+
+- **Tree locations** — where decision tree files live
+- **Delegation rules** — how trees can hand off to each other
 
 ### Audience Graph
 
@@ -135,6 +193,8 @@ DEP ships as a Claude Code plugin with four skills:
 | `/dep-validate` | Validate documents against the DEP specification |
 | `/dep-audit` | Audit existing docs and plan a DEP migration |
 | `/dep-sync` | Sync documentation freshness with code changes |
+
+Each skill delegates its decision logic to a DAP tree, so the agent traverses a structured decision graph rather than relying on ad-hoc prompting.
 
 Install via: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketplace`
 
@@ -163,6 +223,7 @@ Releases are automated via GitHub Actions — push a version tag (`v*`) to trigg
 ## Documentation
 
 - **Start here**: [seed.md](seed.md) — the foundational specification
+- **DAP spec**: [dap/dap-seed.md](dap/dap-seed.md) — the DAP specification
 - **Browse by audience or type**: [docs/index.md](docs/index.md)
 - **Tutorials**: [Write your first DEP document](docs/tutorials/write-your-first-dep-document.md) | [Bootstrap DEP for your project](docs/tutorials/bootstrap-dep-for-your-project.md) | [Integrate DEP into an agent](docs/tutorials/integrate-dep-into-agent.md)
 
