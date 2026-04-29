@@ -1,0 +1,21 @@
+---
+description: Guard rule for editing DEP document metadata. Prevents direct YAML frontmatter editing in favor of dep CLI commands.
+globs:
+  - "docs/**/*.md"
+  - "*.md"
+alwaysApply: false
+---
+
+# DEP Metadata Guard
+
+**Never edit the `dep:` YAML frontmatter block directly.** Use these CLI commands instead:
+
+| Action | Command |
+|---|---|
+| Set metadata fields | `dep set <file> --type reference --confidence high --root .` |
+| Bump last_verified | `dep bump <file> --root .` |
+| Add/remove tags | `dep tag <file> --add cli --root .` |
+| Manage links | `dep link <file> --target other.md --rel TEACHES --root .` |
+| Bulk bump | `dep bump --all --lifecycle STALE --root .` |
+
+You may freely edit the **markdown body content** below the frontmatter. Only the `dep:` metadata block is managed by CLI.
