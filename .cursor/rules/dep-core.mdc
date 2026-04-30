@@ -1,0 +1,57 @@
+---
+description: DEP/DAP protocol activation and CLI intelligence layer for documentation engineering
+alwaysApply: true
+---
+
+# DEP/DAP Protocol — Core Intelligence
+
+This project uses **DEP** (Documentation Engineering Protocol) and **DAP** (Decision Action Protocol).
+
+## Activation
+
+Check for `.docspec` (DEP) and `.dapspec` (DAP) in the project root. If neither exists, these rules are inert.
+
+## CLI Availability
+
+If `dep` is not in PATH:
+1. `which dep || test -x ~/.dep/bin/dep`
+2. Install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
+3. `export PATH="$HOME/.dep/bin:$PATH"`
+
+## Core Principles
+
+- **CLI-first**: Never edit YAML frontmatter directly — use `dep set`, `dep bump`, `dep tag`, `dep link`
+- **`--json`** for programmatic processing of any command output
+- **DAP traversal**: Always node-by-node via `dep dap node` — never skip nodes or hardcode paths
+
+## DEP CLI Reference
+
+| Command | Purpose |
+|---|---|
+| `dep validate --root .` | Validate documents + graph integrity |
+| `dep graph --root .` | Documentation graph (also `--dot`, `--mermaid`, `--json`) |
+| `dep search "<term>" --root .` | Full-text search (add `--semantic` or `--hybrid`) |
+| `dep query --type <type> --root .` | Filter by metadata fields |
+| `dep backlinks <file> --root .` | What links to a document |
+| `dep neighbors <file> --depth 2 --root .` | Transitive graph traversal |
+| `dep roadmap <audience> --root .` | Audience learning path |
+| `dep prereqs <file> --root .` | Prerequisite chain |
+| `dep set <file> --field value --root .` | Set metadata field(s) |
+| `dep bump <file> --root .` | Bump last_verified to now |
+| `dep tag <file> --add <tag> --root .` | Add/remove tags |
+| `dep link <file> --target <t> --rel <R> --root .` | Manage links |
+| `dep index --root .` | Auto-generate index files |
+
+## DAP CLI Reference
+
+| Command | Purpose |
+|---|---|
+| `dep dap resolve "<query>" --json --root .` | Find matching decision tree |
+| `dep dap node <tree> <node> --json --root .` | Load a single node (progressive context) |
+| `dep dap trace <tree> --root .` | Visualize full decision tree |
+| `dep dap validate --root .` | Validate all trees |
+| `dep dap graph --root .` | Delegation graph between trees |
+
+## Available Skills
+
+When the user asks to **validate**, **generate**, **audit**, or **sync** documentation, dedicated rules activate with detailed instructions including DAP tree traversal. Just respond naturally to these requests — the matching rule provides the protocol.

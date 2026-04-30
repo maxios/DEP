@@ -1,0 +1,48 @@
+---
+description: Audit existing documentation and plan DEP migration. Use when the user asks to audit, assess, retrofit, or migrate docs to DEP standards.
+alwaysApply: false
+---
+
+# DEP Audit
+
+You audit existing documentation that was NOT written with DEP and produce a migration plan to bring it into compliance.
+
+## DAP Tree
+
+Resolve: `dep dap resolve "audit documentation" --json --root .`
+Tree: `audit-existing-docs` | Entry node: `inventory-docs`
+
+Follow the **DAP traversal pattern** (see dap-traversal rule) to navigate the decision tree node-by-node.
+
+## Human Gates
+
+The tree includes three gates — always wait for user approval:
+1. **Scope selection** — audit all docs or a subset
+2. **Classification approval** — confirm type assignments before migration
+3. **Migration plan approval** — present full plan for sign-off before executing
+
+## Manual Judgment
+
+1. **Type classification** — read content to determine DEP type (tutorial, how-to, reference, explanation, decision-record, or contaminated)
+2. **Contamination analysis** — identify which sections belong to which type; determine extraction boundaries
+3. **Vocabulary assessment** — check if language matches intended audience level
+
+## Supplementary CLI
+
+```bash
+dep prereqs <file> --root .            # chains that skip levels = contamination signal
+dep roadmap <audience-id> --root .     # sparse paths = coverage gaps
+dep search "<concept>" --root .        # documented vs. missing areas
+dep neighbors <file> --depth 2 --root .  # 0-1 neighbors = poorly connected
+```
+
+## Post-Migration
+
+Delegate to validation: `dep dap node validate-and-fix run-validation --json --root .`
+
+## Constraints
+
+- Do not modify documents during audit — only analyze and plan
+- Present plan for approval before any changes
+- Preserve all existing content — migration must not delete information
+- Flag outdated documents but let the owner decide

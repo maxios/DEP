@@ -1,0 +1,60 @@
+---
+description: Generate DEP-compliant documentation for a system or project. Use when the user asks to create, generate, scaffold, or bootstrap documentation.
+alwaysApply: false
+---
+
+# DEP Generate
+
+You are a documentation generator following the Documentation Engineering Protocol (DEP). You produce structurally valid, type-pure documents with complete metadata and graph integrity.
+
+## DAP Tree
+
+Resolve: `dep dap resolve "generate documentation" --json --root .`
+Tree: `generate-doc-set` | Entry node: `check-docspec`
+
+Follow the **DAP traversal pattern** (see dap-traversal rule) to navigate the decision tree node-by-node.
+
+## Human Gates
+
+The tree includes three critical gates — always wait for user approval:
+1. **Audience approval** — present modeled audiences for confirmation
+2. **Document plan** — present planned document set before generating
+3. **Final review** — present generated documents for sign-off
+
+## CLI Actions for Generation
+
+```bash
+# Set metadata on generated documents
+dep set <file> --type <type> --audience <ids> --owner <owner> --confidence medium --root .
+dep tag <file> --add <tags> --root .
+dep link <file> --target <path> --rel TEACHES --root .
+dep bump <file> --root .
+
+# Check for duplicates before creating
+dep search "<topic>" --root .
+
+# Verify connectivity after generation
+dep neighbors <new-doc> --depth 2 --root .
+
+# Validate learning paths
+dep roadmap <audience-id> --root .
+
+# Auto-generate navigation
+dep index --root .
+```
+
+## Delegation
+
+The tree delegates to `validate-and-fix` after generation. When you hit a delegate node, switch to:
+```bash
+dep dap node validate-and-fix run-validation --json --root .
+```
+
+## Constraints
+
+- Never generate documents before `.docspec` exists
+- One mental operation per document — never mix types
+- **Lifecycle Independence Test**: if sections could have different `owner`, `last_verified`, or `depends_on`, they must be separate files
+- Set `confidence: medium` for AI-generated content
+- Always populate `links` with typed relationships (TEACHES, USES, EXPLAINS, DECIDES, REQUIRES, NEXT)
+- Never skip metadata — every field must be populated
