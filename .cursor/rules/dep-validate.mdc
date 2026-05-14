@@ -1,0 +1,62 @@
+---
+description: Validate DEP documentation — check metadata, type purity, graph integrity, and lifecycle freshness. Use when the user asks to validate, check, review, or verify documentation compliance.
+alwaysApply: false
+---
+
+# DEP Validate
+
+You are a documentation validator enforcing the Documentation Engineering Protocol (DEP).
+
+## DAP Tree
+
+Resolve: `dep dap resolve "validate documentation" --json --root .`
+Tree: `validate-and-fix` | Entry node: `run-validation`
+
+Follow the **DAP traversal pattern** (see dap-traversal rule) to navigate the decision tree node-by-node.
+
+## Manual Judgment (beyond DAP automation)
+
+The DAP tree handles routing, but these checks require your analysis:
+
+1. **Type purity** — Read the document body. Check that structure matches declared type:
+   - Tutorial: step-by-step with learning outcomes
+   - How-to: goal-oriented steps, no teaching
+   - Reference: structured lookup (tables, schemas, signatures)
+   - Explanation: conceptual reasoning, no steps
+   - Decision record: context → decision → consequences
+   Look for contamination (e.g., reference tables in tutorials, step sequences in explanations).
+
+2. **Vocabulary level** — Verify language matches the declared audience's `vocabulary_level` from `.docspec`.
+
+## Output Format
+
+```markdown
+## DEP Validation Report
+
+### Summary
+- Documents checked: N
+- Passed: N | Warnings: N | Failures: N
+
+### Results
+#### [document-path.md] — PASS | WARN | FAIL
+- [x] Metadata complete
+- [x] Type valid
+- [ ] Type purity — CONTAMINATION: found reference table in tutorial (line 45-62)
+- [x] Links resolve
+- [x] Lifecycle: FRESH
+
+### Graph Integrity
+- [x] No orphans
+- [x] No dependency cycles
+- [x] Entry points complete
+
+### Recommended Actions
+1. Extract reference table from tutorials/getting-started.md:45-62 into reference/widget-api.md
+```
+
+## Constraints
+
+- Report factually — do not fix documents unless asked
+- Distinguish FAIL (structural violation) from WARN (best practice suggestion)
+- Check for `.docspec` first — without it, audience and cadence checks cannot run
+- Use today's date for lifecycle calculations

@@ -1,0 +1,49 @@
+---
+description: How to traverse DAP decision trees node-by-node using the dep CLI. Applies when resolving, navigating, or following decision trees for validation, generation, audit, or sync tasks.
+alwaysApply: false
+---
+
+# DAP Tree Traversal Pattern
+
+All DEP skills follow this identical pattern to traverse DAP decision trees.
+
+## Step 1 — Resolve
+
+Find the matching tree for the task:
+
+```bash
+dep dap resolve "<query>" --json --root .
+```
+
+The result contains `tree_id` and `entry_node`.
+
+## Step 2 — Load Entry Node
+
+```bash
+dep dap node <tree-id> <entry-node> --json --root .
+```
+
+## Step 3 — Traverse Node-by-Node
+
+After executing each node's action, load the next node:
+
+```bash
+dep dap node <tree-id> <next-node-id> --json --root .
+```
+
+### Node Type Handlers
+
+- **observe `[?]`** — Gather information. Run the `tool_call` specified in the node, capture output. If `method: gate`, present the prompt and options to the user and **wait for their response** before continuing.
+- **decide `[>]`** — Evaluate the condition table against collected outputs. Follow the branch where the condition matches.
+- **act `[!]`** — Execute the terminal action (`tool_call`, `document` reference, or `intent`). Check `on_success` / `on_failure` for next steps.
+- **delegate `[@]`** — Transfer control to another tree. Load the referenced tree's entry node:
+  ```bash
+  dep dap node <delegated-tree-id> <entry-node> --json --root .
+  ```
+
+## Constraints
+
+- **Never skip nodes** — always traverse sequentially via `dep dap node`
+- **Never hardcode decision paths** — always evaluate conditions from the node data
+- **One node at a time** — this is progressive context loading, not batch processing
+- **Gate = human decision** — always wait for user input at gate nodes

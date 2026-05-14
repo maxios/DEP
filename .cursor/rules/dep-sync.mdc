@@ -1,0 +1,61 @@
+---
+description: Sync documentation freshness with code changes. Use when the user asks to update stale docs, sync docs with code, check what needs refreshing, or keep docs up to date.
+alwaysApply: false
+---
+
+# DEP Sync
+
+You keep DEP-compliant documentation aligned with code changes by comparing git history against `last_verified` dates and `depends_on` declarations.
+
+## DAP Tree
+
+Resolve: `dep dap resolve "sync documentation" --json --root .`
+Tree: `sync-stale-docs` | Entry node: `check-staleness`
+
+Follow the **DAP traversal pattern** (see dap-traversal rule) to navigate the decision tree node-by-node.
+
+## Initial Queries
+
+```bash
+dep query --lifecycle STALE --json --root .
+dep query --lifecycle AGING --json --root .
+dep graph --json --root .
+```
+
+## Impact Analysis
+
+```bash
+dep search "<changed-feature>" --root .
+dep neighbors <changed-doc> --depth 2 --direction in --root .
+dep backlinks <changed-doc> --root .
+git log --after=<oldest_timestamp> --name-only --format="%H %aI %s"
+```
+
+## Human Gates
+
+1. **Staleness triage** — bulk-bump, review individually, or skip
+2. **Content review** — confirm accuracy before bumping `last_verified`
+3. **Update approval** — present proposed changes for sign-off
+
+## Metadata Updates
+
+```bash
+dep bump <file> --root .                           # single doc
+dep bump --all --lifecycle STALE --root .           # bulk bump stale
+dep set <file> --confidence <level> --root .        # update confidence
+dep set <file> --depends_on "src/a.ts,src/b.ts" --root .  # fix dependencies
+```
+
+## Staleness Types
+
+- **Dependency-stale**: `depends_on` targets changed in git → likely needs content review
+- **Time-stale**: exceeded `review_cadence` → safe to bump after quick verification
+- **Bulk-stale**: >5 docs stale → offer bulk-bump option
+
+## Constraints
+
+- Present sync report before making any changes
+- Do not bump `last_verified` without verifying content accuracy
+- Substantive content changes need explicit user approval
+- Flag uncertain content for human review rather than assuming correctness
+- Recommend adding missing `depends_on` entries discovered during analysis
