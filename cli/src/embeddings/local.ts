@@ -1,4 +1,6 @@
+import { join } from 'path'
 import type { EmbeddingProvider } from './provider'
+import { depHome, preloadOnnxRuntime } from './native'
 
 const DEFAULT_MODEL = 'Xenova/all-MiniLM-L6-v2'
 
@@ -14,9 +16,13 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
   }
 
   async init(): Promise<void> {
+    await preloadOnnxRuntime()
     const { pipeline, env } = await import('@huggingface/transformers')
     // Disable local model check warning
     env.allowLocalModels = false
+    // Downloaded models live under DEP's home rather than next to the library,
+    // which is read-only (and lost between runs) inside the standalone binary.
+    env.cacheDir = join(depHome(), 'cache', 'models')
     this.pipeline = await pipeline('feature-extraction', this.modelId, {
       dtype: 'fp32',
     })

@@ -7,11 +7,12 @@ dep:
     - project-lead
   owner: "@dep-core"
   created: 2026-09-10T18:30:00+03:00
-  last_verified: 2026-09-10T18:30:00+03:00
+  last_verified: 2026-09-10T18:33:13.168+03:00
   confidence: high
   depends_on:
     - cli/src/commands/vectorize.ts
     - cli/src/context/indexer.ts
+    - cli/src/embeddings/native.ts
   tags:
     - retrieval
     - index
@@ -63,6 +64,10 @@ Editing `vectorization.provider` or `model` in `.docspec` makes the next refresh
 ```bash
 dep vectorize --force --root .
 ```
+
+### 5. Know where the local provider keeps its files
+
+The default `local` provider downloads its model once into `~/.dep/cache/models` and, when running the standalone binary, unpacks the ONNX Runtime shared library into `~/.dep/lib`. Set `DEP_HOME` to move both. Delete `~/.dep/cache/models` to force a fresh model download.
 
 ## Verification
 

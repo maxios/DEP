@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun run scripts/build.ts",
-    "build:local": "bun build --compile ./src/index.ts --outfile dist/dep",
+    "build:local": "bun run scripts/build.ts --local",
     "test": "bun test",
     "test:stories": "bun --bun cucumber-js",
     "test:all": "bun test && bun --bun cucumber-js"
