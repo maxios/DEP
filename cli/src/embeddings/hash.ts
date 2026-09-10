@@ -51,8 +51,10 @@ export class HashEmbeddingProvider implements EmbeddingProvider {
     const vector = new Float32Array(this.dimensions)
     for (const [term, count] of termFrequencies(text)) {
       const value = count * weight(term)
-      vector[fnv1a(term, 0x9747b28c) % this.dimensions] += value
-      vector[fnv1a(term, 0x85ebca6b) % this.dimensions] += value
+      const first = fnv1a(term, 0x9747b28c) % this.dimensions
+      const second = fnv1a(term, 0x85ebca6b) % this.dimensions
+      vector[first] = (vector[first] ?? 0) + value
+      vector[second] = (vector[second] ?? 0) + value
     }
     let norm = 0
     for (let i = 0; i < vector.length; i++) norm += vector[i]! * vector[i]!
