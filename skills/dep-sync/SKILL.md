@@ -23,7 +23,8 @@ The `dep` CLI binary must be available. Resolve in order:
 **Always use the `dep` CLI for documentation queries and decision navigation.** This is your primary tool — never read YAML frontmatter directly or hardcode decision logic.
 
 - Use `dep` for querying, navigating, and modifying documentation (`dep validate`, `dep graph`, `dep query`, `dep search`, `dep neighbors`, `dep backlinks`, `dep bump`, `dep set`, etc.)
-- Use `dep dap` for navigating decisions (`dep dep dap resolve`, `dep dep dap node`) — load one node at a time, evaluate conditions, follow branches
+- Use `dep dap` for navigating decisions (`dep dap resolve`, `dep dap node`) — load one node at a time, evaluate conditions, follow branches
+- Use `dep context "<question>" --budget <N> --json --root <project-root>` to load the knowledge a step needs — passages packed to a budget, stale ones withheld, each naming its document, section and freshness — instead of reading whole documents. Run `dep vectorize --root <project-root>` once so ranking is by meaning, not only wording
 - Prefer `--json` when processing results programmatically
 - Never edit YAML frontmatter directly — use `dep set`, `dep bump`, `dep tag`, or `dep link`
 
@@ -43,12 +44,12 @@ This project uses DEP and DAP. These protocols are always-on.
 
 DAP is your knowledge base and decision engine. **Before responding to any user query**, check if a decision tree exists:
 
-1. Run `dep dep dap resolve "<user query>" --json --root <project-root>`
-2. If a match is found (score > 0), load the entry node: `dep dep dap node <tree-id> <entry-node> --json --root <project-root>`
+1. Run `dep dap resolve "<user query>" --json --root <project-root>`
+2. If a match is found (score > 0), load the entry node: `dep dap node <tree-id> <entry-node> --json --root <project-root>`
 3. Follow the tree node-by-node — observe, decide, act, delegate
-4. Never skip nodes or hardcode decision paths — always traverse via `dep dep dap node`
+4. Never skip nodes or hardcode decision paths — always traverse via `dep dap node`
 
-DAP commands: `dep dep dap resolve`, `dep dep dap node`, `dep dap trace`, `dep dap validate`, `dep dap graph` (all support `--json`)
+DAP commands: `dep dap resolve`, `dep dap node`, `dep dap trace`, `dep dap validate`, `dep dap graph` (all support `--json`)
 
 ### DEP — Documentation Engineering Protocol
 
@@ -57,6 +58,8 @@ Use the `dep` CLI as the primary tool for all documentation queries.
 - **Querying**: `dep search`, `dep query`, `dep graph --json`, `dep backlinks`
 - **Navigating**: `dep neighbors`, `dep roadmap`, `dep prereqs`
 - **Validating**: `dep validate --json`
+- **Loading knowledge**: `dep context "<question>" --budget <N> --json` — the passages a task needs, packed to a budget, stale ones withheld, each with provenance. Prefer it over reading whole documents
+- **Keeping retrieval current**: `dep vectorize` after documents change (`dep vectorize --install-hook` makes commits do it)
 - **Modifying metadata**: `dep set`, `dep bump`, `dep tag`, `dep link` (never edit YAML frontmatter directly)
 
 ### CLI Availability
@@ -74,7 +77,7 @@ This ensures all future Claude Code sessions in this project automatically use D
 Find the appropriate decision tree for sync:
 
 ```bash
-dep dap resolve "sync documentation" --json --root <dap-root>
+dep dap resolve "sync documentation" --json --root <project-root>
 ```
 
 This returns the `sync-stale-docs` tree (ID: `sync-stale-docs`, entry node: `check-staleness`).
@@ -82,7 +85,7 @@ This returns the `sync-stale-docs` tree (ID: `sync-stale-docs`, entry node: `che
 ### Step 2 — Load the Entry Node
 
 ```bash
-dep dap node sync-stale-docs check-staleness --json --root <dap-root>
+dep dap node sync-stale-docs check-staleness --json --root <project-root>
 ```
 
 This returns the first node — an **observe** node that instructs you to query for stale and aging documents. Execute the tool call using the `dep` CLI:
@@ -98,7 +101,7 @@ dep graph --json --root <project-root>
 After executing each node's action, load the next node:
 
 ```bash
-dep dap node sync-stale-docs <next-node-id> --json --root <dap-root>
+dep dap node sync-stale-docs <next-node-id> --json --root <project-root>
 ```
 
 At each node:

@@ -7,7 +7,7 @@
     {
       "name": "dep",
       "source": "./",
-      "description": "Documentation Engineering Protocol — generate, validate, audit, and sync DEP-compliant documentation"
+      "description": "Documentation Engineering Protocol \u2014 generate, validate, audit, and sync DEP-compliant documentation; budgeted context bundles for agents (dep context)"
     }
   ]
 }

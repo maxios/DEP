@@ -5,7 +5,7 @@ dep:
     - ai-agent
   owner: "@dep-core"
   created: 2026-03-22T23:36:54+02:00
-  last_verified: 2026-04-26T20:29:05.791+03:00
+  last_verified: 2026-09-10T15:42:29.677+03:00
   confidence: high
   depends_on:
     - skills/dep-generate/SKILL.md
@@ -29,6 +29,7 @@ All skills share common behaviors:
 - **Self-bootstrapping**: Each skill auto-installs the `dep` CLI binary if not found in PATH (Step 0)
 - **CLI-first**: Skills use the `dep` CLI for all documentation queries and metadata writes — never editing YAML frontmatter directly
 - **DAP delegation**: Decision logic is handled by DAP (Decision Action Protocol) trees via `dep dap` subcommands, enabling structured, node-by-node decision traversal
+- **Budgeted knowledge**: When a step needs background, skills load it with `dep context "<question>" --budget <N> --json` — passages packed to a budget with provenance — rather than reading whole documents
 
 ---
 

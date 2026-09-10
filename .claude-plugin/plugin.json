@@ -1,5 +1,5 @@
 {
   "name": "dep",
-  "description": "Documentation Engineering Protocol — generate, validate, audit, and sync DEP-compliant documentation",
-  "version": "0.1.0"
+  "description": "Documentation Engineering Protocol \u2014 generate, validate, audit, and sync DEP-compliant documentation; budgeted context bundles for agents (dep context)",
+  "version": "0.2.0"
 }

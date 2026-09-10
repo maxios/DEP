@@ -1897,10 +1897,9 @@ stories and today's code. Each is tagged `@wip @later` in the scenario that depe
 5. **Trees that declare no subjects** (FLOW-18) — subject matching assumes every tree declares
    subjects; a tree without them may not be matchable. Should subjects be required, or optional?
    Source: `cli/src/dap/commands/resolve.ts`.
-6. **Skill documentation names a command form that does not exist** (FLOW-23) — the packaged skills
-   instruct the agent to run `dep dep dap resolve` and `dep dep dap node`; the real forms are
-   `dep dap resolve` and `dep dap node`. Should the skills be corrected, or should the doubled form
-   be accepted? Source: `skills/dep-validate/SKILL.md`.
+6. **Skill documentation names a command form that does not exist** (FLOW-23) — *resolved
+   2026-09-10*: the packaged skills now say `dep dap resolve` / `dep dap node`, and pass
+   `--root <project-root>` (the CLI appends `dap/` itself). Source: `skills/*/SKILL.md`.
 7. **Freshness of a decision tree uses one cadence for all trees** (FLOW-21) — documents get a
    review cadence per type, trees get a single project-wide cadence. Intentional?
    Source: `dap/.dapspec`, `cli/src/dap/tree-builder.ts`.
