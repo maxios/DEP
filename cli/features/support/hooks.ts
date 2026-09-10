@@ -1,5 +1,7 @@
-import { After, Before, setDefaultTimeout } from '@cucumber/cucumber'
-import type { DepWorld } from './world'
+import { After, Before, setDefaultTimeout, setWorldConstructor } from '@cucumber/cucumber'
+import { DepWorld } from './world'
+
+setWorldConstructor(DepWorld)
 
 setDefaultTimeout(60_000)
 

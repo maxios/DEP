@@ -38,11 +38,21 @@ export class HashEmbeddingProvider implements EmbeddingProvider {
     return texts.map((text) => this.embedOne(text))
   }
 
-  private embedOne(text: string): Float32Array {
+  /**
+   * A question embedded with knowledge of the set: terms common across the
+   * set's passages weigh less, so cosine against a passage becomes a TF-IDF
+   * overlap rather than a raw term count.
+   */
+  embedQuery(text: string, idf: (term: string) => number): Float32Array {
+    return this.embedOne(text, idf)
+  }
+
+  private embedOne(text: string, weight: (term: string) => number = () => 1): Float32Array {
     const vector = new Float32Array(this.dimensions)
     for (const [term, count] of termFrequencies(text)) {
-      vector[fnv1a(term, 0x9747b28c) % this.dimensions] += count
-      vector[fnv1a(term, 0x85ebca6b) % this.dimensions] += count
+      const value = count * weight(term)
+      vector[fnv1a(term, 0x9747b28c) % this.dimensions] += value
+      vector[fnv1a(term, 0x85ebca6b) % this.dimensions] += value
     }
     let norm = 0
     for (let i = 0; i < vector.length; i++) norm += vector[i]! * vector[i]!

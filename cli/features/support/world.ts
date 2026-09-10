@@ -6,9 +6,9 @@
  * (writes files, opens the set, builds the index) and performs the request.
  * The World records the last bundle / error / CLI output for `Then` steps.
  */
-import { World, setWorldConstructor, type IWorldOptions } from '@cucumber/cucumber'
+import { World, type IWorldOptions } from '@cucumber/cucumber'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, chmodSync, unlinkSync } from 'fs'
-import { join, dirname, resolve } from 'path'
+import { join, dirname, resolve, relative } from 'path'
 import { spawnSync } from 'child_process'
 import { stringify as yamlStringify } from 'yaml'
 import { openDocumentationSet, DepError } from '../../src/lib'
@@ -97,6 +97,8 @@ export class DepWorld extends World {
   fetchCalls: string[] = []
   extraSets: DocumentationSet[] = []
   notes = new Map<string, unknown>()
+  /** The document the current scenario is talking about ("its passages …"). */
+  subject = ''
 
   constructor(opts: IWorldOptions) {
     super(opts)
@@ -108,6 +110,14 @@ export class DepWorld extends World {
     this.docs.set(spec.path, { ...spec })
     this.written = false
     return this.docs.get(spec.path)!
+  }
+
+  /** A typed link from one document to another, expressed the way frontmatter expects it. */
+  relate(from: string, to: string, rel: string) {
+    const spec = this.docs.get(from)
+    if (!spec) throw new Error(`no such fixture document: ${from}`)
+    spec.links = [...(spec.links ?? []), { target: relative(dirname(from), to), rel }]
+    this.written = false
   }
 
   removeDoc(path: string) {
@@ -384,4 +394,3 @@ export class DepWorld extends World {
   }
 }
 
-setWorldConstructor(DepWorld)

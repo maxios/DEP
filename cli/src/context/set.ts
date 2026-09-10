@@ -11,7 +11,7 @@ import { DepError } from './errors'
 import { normalizeOptions } from './options'
 import { retrieve, type RetrievalContext } from './retrieve'
 import { runIndex } from './indexer'
-import { estimateTokens } from './tokens'
+import { estimateTokens, inverseDocumentFrequency } from './tokens'
 import type { Bundle, CandidateChunk, ContextOptions, IndexOptions, IndexReport, OpenOptions } from './types'
 
 const METADATA_SECTION = '[metadata]'
@@ -103,7 +103,7 @@ export class DocumentationSet {
           { indexed: index.provider, configured: provider.name }
         )
       }
-      queryEmbedding = (await provider.embed([question]))[0] ?? null
+      queryEmbedding = await this.embedQuestion(provider, question, chunks)
     } else {
       chunks = this.chunkOnTheFly()
     }
@@ -170,6 +170,14 @@ export class DocumentationSet {
       })
     }
     return out
+  }
+
+  private async embedQuestion(provider: EmbeddingProvider, question: string, chunks: CandidateChunk[]): Promise<Float32Array | null> {
+    const weighted = provider as EmbeddingProvider & { embedQuery?: (text: string, idf: (term: string) => number) => Float32Array }
+    if (typeof weighted.embedQuery === 'function') {
+      return weighted.embedQuery(question, inverseDocumentFrequency(chunks.map((c) => c.content)))
+    }
+    return (await provider.embed([question]))[0] ?? null
   }
 
   private async provider(): Promise<EmbeddingProvider> {
