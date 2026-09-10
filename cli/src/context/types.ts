@@ -145,3 +145,29 @@ export interface CandidateChunk {
   tokens: number
   embedding: Float32Array | null
 }
+
+export interface SearchOptions {
+  audience?: string
+  type?: string
+  tags?: string[]
+  within?: string
+  freshness?: FreshnessPreference
+  limit?: number
+}
+
+export interface SearchResults {
+  query: string
+  ranking: 'hybrid' | 'keyword-only'
+  considered: number
+  results: Array<{ document: string; title: string; section: string; score: number; snippet: string; freshness: PassageFreshness }>
+}
+
+export interface DocumentMetadata {
+  path: string
+  title: string
+  declared: Record<string, unknown>
+  lifecycle: 'FRESH' | 'AGING' | 'STALE'
+  freshness: { state: FreshnessState; lastVerified: string | null; cadenceDays: number | null }
+  links: Array<{ target: string; rel: string }>
+  backlinks: Array<{ source: string; rel: string }>
+}

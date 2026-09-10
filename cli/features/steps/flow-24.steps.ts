@@ -105,12 +105,7 @@ Given('I declare a relevance floor', function (this: DepWorld) {
 
 Given('several passages match my question only faintly', function (this: DepWorld) {
   FAINT_DOCS.forEach((path, i) => this.addDoc({ path, type: 'reference', title: `Release ${i + 1}`, body: faintBody() }))
-})
-
-Then('those passages are absent from the bundle', function (this: DepWorld) {
-  for (const path of FAINT_DOCS) {
-    assert.equal(this.passagesFrom(path).length, 0, `faint passage included: ${path}`)
-  }
+  this.notes.set('absent', FAINT_DOCS)
 })
 
 Then('they are absent even though the budget could have held them', function (this: DepWorld) {

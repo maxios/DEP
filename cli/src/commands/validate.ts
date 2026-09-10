@@ -2,47 +2,55 @@ import { buildGraph } from '../graph'
 import { loadDocspec } from '../config'
 import { existsSync } from 'fs'
 import { join } from 'path'
-import type { DepNode } from '../types'
+import type { DepGraph, DepNode, DocspecConfig } from '../types'
 
-interface ValidationResult {
+export interface ValidationResult {
   path: string
   status: 'PASS' | 'WARN' | 'FAIL'
   checks: Array<{ name: string; passed: boolean; message?: string }>
 }
 
+export interface ValidationReport {
+  documents: ValidationResult[]
+  graph: Array<{ name: string; passed: boolean; message?: string }>
+  summary: { pass: number; warn: number; fail: number; graphFailures: number; ok: boolean }
+}
+
 const CANONICAL_TYPES = ['tutorial', 'how-to', 'reference', 'explanation', 'decision-record']
 const CANONICAL_RELS = ['TEACHES', 'USES', 'EXPLAINS', 'DECIDES', 'REQUIRES', 'NEXT']
 
-export function validateCommand(root: string, flags: { json?: boolean }) {
-  const config = loadDocspec(root)
-  const graph = buildGraph(root)
-  const audienceIds = config.audiences.map((a) => a.id)
+/** The verdict as a value; the command below is only its printer. */
+export function runValidation(root: string, config: DocspecConfig = loadDocspec(root), graph: DepGraph = buildGraph(root)): ValidationReport {
+  const audienceIds = (config.audiences ?? []).map((a) => a.id)
   const customTypes = (config.custom_types ?? []).map((t) => t.id)
   const validTypes = [...CANONICAL_TYPES, ...customTypes]
   const customRels = (config.custom_relationships ?? []).map((r) => r.id)
   const validRels = [...CANONICAL_RELS, ...customRels, 'INLINE']
 
-  const results: ValidationResult[] = []
-
-  // Document-level checks
+  const documents: ValidationResult[] = []
   for (const [, node] of graph.nodes) {
-    const result = validateDocument(node, root, validTypes, audienceIds, validRels)
-    results.push(result)
+    documents.push(validateDocument(node, root, validTypes, audienceIds, validRels))
   }
-
-  // Graph-level checks
   const graphChecks = validateGraph(graph, config)
 
-  // Output
+  const pass = documents.filter((r) => r.status === 'PASS').length
+  const warn = documents.filter((r) => r.status === 'WARN').length
+  const fail = documents.filter((r) => r.status === 'FAIL').length
+  const graphFailures = graphChecks.filter((c) => !c.passed).length
+  return { documents, graph: graphChecks, summary: { pass, warn, fail, graphFailures, ok: fail === 0 && graphFailures === 0 } }
+}
+
+export function validateCommand(root: string, flags: { json?: boolean }) {
+  const graph = buildGraph(root)
+  const report = runValidation(root, loadDocspec(root), graph)
+
   if (flags.json) {
-    console.log(JSON.stringify({ documents: results, graph: graphChecks }, null, 2))
+    console.log(JSON.stringify({ documents: report.documents, graph: report.graph }, null, 2))
   } else {
-    printReport(results, graphChecks, graph)
+    printReport(report.documents, report.graph, graph)
   }
 
-  // Exit code
-  const hasFail = results.some((r) => r.status === 'FAIL') || graphChecks.some((c) => !c.passed)
-  process.exit(hasFail ? 1 : 0)
+  process.exit(report.summary.ok ? 0 : 1)
 }
 
 function validateDocument(
@@ -136,7 +144,7 @@ function validateDocument(
 
 function validateGraph(
   graph: DepGraph,
-  config: ReturnType<typeof loadDocspec>
+  config: DocspecConfig
 ): Array<{ name: string; passed: boolean; message?: string }> {
   const checks: Array<{ name: string; passed: boolean; message?: string }> = []
 
@@ -155,7 +163,7 @@ function validateGraph(
   })
 
   // Entry point check
-  const missingEntryPoints = config.audiences.filter((a) => {
+  const missingEntryPoints = (config.audiences ?? []).filter((a) => {
     const ep = a.entry_point.replace(/^\.\//, '')
     return !graph.nodes.has(ep)
   })

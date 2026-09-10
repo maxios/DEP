@@ -81,6 +81,10 @@ export class DepWorld extends World {
   written = false
   opened = false
   indexed = false
+  /** Files changed since the set last read them. */
+  dirty = false
+  spawnCalls = 0
+  savedEnv: Record<string, string | undefined> = {}
 
   now: Date = new Date()
   question = DEFAULT_QUESTION
@@ -124,6 +128,7 @@ export class DepWorld extends World {
     this.docs.delete(path)
     const full = join(this.root, path)
     if (existsSync(full)) unlinkSync(full)
+    this.dirty = true
   }
 
   /** The default project: two documents about freshness, two about other things. */
@@ -242,6 +247,16 @@ export class DepWorld extends World {
       }
     }
     this.written = true
+    this.dirty = true
+  }
+
+  /** Change a document on disk after the set (and index) have seen it. */
+  editDoc(path: string, append: string) {
+    const spec = this.docs.get(path)
+    if (!spec) throw new Error(`no such fixture document: ${path}`)
+    spec.body = (spec.body ?? freshnessBody()) + append
+    this.writeDoc(spec)
+    this.dirty = true
   }
 
   writeDoc(spec: DocSpec) {
@@ -279,11 +294,45 @@ export class DepWorld extends World {
 
   /** Materialise everything the scenario has described so far. */
   async materialise() {
+    // a scenario that never describes its documents gets the default project
+    if (this.docs.size === 0 && this.configured) this.seedDefaultDocs()
     if (!this.written) this.writeProject()
     if (!this.configured) return
-    if (!this.opened) this.open()
-    if (this.wantIndex && !this.indexed) await this.index()
-    if (this.wantIndex && this.indexed && this.set) this.set.refresh()
+    if (!this.opened) {
+      this.open()
+      this.dirty = false
+    }
+    if (this.wantIndex && !this.indexed) {
+      await this.index()
+      this.dirty = false
+    } else if (this.dirty && this.set) {
+      this.set.refresh()
+      this.dirty = false
+    }
+  }
+
+  /** A second, unrelated project — different audiences, different subject. */
+  openSecondProject(): { root: string; set: DocumentationSet; docs: string[] } {
+    mkdirSync(SCRATCH, { recursive: true })
+    const root = mkdtempSync(join(SCRATCH, 'second-'))
+    const other = new DepWorld({ attach: async () => {}, log: () => {}, link: () => {}, parameters: {} } as unknown as IWorldOptions)
+    other.root = root
+    other.audiences = [{ id: 'reviewer', name: 'Reviewer', entry: './docs/how-to/install.md' }]
+    other.addDoc({ path: 'docs/how-to/install.md', type: 'how-to', title: 'Install the binary', audience: ['reviewer'], body: unrelatedBody('installing the binary on a fresh machine') })
+    other.addDoc({ path: 'docs/how-to/upgrade.md', type: 'how-to', title: 'Upgrade the binary', audience: ['reviewer'], body: unrelatedBody('upgrading an installed binary to the latest release') })
+    other.writeProject()
+    const set = openDocumentationSet(root, { now: () => this.now })
+    this.extraSets.push(set)
+    this.notes.set('secondRoot', root)
+    return { root, set, docs: [...other.docs.keys()] }
+  }
+
+  /** Hide credentials from the process for the rest of the scenario. */
+  withoutEnv(...keys: string[]) {
+    for (const key of keys) {
+      this.savedEnv[key] = process.env[key]
+      delete process.env[key]
+    }
   }
 
   // ── requests ──────────────────────────────────────────────────────────
@@ -297,11 +346,26 @@ export class DepWorld extends World {
       if (!this.configured || !this.set) {
         this.set = openDocumentationSet(this.root, { now: () => this.now })
       }
-      this.bundle = await this.set!.context(question, options)
+      this.bundle = await this.watchingNetwork(() => this.set!.context(question, options))
     } catch (err) {
       this.error = err
     }
     return this.bundle
+  }
+
+  /** Run something while counting every process the runtime is asked to start. */
+  async countingProcesses<T>(fn: () => Promise<T> | T): Promise<T> {
+    const spawn = Bun.spawn
+    const spawnSync = Bun.spawnSync
+    this.spawnCalls = 0
+    Bun.spawn = ((...args: any[]) => { this.spawnCalls++; return (spawn as any)(...args) }) as typeof Bun.spawn
+    Bun.spawnSync = ((...args: any[]) => { this.spawnCalls++; return (spawnSync as any)(...args) }) as typeof Bun.spawnSync
+    try {
+      return await fn()
+    } finally {
+      Bun.spawn = spawn
+      Bun.spawnSync = spawnSync
+    }
   }
 
   /** Run something and capture anything written to the process output streams. */
@@ -379,6 +443,14 @@ export class DepWorld extends World {
   }
 
   cleanup() {
+    for (const [key, value] of Object.entries(this.savedEnv)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    for (const extra of this.extraSets) {
+      const root = (extra as DocumentationSet).root
+      if (root && existsSync(root)) rmSync(root, { recursive: true, force: true })
+    }
     for (const spec of this.docs.values()) {
       const p = join(this.root, spec.path)
       if (existsSync(p)) {

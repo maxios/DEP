@@ -12,7 +12,12 @@ import { normalizeOptions } from './options'
 import { retrieve, type RetrievalContext } from './retrieve'
 import { runIndex } from './indexer'
 import { estimateTokens, inverseDocumentFrequency } from './tokens'
-import type { Bundle, CandidateChunk, ContextOptions, IndexOptions, IndexReport, OpenOptions } from './types'
+import { computeFreshness } from './freshness'
+import { runValidation, type ValidationReport } from '../commands/validate'
+import type {
+  Bundle, CandidateChunk, ContextOptions, DocumentMetadata, IndexOptions, IndexReport, OpenOptions, SearchOptions, SearchResults,
+} from './types'
+import { relative, resolve } from 'path'
 
 const METADATA_SECTION = '[metadata]'
 
@@ -120,6 +125,57 @@ export class DocumentationSet {
       usage: null,
       usageVersion: 0,
     })
+  }
+
+  /** Documents ranked for a query — the same ranking a bundle uses, without a budget. */
+  async search(query: string, options: SearchOptions = {}): Promise<SearchResults> {
+    const bundle = await this.context(query, {
+      budget: Number.MAX_SAFE_INTEGER,
+      audience: options.audience,
+      type: options.type,
+      tags: options.tags,
+      within: options.within,
+      freshness: options.freshness ?? 'include-stale',
+      expand: false,
+    })
+    const seen = new Set<string>()
+    const results: SearchResults['results'] = []
+    for (const p of bundle.passages) {
+      if (seen.has(p.document)) continue
+      seen.add(p.document)
+      results.push({ document: p.document, title: p.title, section: p.section, score: p.score, snippet: p.content.slice(0, 200), freshness: p.freshness })
+      if (results.length >= (options.limit ?? 10)) break
+    }
+    return { query, ranking: bundle.ranking, considered: bundle.considered, results }
+  }
+
+  /** One verdict per document plus a verdict on the set as a whole. */
+  validate(): ValidationReport {
+    this.ensureLoaded()
+    return runValidation(this.root, this._config, this._graph!)
+  }
+
+  /** A document's declared metadata, with its computed freshness. */
+  metadata(document: string): DocumentMetadata {
+    this.ensureLoaded()
+    const path = relative(this.root, resolve(this.root, document))
+    const node = this._graph!.nodes.get(path)
+    if (!node) {
+      throw new DepError('DOCUMENT_NOT_FOUND', `${document} is not a document in the set`, { document })
+    }
+    const meta = node.metadata as unknown as Record<string, unknown>
+    const declared: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(meta)) declared[key] = value instanceof Date ? value.toISOString() : value
+    const freshness = computeFreshness(node.metadata, this._config, this.now())
+    return {
+      path,
+      title: this._titles.get(path) ?? path,
+      declared,
+      lifecycle: node.lifecycle,
+      freshness: { state: freshness.state, lastVerified: freshness.lastVerified, cadenceDays: freshness.cadenceDays },
+      links: node.forwardLinks.map((e) => ({ target: e.target, rel: e.rel })),
+      backlinks: node.backlinks.map((e) => ({ source: e.source, rel: e.rel })),
+    }
   }
 
   async index(options: IndexOptions = {}): Promise<IndexReport> {

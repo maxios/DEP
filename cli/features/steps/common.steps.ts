@@ -1,6 +1,6 @@
 import { Given, When, Then } from '@cucumber/cucumber'
 import assert from 'node:assert/strict'
-import { DepWorld, DEFAULT_QUESTION, UNCOVERED_QUESTION } from '../support/world'
+import { DepWorld, DEFAULT_QUESTION, UNCOVERED_QUESTION, unrelatedBody } from '../support/world'
 
 // ── project ──────────────────────────────────────────────────────────────
 
@@ -13,6 +13,10 @@ Given('a project configured for DEP and indexed for retrieval', function (this: 
   this.configured = true
   this.wantIndex = true
   this.seedDefaultDocs()
+  // background knowledge a served passage depends on, so provenance has something to distinguish
+  this.addDoc({ path: 'docs/reference/verification-dates.md', type: 'reference', title: 'Verification dates', body: unrelatedBody('recording verification dates in the metadata block') })
+  this.relate('docs/explanation/freshness.md', 'docs/reference/verification-dates.md', 'REQUIRES')
+  this.notes.set('background', 'docs/reference/verification-dates.md')
 })
 
 Given('its documents have been indexed for meaning-based retrieval', function (this: DepWorld) {
@@ -112,3 +116,10 @@ export function notice(world: DepWorld, code: string) {
   assert.ok(found, `expected a "${code}" notice, got: ${JSON.stringify(world.bundle?.notices)}`)
   return found!
 }
+
+Then('those passages are absent from the bundle', function (this: DepWorld) {
+  assert.ok(this.bundle, `no bundle; error: ${this.errorMessage()}`)
+  for (const path of this.notes.get('absent') as string[]) {
+    assert.equal(this.passagesFrom(path).length, 0, `${path} was served`)
+  }
+})

@@ -13,7 +13,9 @@ export type { DepErrorCode } from './context/errors'
 export type {
   Bundle, Passage, PassageReason, PassageFreshness, Withheld, Omitted, Notice,
   ContextOptions, FreshnessPreference, FreshnessState, IndexOptions, IndexReport, OpenOptions,
+  SearchOptions, SearchResults, DocumentMetadata,
 } from './context/types'
+export type { ValidationReport, ValidationResult } from './commands/validate'
 export type { EmbeddingProvider } from './embeddings/provider'
 export { HashEmbeddingProvider } from './embeddings/hash'
 
