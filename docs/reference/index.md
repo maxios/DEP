@@ -1,12 +1,13 @@
 <!-- dep:auto-generated -->
 # Reference
 
-- [dep-metadata-schema](dep-metadata-schema.md) ● `high` — ai-generator, ai-agent, human-author
-- [dep-skills-api](dep-skills-api.md) ● `high` — ai-agent
-- [docspec-schema](docspec-schema.md) ● `high` — ai-generator, ai-agent, project-lead
-- [document-type-signatures](document-type-signatures.md) ● `high` — ai-generator, ai-agent, human-author
-- [type-signature-decision-record](type-signature-decision-record.md) ● `high` — ai-generator, ai-agent, human-author
-- [type-signature-explanation](type-signature-explanation.md) ● `high` — ai-generator, ai-agent, human-author
-- [type-signature-howto](type-signature-howto.md) ● `high` — ai-generator, ai-agent, human-author
-- [type-signature-reference](type-signature-reference.md) ● `high` — ai-generator, ai-agent, human-author
-- [type-signature-tutorial](type-signature-tutorial.md) ● `high` — ai-generator, ai-agent, human-author
+- [Context Bundle Schema Reference](context-bundle-schema.md) ● `high` — ai-agent, human-author
+- [DEP Metadata Schema Reference](dep-metadata-schema.md) ○ `high` — ai-generator, ai-agent, human-author
+- [DEP Skills API Reference](dep-skills-api.md) ○ `high` — ai-agent
+- [.docspec Schema Reference](docspec-schema.md) ○ `high` — ai-generator, ai-agent, project-lead
+- [Document Type Signatures Reference](document-type-signatures.md) ○ `high` — ai-generator, ai-agent, human-author
+- [Type Signature: Decision Record](type-signature-decision-record.md) ○ `high` — ai-generator, ai-agent, human-author
+- [Type Signature: Explanation](type-signature-explanation.md) ○ `high` — ai-generator, ai-agent, human-author
+- [Type Signature: How-To](type-signature-howto.md) ○ `high` — ai-generator, ai-agent, human-author
+- [Type Signature: Reference](type-signature-reference.md) ○ `high` — ai-generator, ai-agent, human-author
+- [Type Signature: Tutorial](type-signature-tutorial.md) ○ `high` — ai-generator, ai-agent, human-author

@@ -24,6 +24,8 @@ dep:
       rel: NEXT
     - target: ../how-to/generate-a-document-set.md
       rel: NEXT
+    - target: ../how-to/embed-dep-in-your-program.md
+      rel: NEXT
 ---
 
 # Tutorial: Integrate DEP into Your Agent

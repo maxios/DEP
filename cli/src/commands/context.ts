@@ -74,7 +74,13 @@ export function formatBundle(bundle: Bundle): string {
   })
   if (bundle.withheld.length > 0) {
     lines.push('Withheld:')
-    for (const w of bundle.withheld) lines.push(`  ${w.document} › ${w.section} (${w.reason}, last verified ${w.lastVerified ?? 'unknown'})`)
+    const byDocument = new Map<string, typeof bundle.withheld>()
+    for (const w of bundle.withheld) byDocument.set(w.document, [...(byDocument.get(w.document) ?? []), w])
+    for (const [document, entries] of byDocument) {
+      const first = entries[0]!
+      const date = first.lastVerified ? first.lastVerified.slice(0, 10) : 'unknown'
+      lines.push(`  ${document} — ${entries.length} passage(s), ${first.reason}, last verified ${date}`)
+    }
     lines.push('')
   }
   if (bundle.omitted.length > 0) {
@@ -87,6 +93,9 @@ export function formatBundle(bundle: Bundle): string {
     for (const n of bundle.notices) lines.push(`  ${n.code}: ${n.message}${n.hint ? ` — ${n.hint}` : ''}`)
     lines.push('')
   }
-  lines.push(`bundle ${bundle.id}${bundle.index.builtAt ? ` · index built ${bundle.index.builtAt}` : ' · no index'}`)
+  const indexNote = !bundle.index.present
+    ? 'no index'
+    : bundle.index.builtAt ? `index built ${bundle.index.builtAt}` : 'index present, build date unknown'
+  lines.push(`bundle ${bundle.id} · ${indexNote}`)
   return lines.join('\n')
 }

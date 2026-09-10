@@ -14,6 +14,8 @@ Most documentation rots silently. DEP prevents this with three mechanisms:
 
 ## Quick Start
 
+New here? [**USAGE.md**](USAGE.md) walks every command with the output you should expect.
+
 ### Install the CLI
 
 ```bash
@@ -73,7 +75,8 @@ All commands support `--json` for machine-readable output.
 | `dep query --type reference --root .` | Filter documents by metadata |
 | `dep index --root .` | Auto-generate index files (`--dry` for preview) |
 | `dep search "term" --root .` | Full-text search with relevance scoring (`--semantic`, `--hybrid`) |
-| `dep vectorize --root .` | Build/rebuild vector index for semantic search (`--force`, `--provider`) |
+| `dep vectorize --root .` | Build/refresh the vector index (`--force`, `--provider local\|openai\|hash`, `--only <file>`, `--install-hook`) |
+| `dep context "question" --budget 8000 --root .` | Assemble a context bundle: passages packed to a budget, stale ones withheld, each with provenance (`--audience`, `--type`, `--tag`, `--within`, `--freshness`, `--depth`, `--json`) |
 | `dep neighbors <file> --depth 2 --root .` | Transitive graph traversal |
 | `dep roadmap <audience> --root .` | Learning path for an audience persona |
 | `dep prereqs <file> --root .` | Prerequisite chain for a document |
@@ -88,6 +91,20 @@ Use these instead of editing YAML frontmatter directly.
 | `dep bump <file> --root .` | Bump `last_verified` to now (`--all` for bulk, with filters) |
 | `dep tag <file> --add <tag> --root .` | Add or remove tags |
 | `dep link <file> --target <path> --rel <REL> --root .` | Add, update, or remove links |
+
+### Context bundles and the library
+
+`dep context` turns a documentation set into a retrieval layer for agents: it ranks passages by meaning and wording, pulls in what a passage requires, withholds knowledge past its review date, and packs the result to a token budget — every passage saying where it came from and why it is there.
+
+The same engine is callable from your own program via `cli/src/lib.ts`:
+
+```ts
+import { openDocumentationSet } from '@dep/cli/src/lib'
+const set = openDocumentationSet('.')
+const bundle = await set.context('how is freshness decided', { budget: 4000, audience: 'ai-agent' })
+```
+
+`context()`, `search()`, `graph()`, `validate()`, `metadata()`, `index()` and `procedureStep()` return values; failures are thrown as `DepError`. See [How-To: Embed DEP in Your Own Program](docs/how-to/embed-dep-in-your-program.md).
 
 ### DAP commands (Decision Action Protocol)
 
@@ -209,7 +226,9 @@ cd cli && bun install
 bun run src/index.ts validate --root ..
 
 # Run tests
-bun test
+bun test                  # unit tests
+bun run test:stories      # desired user stories (Cucumber, in-process)
+(cd ../tests && bun run test)   # shipped user stories (Cucumber, subprocess)
 
 # Build standalone binary (current platform)
 bun run build:local
@@ -222,10 +241,13 @@ Releases are automated via GitHub Actions — push a version tag (`v*`) to trigg
 
 ## Documentation
 
+- **Usage guide**: [USAGE.md](USAGE.md) — every command, with the output to expect
 - **Start here**: [seed.md](seed.md) — the foundational specification
 - **DAP spec**: [dap/dap-seed.md](dap/dap-seed.md) — the DAP specification
 - **Browse by audience or type**: [docs/index.md](docs/index.md)
 - **Tutorials**: [Write your first DEP document](docs/tutorials/write-your-first-dep-document.md) | [Bootstrap DEP for your project](docs/tutorials/bootstrap-dep-for-your-project.md) | [Integrate DEP into an agent](docs/tutorials/integrate-dep-into-agent.md)
+- **Context engine**: [Assemble a context bundle](docs/how-to/assemble-a-context-bundle.md) | [Keep the index current](docs/how-to/keep-the-index-current.md) | [Embed DEP in your program](docs/how-to/embed-dep-in-your-program.md) | [Bundle schema](docs/reference/context-bundle-schema.md) | [Why budgeted context](docs/explanation/why-budgeted-context.md)
+- **User stories**: [shipped](docs/user-stories/features/README.md) (FLOW-01…23) | [desired](docs/desired-user-stories/features/README.md) (FLOW-24…32) — black-box Gherkin, each with a Cucumber harness
 
 ## License
 

@@ -22,6 +22,8 @@ dep:
       rel: USES
     - target: ../reference/dep-skills-api.md
       rel: USES
+    - target: assemble-a-context-bundle.md
+      rel: NEXT
 ---
 
 # How-To: Validate a Document
