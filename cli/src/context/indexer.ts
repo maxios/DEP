@@ -49,7 +49,7 @@ export async function runIndex(ctx: IndexContext, options: IndexOptions = {}): P
     if (options.force) clearIndex(db)
 
     const report: IndexReport = {
-      processed: [], reused: [], removed: [], unreadable: [], chunks: 0, provider: provider.name,
+      processed: [], reused: [], removed: [], unreadable: [...(graph.unreadable ?? [])], chunks: 0, provider: provider.name,
       builtAt: getMeta(db, 'built_at'), incomplete: false,
     }
 

@@ -117,6 +117,8 @@ switch (command) {
       force: !!flags.force,
       provider: flags.provider as string | undefined,
       dry: !!flags.dry,
+      installHook: !!flags['install-hook'],
+      only: flags.only as string | undefined,
     })
     break
   }
@@ -242,8 +244,8 @@ Usage:
                                         Full-text or semantic search across documents
   dep context <question> [--budget N] [--audience] [--type] [--tag] [--within] [--freshness] [--depth N] [--no-expand] [--min-score F] [--json]
                                         Assemble a budgeted, freshness-aware context bundle
-  dep vectorize [--force] [--provider local|openai] [--dry] [--json]
-                                        Build/rebuild vector index for semantic search
+  dep vectorize [--force] [--provider local|openai|hash] [--only <file>] [--install-hook] [--dry] [--json]
+                                        Build/refresh the vector index (or install a post-commit hook that does)
   dep neighbors <file> [--depth=N] [--follow=RELS] [--direction=in|out|both] [--json]
                                         Transitive graph traversal
   dep roadmap <audience_id> [--json]    Audience-specific learning path

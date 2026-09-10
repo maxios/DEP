@@ -1,4 +1,4 @@
-import { existsSync, statSync, readFileSync } from 'fs'
+import { existsSync, statSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from 'fs'
 import { join } from 'path'
 import { loadDocspec } from '../config'
 import { buildGraph } from '../graph'
@@ -184,6 +184,29 @@ export class DocumentationSet {
     return runIndex({ root: this.root, config: this._config, graph: this._graph!, provider }, options)
   }
 
+  /**
+   * Make the project bring its index up to date whenever a commit lands, by
+   * installing a git post-commit hook. Returns where the hook was written.
+   */
+  installIndexHook(options: { command?: string } = {}): { path: string; command: string } {
+    const gitDir = join(this.root, '.git')
+    if (!existsSync(gitDir)) {
+      throw new DepError('NOT_A_DIRECTORY', `${this.root} is not a git repository; there is nowhere to install a commit hook`, { root: this.root })
+    }
+    const command = options.command ?? defaultCliCommand()
+    const hooksDir = join(gitDir, 'hooks')
+    mkdirSync(hooksDir, { recursive: true })
+    const path = join(hooksDir, 'post-commit')
+    writeFileSync(path, [
+      '#!/bin/sh',
+      '# installed by dep — keeps the retrieval index in step with committed documents',
+      `${command} vectorize --root . --json`,
+      '',
+    ].join('\n'))
+    chmodSync(path, 0o755)
+    return { path, command }
+  }
+
   close(): void {
     if (this._provider && this._providerReady) this._provider.dispose()
     this._provider = null
@@ -261,4 +284,11 @@ export class DocumentationSet {
     this._providerReady = true
     return this._provider
   }
+}
+
+/** How to invoke this very CLI again from a hook: the binary, or bun plus the entry file. */
+function defaultCliCommand(): string {
+  const entry = process.argv[1] ?? ''
+  if (entry.endsWith('.ts') || entry.endsWith('.js')) return `${JSON.stringify(process.execPath)} ${JSON.stringify(entry)}`
+  return JSON.stringify(process.execPath)
 }

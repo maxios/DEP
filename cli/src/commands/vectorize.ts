@@ -1,18 +1,15 @@
-import { readFileSync } from 'fs'
 import { join } from 'path'
 import { buildGraph } from '../graph'
 import { loadDocspec } from '../config'
 import { createProvider } from '../embeddings/provider'
 import { chunkDocument } from '../vectorstore/chunker'
-import {
-  openVectorDB, initDB, getDocHash, upsertChunks,
-  removeDoc, getAllIndexedDocs, getMeta, setMeta, hashContent,
-} from '../vectorstore/db'
+import { openDocumentationSet, DepError } from '../lib'
+import type { EmbeddingProvider } from '../embeddings/provider'
 import type { VectorizationConfig } from '../types'
 
 export async function vectorizeCommand(
   root: string,
-  flags: { json?: boolean; force?: boolean; provider?: string; dry?: boolean }
+  flags: { json?: boolean; force?: boolean; provider?: string; dry?: boolean; installHook?: boolean; only?: string }
 ) {
   const config = loadDocspec(root)
   const vecConfig: VectorizationConfig = {
@@ -44,95 +41,38 @@ export async function vectorizeCommand(
     return
   }
 
-  // Initialize provider
-  console.log(`Initializing ${vecConfig.provider} embedding provider...`)
-  const provider = await createProvider(vecConfig)
-  await provider.init()
+  let embeddings: EmbeddingProvider | undefined
+  if (flags.provider) embeddings = await createProvider(vecConfig)
 
-  // Open/create DB
-  const db = openVectorDB(root)
-  initDB(db)
-
-  // Check for model mismatch
-  const storedModel = getMeta(db, 'model_name')
-  const storedDims = getMeta(db, 'embedding_dim')
-  if (storedModel && storedModel !== provider.name && !flags.force) {
-    console.error(`Model mismatch: index uses "${storedModel}" but current provider is "${provider.name}"`)
-    console.error('Use --force to rebuild the index with the new model.')
-    db.close()
-    provider.dispose()
-    process.exit(1)
-  }
-
-  let created = 0
-  let updated = 0
-  let skipped = 0
-  let totalChunks = 0
-
-  for (const docPath of docPaths) {
-    const fullPath = join(root, docPath)
-    const content = readFileSync(fullPath, 'utf-8')
-    const currentHash = hashContent(content)
-    const storedHash = getDocHash(db, docPath)
-
-    if (!flags.force && storedHash === currentHash) {
-      skipped++
-      continue
+  try {
+    const set = openDocumentationSet(root, embeddings ? { embeddings } : {})
+    if (flags.installHook) {
+      const hook = set.installIndexHook()
+      if (flags.json) console.log(JSON.stringify(hook, null, 2))
+      else console.log(`Installed ${hook.path}\n  runs: ${hook.command} vectorize --root . --json`)
+      set.close()
+      return
     }
+    if (!flags.json) console.log(`Initializing ${vecConfig.provider} embedding provider...`)
+    const report = await set.index({ force: flags.force, only: flags.only })
+    set.close()
 
-    const chunks = chunkDocument(fullPath, root, maxChars)
-    if (chunks.length === 0) {
-      skipped++
-      continue
+    if (flags.json) {
+      console.log(JSON.stringify(report, null, 2))
+      return
     }
-
-    // Embed all chunks
-    const texts = chunks.map((c) => c.content)
-    const embeddings = await provider.embed(texts)
-
-    const dbChunks = chunks.map((chunk, i) => ({
-      headingPath: chunk.headingPath,
-      content: chunk.content,
-      embedding: embeddings[i]!,
-    }))
-
-    upsertChunks(db, docPath, dbChunks, currentHash)
-    totalChunks += chunks.length
-
-    if (storedHash) {
-      updated++
-    } else {
-      created++
+    const total = report.processed.length + report.reused.length
+    console.log(`Vectorized ${total} docs (${report.processed.length} processed, ${report.reused.length} reused${report.removed.length ? `, ${report.removed.length} removed` : ''}), ${report.chunks} chunks`)
+    for (const doc of report.processed) console.log(`  processed ${doc}`)
+    for (const doc of report.unreadable) console.log(`  could not read ${doc}`)
+    if (report.incomplete) console.log('  update did not finish; run again to resume')
+    console.log(`Model: ${report.provider}`)
+    console.log('Index: .dep-vectors.db')
+  } catch (err) {
+    if (err instanceof DepError) {
+      console.error(err.message)
+      process.exit(1)
     }
-
-    if (!flags.json) {
-      process.stdout.write(`\r  Indexed ${created + updated}/${docPaths.length - skipped} docs...`)
-    }
-  }
-
-  // Remove docs no longer in graph
-  const indexedDocs = getAllIndexedDocs(db)
-  const currentDocSet = new Set(docPaths)
-  let removed = 0
-  for (const indexed of indexedDocs) {
-    if (!currentDocSet.has(indexed)) {
-      removeDoc(db, indexed)
-      removed++
-    }
-  }
-
-  // Store metadata
-  setMeta(db, 'model_name', provider.name)
-  setMeta(db, 'embedding_dim', String(provider.dimensions))
-
-  provider.dispose()
-  db.close()
-
-  if (flags.json) {
-    console.log(JSON.stringify({ created, updated, skipped, removed, totalChunks, model: provider.name }, null, 2))
-  } else {
-    console.log(`\nVectorized ${docPaths.length} docs (${created} new, ${updated} updated, ${skipped} skipped${removed ? `, ${removed} removed` : ''}), ${totalChunks} total chunks`)
-    console.log(`Model: ${provider.name} (${provider.dimensions}d)`)
-    console.log(`Index: .dep-vectors.db`)
+    throw err
   }
 }
