@@ -16,6 +16,9 @@ export type {
   SearchOptions, SearchResults, DocumentMetadata,
 } from './context/types'
 export type { ValidationReport, ValidationResult } from './commands/validate'
+export { ProcedureSession } from './context/procedure'
+export type { ProcedureStep, ProcedureStepOptions, SupportPassage, ProcedureSessionState } from './context/procedure'
+export type { UsageReceipt, UsageReport } from './context/usage'
 export type { EmbeddingProvider } from './embeddings/provider'
 export { HashEmbeddingProvider } from './embeddings/hash'
 

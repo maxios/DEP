@@ -136,6 +136,7 @@ Given('a document it requires is past its review date', function (this: DepWorld
 })
 
 Then('the required document is present in the bundle', function (this: DepWorld) {
+  assert.ok(this.bundle, `no bundle; error: ${this.errorMessage()}`)
   assert.ok(this.passagesFrom(this.subject).length > 0, `${this.subject} not served; passages: ${this.bundle!.passages.map((p) => p.document)}`)
 })
 

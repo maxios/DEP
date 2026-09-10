@@ -62,8 +62,15 @@ export function passageId(document: string, section: string, content: string): s
   return hasher.digest('hex').slice(0, 16)
 }
 
-export function retrieve(question: string, options: NormalizedOptions, ctx: RetrievalContext): Bundle {
+export interface RetrievalInternals {
+  /** Passage ids to leave out (already supplied elsewhere); they are reported, not served. */
+  exclude?: Set<string>
+}
+
+export function retrieve(question: string, options: NormalizedOptions, ctx: RetrievalContext, internals: RetrievalInternals = {}): Bundle {
   const notices: Notice[] = []
+  const exclude = internals.exclude ?? new Set<string>()
+  const excluded: Bundle['excluded'] = []
   const withheld: Withheld[] = []
   const omitted: Omitted[] = []
   const questionTerms = terms(question)
@@ -116,6 +123,10 @@ export function retrieve(question: string, options: NormalizedOptions, ctx: Retr
   const candidates = new Map<string, Candidate[]>()
   for (const c of scored) {
     if (c.score > options.minScore) {
+      if (exclude.has(c.id)) {
+        excluded.push({ id: c.id, document: c.chunk.document, section: c.chunk.section })
+        continue
+      }
       if (!candidates.has(c.chunk.document)) candidates.set(c.chunk.document, [])
       candidates.get(c.chunk.document)!.push(c)
     }
@@ -125,7 +136,7 @@ export function retrieve(question: string, options: NormalizedOptions, ctx: Retr
   // ── expansion along typed relationships ──
   const requires = new Map<string, Set<string>>() // document → documents it requires (within the field)
   if (options.expand && seedDocuments.length > 0) {
-    expand(seedDocuments, candidates, byDocument, requires, allowed, ctx, options, notices)
+    expand(seedDocuments, candidates, byDocument, requires, allowed, ctx, options, notices, exclude)
   }
   for (const document of candidates.keys()) {
     const node = ctx.graph.nodes.get(document)
@@ -338,6 +349,7 @@ export function retrieve(question: string, options: NormalizedOptions, ctx: Retr
     passages,
     withheld,
     omitted,
+    excluded,
     notices,
     index: { present: ctx.index.present, builtAt: ctx.index.builtAt, provider: ctx.index.provider, incomplete: ctx.index.incomplete },
     usageRecordVersion: ctx.usageVersion,
@@ -368,7 +380,8 @@ function expand(
   allowed: Map<string, DepNode>,
   ctx: RetrievalContext,
   options: NormalizedOptions,
-  notices: Notice[]
+  notices: Notice[],
+  exclude: Set<string>
 ) {
   const bestScore = (document: string) => Math.max(...(candidates.get(document) ?? []).map((c) => c.score))
   const queue: Array<{ document: string; depth: number }> = seeds.map((document) => ({ document, depth: 0 }))
@@ -401,7 +414,7 @@ function expand(
       visited.add(target)
 
       const weight = RELATIONSHIP_WEIGHT[edge.rel] ?? 0.3
-      const pool = byDocument.get(target) ?? []
+      const pool = (byDocument.get(target) ?? []).filter((c) => !exclude.has(c.id))
       const representative = [...pool].sort((a, b) => b.score - a.score || a.chunk.chunkIndex - b.chunk.chunkIndex)[0]
       if (!representative) continue
       const score = parentScore * weight * Math.pow(DEPTH_DECAY, depth)

@@ -1,8 +1,12 @@
 # Desired capability — DEP as an embedded context engine
 
 Design notes behind the desired user stories in [`dep-context.feature.md`](dep-context.feature.md).
-Nothing here is built yet. This file exists so every desired feature has something concrete to
-trace back to; the `# Design:` comments in the stories point at the anchors below.
+This file exists so every desired feature has something concrete to trace back to; the
+`# Design:` comments in the stories point at the anchors below.
+
+**Status:** implemented in `cli/src/context/` behind `cli/src/lib.ts` (`openDocumentationSet`) and
+`dep context`; every story runs green under `cd cli && bun run test:stories`. The open questions in
+the story source still stand as decisions; where the implementation had to pick, it is noted there.
 
 ## Why
 

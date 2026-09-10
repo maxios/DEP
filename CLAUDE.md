@@ -36,6 +36,11 @@ dep neighbors seed.md --depth 2 --root .           # transitive graph traversal
 dep roadmap ai-agent --root .                      # audience learning path
 dep prereqs docs/tutorials/write-your-first-dep-document.md --root .  # prerequisite chain
 
+# Context bundles (retrieval packed to a budget, with freshness and provenance)
+dep context "how is freshness decided" --budget 8000 --audience ai-agent --json --root .
+dep vectorize --install-hook --root .       # post-commit hook keeps the index current
+dep vectorize --only docs/ref/schema.md     # refresh one document
+
 # Metadata write commands (use these instead of editing YAML directly)
 dep set docs/ref/schema.md --confidence high --root .   # set metadata field(s)
 dep bump docs/ref/schema.md --root .                    # bump last_verified to now
@@ -61,10 +66,12 @@ bun run build:local
 bun run build
 
 # Run tests
-bun test
-
-# Run a single test file (tests are co-located as *.test.ts)
+bun test                 # unit tests (co-located *.test.ts)
+bun run test:stories     # desired user stories, Cucumber under Bun (cli/features/)
 bun test src/dap/parser.test.ts
+
+# Shipped user stories (FLOW-01…23) have their own subprocess harness:
+cd ../tests && bun install && bun run test
 ```
 
 ## CLI Architecture
@@ -77,7 +84,10 @@ The CLI parses markdown files with YAML frontmatter, builds a directed graph of 
 - `cli/src/config.ts` — Loads `.docspec` YAML config from project root
 - `cli/src/types.ts` — All TypeScript interfaces (`DepMetadata`, `DepGraph`, `DepNode`, `DocspecConfig`, etc.)
 - `cli/src/output.ts` — Output formatting
-- `cli/src/commands/` — One file per command (graph, backlinks, validate, query, index-gen, search, vectorize, neighbors, roadmap, prereqs, set, bump, tag, link)
+- `cli/src/commands/` — One file per command (graph, backlinks, validate, query, index-gen, search, vectorize, context, neighbors, roadmap, prereqs, set, bump, tag, link)
+- `cli/src/lib.ts` — The embeddable surface: `openDocumentationSet(root)` returns a `DocumentationSet` that answers `context()`, `search()`, `graph()`, `validate()`, `metadata()`, `index()`, `procedureStep()` and the usage record as values; failures are thrown as `DepError` (never printed, never `process.exit`). The CLI commands `context`, `vectorize` and `validate` are thin wrappers over it.
+- `cli/src/context/` — The context engine: `retrieve.ts` (hybrid ranking with IDF-weighted keywords, typed-edge expansion, freshness policy, budget packing, provenance), `set.ts` (the `DocumentationSet`), `indexer.ts` (incremental index updates), `procedure.ts` (DAP steps with a carried budget), `usage.ts` (local record of what consumers used), `freshness.ts`, `options.ts`, `tokens.ts`
+- `cli/src/embeddings/hash.ts` — Deterministic, offline embedding provider (`vectorization.provider: hash`); lexical, used by tests and as a no-model fallback
 - `cli/src/embeddings/` — Embedding providers for semantic search (`local.ts` uses @huggingface/transformers, `openai.ts` for OpenAI API, `provider.ts` factory)
 - `cli/src/vectorstore/` — SQLite-backed vector store (`db.ts` for storage, `chunker.ts` for document splitting, `similarity.ts` for cosine similarity)
 

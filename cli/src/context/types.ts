@@ -107,6 +107,8 @@ export interface Bundle {
   passages: Passage[]
   withheld: Withheld[]
   omitted: Omitted[]
+  /** Relevant passages left out because they were already supplied elsewhere. */
+  excluded: Array<{ id: string; document: string; section: string }>
   notices: Notice[]
   index: { present: boolean; builtAt: string | null; provider: string | null; incomplete: boolean }
   usageRecordVersion: number
@@ -134,7 +136,10 @@ export interface IndexReport {
 export interface OpenOptions {
   embeddings?: EmbeddingProvider
   now?: () => Date
+  /** Where the project's decision procedures live. Default: <root>/dap */
   dapRoot?: string
+  /** Keep a local record of which passages consumers report using. Default: true */
+  usage?: boolean
 }
 
 export interface CandidateChunk {

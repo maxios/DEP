@@ -9,7 +9,13 @@ import { vectorDBExists, openVectorDB, getAllEmbeddings, getMeta, getAllDocHashe
 import type { DepGraph, DocspecConfig, VectorizationConfig } from '../types'
 import { DepError } from './errors'
 import { normalizeOptions } from './options'
-import { retrieve, type RetrievalContext } from './retrieve'
+import { retrieve, type RetrievalContext, type RetrievalInternals } from './retrieve'
+import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
+import { ProcedureSession, stepParts, treeIdFromRef, type ProcedureStep, type ProcedureStepOptions, type SupportPassage } from './procedure'
+import { buildDapGraph } from '../dap/tree-builder'
+import { getNodeTargets } from '../dap/tree-builder'
+import type { DapGraph } from '../dap/types'
+import { DEFAULT_BUDGET } from './options'
 import { runIndex } from './indexer'
 import { estimateTokens, inverseDocumentFrequency } from './tokens'
 import { computeFreshness } from './freshness'
@@ -38,6 +44,8 @@ export class DocumentationSet {
   private _fileHashes = new Map<string, string>()
   private _provider: EmbeddingProvider | null = null
   private _providerReady = false
+  private _usage: UsageStore | null
+  private _dap: DapGraph | null = null
 
   constructor(root: string, options: OpenOptions = {}) {
     if (!existsSync(root) || !statSync(root).isDirectory()) {
@@ -51,6 +59,12 @@ export class DocumentationSet {
     this.options = options
     this.now = options.now ?? (() => new Date())
     this._config = loadDocspec(root)
+    this._usage = options.usage === false ? null : new UsageStore(join(root, '.dep-usage.json'))
+  }
+
+  /** Where the usage record lives, if one is kept. */
+  get usagePath(): string | null {
+    return this._usage?.path ?? null
   }
 
   config(): DocspecConfig {
@@ -65,10 +79,158 @@ export class DocumentationSet {
   /** Read the project from disk again. Call after documents change. */
   refresh(): void {
     this._graph = null
+    this._dap = null
     this.ensureLoaded()
   }
 
   async context(question: string, options: ContextOptions = {}): Promise<Bundle> {
+    return this.assemble(question, options)
+  }
+
+  // ── usage record ──────────────────────────────────────────────────────
+
+  /** Report which passages of a bundle were actually used. */
+  recordUsage(bundleId: string, used: string[]): UsageReceipt {
+    if (!this._usage) return { recorded: false, reason: 'this set keeps no usage record' }
+    const bundle = this._usage.knows(bundleId)
+    if (!bundle) {
+      throw new DepError('UNKNOWN_BUNDLE', `bundle "${bundleId}" cannot be matched to a bundle this set produced`, { bundleId })
+    }
+    const offered = new Set(bundle.passages.map((p) => p.id))
+    for (const id of used) {
+      if (!offered.has(id)) {
+        throw new DepError('UNKNOWN_PASSAGE', `passage "${id}" cannot be matched to a bundle this set produced`, { bundleId, passageId: id })
+      }
+    }
+    return this._usage.record(bundleId, bundle, used)
+  }
+
+  usageReport(): UsageReport {
+    if (!this._usage) return { version: 0, bundles: 0, passages: {}, passedOver: [] }
+    return this._usage.report()
+  }
+
+  clearUsage(): { cleared: boolean; removed: number } {
+    if (!this._usage) return { cleared: false, removed: 0 }
+    return this._usage.clear()
+  }
+
+  // ── procedures ────────────────────────────────────────────────────────
+
+  procedureSession(options: { budget: number }): ProcedureSession {
+    if (typeof options.budget !== 'number' || !Number.isFinite(options.budget) || options.budget <= 0) {
+      throw new DepError('INVALID_BUDGET', 'budget must be a positive number', { budget: options.budget })
+    }
+    return new ProcedureSession(options.budget)
+  }
+
+  /**
+   * One step of a procedure, delivered whole, with the supporting knowledge
+   * it needs packed to a budget — per step, or carried in a session.
+   */
+  async procedureStep(treeId: string, nodeId: string, options: ProcedureStepOptions = {}): Promise<ProcedureStep> {
+    const dap = this.procedures()
+    const tree = dap.trees.get(treeId)
+    if (!tree) {
+      throw new DepError('TREE_NOT_FOUND', `procedure "${treeId}" is not declared; declared procedures: ${[...dap.trees.keys()].join(', ') || '(none)'}`, { tree: treeId })
+    }
+    const node = tree.nodes.get(nodeId)
+    if (!node) {
+      throw new DepError('NODE_NOT_FOUND', `step "${nodeId}" is not declared by procedure "${treeId}"; declared steps: ${[...tree.nodes.keys()].join(', ')}`, { tree: treeId, step: nodeId })
+    }
+    const session = options.session ?? null
+    const notices: Bundle['notices'] = []
+    const parts = stepParts(node)
+    const stepTokens = estimateTokens(parts.map((p) => p.text).join(' '))
+
+    let declared: number
+    let available: number
+    if (session) {
+      declared = session.declared
+      available = session.remaining
+    } else {
+      declared = options.budget ?? DEFAULT_BUDGET
+      if (typeof declared !== 'number' || !Number.isFinite(declared) || declared <= 0) {
+        throw new DepError('INVALID_BUDGET', 'budget must be a positive number', { budget: declared })
+      }
+      available = declared - stepTokens
+      if (available <= 0) {
+        notices.push({ code: 'step-exceeds-budget', message: `the step alone (${stepTokens} tokens) exceeds the declared budget of ${declared}`, stepTokens })
+        available = 0
+      }
+    }
+
+    const passages: SupportPassage[] = []
+    const alreadySupplied = new Map<string, ProcedureStep['support']['alreadySupplied'][number]>()
+    const suppliedNow = new Set<string>()
+    let used = 0
+    let nothingFit = false
+    for (const { part, text } of parts) {
+      const remaining = available - used
+      if (remaining < 1) break
+      const exclude = new Set<string>([...(session?.supplied.keys() ?? []), ...suppliedNow])
+      let bundle: Bundle
+      try {
+        bundle = await this.assemble(text, { budget: remaining, expand: false }, { exclude })
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err)
+        notices.push({ code: 'support-unavailable', message: `no supporting knowledge could be retrieved: ${reason}`, reason })
+        break
+      }
+      if (bundle.notices.some((n) => n.code === 'nothing-fits')) nothingFit = true
+      for (const p of bundle.passages) {
+        passages.push({ ...p, supports: part })
+        suppliedNow.add(p.id)
+        used += p.tokens
+        session?.supplied.set(p.id, { document: p.document, step: nodeId, tree: treeId })
+      }
+      for (const e of bundle.excluded) {
+        const where = session?.supplied.get(e.id)
+        if (!alreadySupplied.has(e.id)) {
+          alreadySupplied.set(e.id, { id: e.id, document: e.document, step: where?.step ?? nodeId, tree: where?.tree ?? treeId })
+        }
+      }
+    }
+    if (session) {
+      session.used += used
+      if (passages.length === 0 && (session.remaining === 0 || nothingFit)) {
+        notices.push({ code: 'budget-exhausted', message: "no further supporting knowledge can be supplied within the procedure's budget" })
+      }
+    }
+
+    const handoff = node.delegate_to ? this.handoffTarget(dap, node.delegate_to) : null
+    return {
+      tree: treeId,
+      step: { ...node, tokens: stepTokens },
+      next: getNodeTargets(node),
+      handoff,
+      support: {
+        passages,
+        alreadySupplied: [...alreadySupplied.values()],
+        budget: { declared, used, remaining: Math.max(0, (session ? session.declared : declared) - (session ? session.used : stepTokens + used)) },
+      },
+      session: session ? session.snapshot() : null,
+      notices,
+    }
+  }
+
+  private handoffTarget(dap: DapGraph, ref: string): ProcedureStep['handoff'] {
+    const tree = treeIdFromRef(ref)
+    const target = dap.trees.get(tree)
+    return { tree, entry: target?.metadata.entry_node ?? '' }
+  }
+
+  private procedures(): DapGraph {
+    if (this._dap) return this._dap
+    const dapRoot = this.options.dapRoot ?? join(this.root, 'dap')
+    if (!existsSync(join(dapRoot, '.dapspec'))) {
+      throw new DepError('TREE_NOT_FOUND', `the project declares no procedures (${join(dapRoot, '.dapspec')} is missing)`, { dapRoot })
+    }
+    this._dap = buildDapGraph(dapRoot)
+    return this._dap
+  }
+
+  private async assemble(question: string, options: ContextOptions, internals: RetrievalInternals = {}): Promise<Bundle> {
     const normalized = normalizeOptions(options, this._config)
     this.ensureLoaded()
 
@@ -113,7 +275,8 @@ export class DocumentationSet {
       chunks = this.chunkOnTheFly()
     }
 
-    return retrieve(question, normalized, {
+    const usage = this._usage
+    const bundle = retrieve(question, normalized, {
       config: this._config,
       graph: this._graph!,
       titles: this._titles,
@@ -122,9 +285,11 @@ export class DocumentationSet {
       queryEmbedding,
       index,
       fileHashes: this._fileHashes,
-      usage: null,
-      usageVersion: 0,
-    })
+      usage: usage ? { factor: (id, questionTerms) => usage.factor(id, questionTerms) } : null,
+      usageVersion: usage ? usage.version : 0,
+    }, internals)
+    usage?.offer(bundle.id, { question, passages: bundle.passages.map((p) => ({ id: p.id, document: p.document })) })
+    return bundle
   }
 
   /** Documents ranked for a query — the same ranking a bundle uses, without a budget. */
