@@ -1,0 +1,20 @@
+{
+  "name": "@dep/acceptance-tests",
+  "private": true,
+  "type": "module",
+  "description": "Cucumber acceptance tests for the user stories in docs/user-stories",
+  "scripts": {
+    "test": "bun run cucumber-js",
+    "test:all": "bun run cucumber-js --profile all",
+    "test:wip": "bun run cucumber-js --profile wip",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^11.3.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3"
+  }
+}
