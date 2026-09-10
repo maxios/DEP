@@ -496,8 +496,7 @@ Feature: FLOW-28 Explain why every piece of context was chosen
   Scenario: Every passage says why it is in the bundle
     # Design: docs/desired-user-stories/context-engine-design.md#provenance
     When I ask for context
-    Then each passage declares whether it matched my question directly,
-      was required by another passage, or was reached by expanding from one
+    Then each passage declares whether it matched my question directly, was required by another passage, or was reached by expanding from one
     And a passage present only as background is not presented as an answer
 
   @happy-path

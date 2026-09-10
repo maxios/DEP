@@ -121,3 +121,12 @@ export function hashContent(content: string): string {
   hasher.update(content)
   return hasher.digest('hex')
 }
+
+export function getAllDocHashes(db: Database): Map<string, string> {
+  const rows = db.query<{ doc_path: string; content_hash: string }, []>('SELECT doc_path, content_hash FROM doc_hashes').all()
+  return new Map(rows.map((r) => [r.doc_path, r.content_hash]))
+}
+
+export function clearIndex(db: Database): void {
+  db.exec('DELETE FROM chunks; DELETE FROM doc_hashes;')
+}

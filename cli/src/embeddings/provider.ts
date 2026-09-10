@@ -9,6 +9,10 @@ export interface EmbeddingProvider {
 }
 
 export async function createProvider(config: VectorizationConfig): Promise<EmbeddingProvider> {
+  if (config.provider === 'hash') {
+    const { HashEmbeddingProvider } = await import('./hash')
+    return new HashEmbeddingProvider(config.model)
+  }
   if (config.provider === 'openai') {
     const { OpenAIEmbeddingProvider } = await import('./openai')
     return new OpenAIEmbeddingProvider(config.model)

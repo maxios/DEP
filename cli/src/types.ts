@@ -37,6 +37,8 @@ export interface DepGraph {
   edges: DepEdge[]
   orphans: string[]
   cycles: string[][]
+  /** Documents that could not be read and were left out of the graph. */
+  unreadable?: string[]
 }
 
 export interface AudienceConfig {
@@ -80,7 +82,7 @@ export interface DocspecConfig {
 // Vector types
 
 export interface VectorizationConfig {
-  provider: 'local' | 'openai'
+  provider: 'local' | 'openai' | 'hash'
   model?: string
   chunk_max_tokens?: number
 }

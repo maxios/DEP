@@ -16,11 +16,19 @@ export function buildGraph(projectRoot: string): DepGraph {
 
   const nodes = new Map<string, DepNode>()
   const allEdges: DepEdge[] = []
+  const unreadable: string[] = []
 
   // Parse all documents
   for (const relPath of mdFiles) {
     const fullPath = join(projectRoot, relPath)
-    const parsed = parseDocument(fullPath, projectRoot)
+    let parsed: ReturnType<typeof parseDocument>
+    try {
+      parsed = parseDocument(fullPath, projectRoot)
+    } catch {
+      // A document that cannot be read must not take the whole set down with it
+      unreadable.push(relPath)
+      continue
+    }
     if (!parsed) continue
 
     const forwardLinks = [...parsed.typedLinks]
@@ -56,7 +64,7 @@ export function buildGraph(projectRoot: string): DepGraph {
   // Detect cycles
   const cycles = detectCycles(nodes)
 
-  return { nodes, edges: allEdges, orphans, cycles }
+  return { nodes, edges: allEdges, orphans, cycles, unreadable }
 }
 
 function findMarkdownFiles(root: string, config: DocspecConfig): string[] {

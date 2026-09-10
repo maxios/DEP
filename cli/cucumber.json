@@ -1,0 +1,9 @@
+{
+  "default": {
+    "paths": ["../docs/desired-user-stories/features/*.feature"],
+    "import": ["features/support/*.ts", "features/steps/*.ts"],
+    "format": ["progress"],
+    "publishQuiet": true,
+    "failFast": false
+  }
+}

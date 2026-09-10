@@ -15,6 +15,7 @@ import { bumpCommand } from './commands/bump'
 import { tagCommand } from './commands/tag'
 import { linkCommand } from './commands/link'
 import { vectorizeCommand } from './commands/vectorize'
+import { contextCommand } from './commands/context'
 import { dapCommand } from './dap/index'
 
 const args = process.argv.slice(2)
@@ -96,6 +97,17 @@ switch (command) {
       semantic: !!searchFlags.semantic,
       hybrid: !!searchFlags.hybrid,
     })
+    break
+  }
+
+  case 'context': {
+    const question = args[1]
+    if (!question || question.startsWith('--')) {
+      console.error('Usage: dep context <question> [--budget N] [--audience <id>] [--type <type>] [--tag <a,b>] [--within <path>] [--freshness <pref>] [--depth N] [--no-expand] [--min-score F] [--json]')
+      process.exit(1)
+    }
+    const ctxFlags = parseFlags(args.slice(2))
+    await contextCommand(getRoot(ctxFlags), question, ctxFlags as any)
     break
   }
 
@@ -228,6 +240,8 @@ Usage:
   dep index [--dry|--json]              Auto-generate index files from metadata
   dep search <query> [--semantic|--hybrid] [--type] [--audience] [--json]
                                         Full-text or semantic search across documents
+  dep context <question> [--budget N] [--audience] [--type] [--tag] [--within] [--freshness] [--depth N] [--no-expand] [--min-score F] [--json]
+                                        Assemble a budgeted, freshness-aware context bundle
   dep vectorize [--force] [--provider local|openai] [--dry] [--json]
                                         Build/rebuild vector index for semantic search
   dep neighbors <file> [--depth=N] [--follow=RELS] [--direction=in|out|both] [--json]
