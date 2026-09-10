@@ -102,6 +102,8 @@ export interface Bundle {
   budget: { declared: number; used: number; remaining: number; unit: 'tokens'; estimator: string }
   /** Documents that survived the restrictions and were scored. */
   considered: number
+  /** How passages got in: by matching the question, or by expansion from a match. */
+  reached: { matched: number; expanded: number }
   passages: Passage[]
   withheld: Withheld[]
   omitted: Omitted[]

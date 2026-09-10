@@ -180,7 +180,9 @@ export function retrieve(question: string, options: NormalizedOptions, ctx: Retr
     }
   }
 
-  if (seedDocuments.length === 0) {
+  if (allowed.size === 0) {
+    notices.push({ code: 'restriction-excluded-all', message: 'the restriction excluded every document in the set' })
+  } else if (seedDocuments.length === 0) {
     notices.push({ code: 'no-match', message: 'nothing in the set is about this question' })
   }
 
@@ -203,7 +205,7 @@ export function retrieve(question: string, options: NormalizedOptions, ctx: Retr
     return out
   }
 
-  const truncated: Omitted[] = []
+  const truncated = new Map<Candidate, string>() // left-out prerequisite → what needed it
   for (const c of pool) {
     if (selected.has(c)) continue
     const group = prerequisitesOf(c.chunk.document).filter((p) => !selected.has(p))
@@ -215,20 +217,26 @@ export function retrieve(question: string, options: NormalizedOptions, ctx: Retr
     } else if (used + c.chunk.tokens <= options.budget) {
       selected.add(c)
       used += c.chunk.tokens
-      for (const p of group) {
-        truncated.push({ document: p.chunk.document, section: p.chunk.section, tokens: p.chunk.tokens, reason: 'chain-truncated', requiredBy: c.chunk.document })
-      }
-    } else {
-      omitted.push({ document: c.chunk.document, section: c.chunk.section, tokens: c.chunk.tokens, reason: 'budget' })
+      for (const p of group) if (!truncated.has(p)) truncated.set(p, c.chunk.document)
     }
   }
-  const truncatedUnselected = truncated.filter((t) => ![...selected].some((s) => s.chunk.document === t.document && s.chunk.section === t.section))
-  if (truncatedUnselected.length > 0) {
-    omitted.push(...truncatedUnselected)
+  for (const c of pool) {
+    if (selected.has(c)) continue
+    const requiredBy = truncated.get(c)
+    omitted.push({
+      document: c.chunk.document,
+      section: c.chunk.section,
+      tokens: c.chunk.tokens,
+      reason: requiredBy ? 'chain-truncated' : 'budget',
+      ...(requiredBy ? { requiredBy } : {}),
+    })
+  }
+  const chainLeftOut = omitted.filter((o) => o.reason === 'chain-truncated')
+  if (chainLeftOut.length > 0) {
     notices.push({
       code: 'chain-truncated',
       message: 'the prerequisite chain did not fit within the budget',
-      omitted: truncatedUnselected.map((t) => t.document),
+      omitted: chainLeftOut.map((o) => o.document),
     })
   }
   if (selected.size === 0 && pool.length > 0) {
@@ -323,6 +331,10 @@ export function retrieve(question: string, options: NormalizedOptions, ctx: Retr
     ranking,
     budget: { declared: options.budget, used, remaining: options.budget - used, unit: 'tokens', estimator: TOKEN_ESTIMATOR },
     considered: allowed.size,
+    reached: {
+      matched: passages.filter((p) => p.reason.kind === 'match').length,
+      expanded: passages.filter((p) => p.reason.kind !== 'match').length,
+    },
     passages,
     withheld,
     omitted,
