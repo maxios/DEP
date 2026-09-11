@@ -28,46 +28,36 @@ dep:
 
 ## Prerequisites
 
-- Node 18 or newer on the machine (the launcher runs under Node; the CLI itself needs nothing)
 - A project with a `.docspec`
+- The `dep` CLI installed (`install.sh` on macOS/Linux, `install.ps1` on Windows, or `dep upgrade` if an older one is present). Node is **not** required.
 
 ## Steps
 
-### 1. Point npm at GitHub Packages
-
-The launcher is published on GitHub Packages under the `@maxios` scope, which npm must be told about — and, by GitHub's rule, needs a token with `read:packages` even for a public package. Once per machine:
+### 1. Print the entry for this machine
 
 ```bash
-cat >> ~/.npmrc <<'EOF'
-@maxios:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-EOF
+dep mcp --print-config --root /path/to/your/project
 ```
 
-### 2. Add the server to Claude Desktop
+The output names the installed binary and the project root with absolute paths, which is what Claude Desktop needs — `~` and `%USERPROFILE%` are not expanded in its configuration.
 
-In `claude_desktop_config.json`:
+### 2. Add it to Claude Desktop
+
+Merge the printed `mcpServers.dep` entry into `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`) and restart Claude Desktop.
+
+### 3. Let the server keep the CLI current
+
+Each time it starts, `dep mcp` looks for a newer release at most once a day and replaces the binary (after running the download and requiring it to report a version), keeping the previous one as `dep.prev`. Put `"env": { "DEP_MCP_UPGRADE": "never" }` in the entry to turn that off, or `"always"` to check on every start.
+
+### 4. Alternatively, let a launcher install it (needs Node 18+)
+
+If the machine has Node and you would rather not install the binary yourself, the `@maxios/dep-mcp` launcher does the install and the daily upgrade, then starts `dep mcp`:
 
 ```json
-{
-  "mcpServers": {
-    "dep": {
-      "command": "npx",
-      "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/your/project"]
-    }
-  }
-}
+{ "mcpServers": { "dep": { "command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/your/project"] } } }
 ```
 
-Without the registry setup, point at the file in a checkout: `"command": "node", "args": ["/path/to/DEP/packages/dep-mcp/index.mjs", "--root", "/path/to/your/project"]`.
-
-### 3. Let the launcher place the CLI
-
-On first start the launcher downloads the release for the machine's operating system and architecture to `~/.dep/bin/dep` (`~/.dep/bin/dep.exe` on Windows), runs it, requires it to report a version, and only then moves it into place. Set `DEP_HOME` to move the whole tree.
-
-### 4. Let it keep the CLI current
-
-Once a day the launcher asks for the latest release and installs it before starting the server, keeping the previous binary as `dep.prev`. `DEP_MCP_UPGRADE=never` (or `--no-upgrade`) turns this off; `DEP_VERSION=v0.3.0` pins a release.
+It is published on GitHub Packages, so `~/.npmrc` needs `@maxios:registry=https://npm.pkg.github.com` and a token with `read:packages` (GitHub requires one even for public packages). Without Node, use steps 1–3.
 
 ### 5. Use the tools
 
@@ -84,7 +74,7 @@ Every tool takes an optional `root`, so one server can serve several projects.
 
 ## Verification
 
-- `node packages/dep-mcp/index.mjs --print-location` prints the path the CLI will live at
+- `dep mcp --print-config` prints an entry whose `command` exists on disk
 - Claude Desktop lists the eleven tools under the `dep` server
 - `dep_version` reports 0.3.0 or newer
 

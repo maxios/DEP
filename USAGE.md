@@ -45,14 +45,14 @@ an issue if something fails. Windows: `irm …/install.ps1 | iex`.
 
 ```
 $ dep doctor
-dep 0.3.1 · darwin-arm64 (dep-darwin-arm64) · home ~/.dep
+dep 0.3.2 · darwin-arm64 (dep-darwin-arm64) · home ~/.dep
 
-  ✓ version           dep 0.3.1 (standalone binary)
+  ✓ version           dep 0.3.2 (standalone binary)
   ✓ home              ~/.dep is writable
   ✓ validate          2 document(s) pass, graph checks pass
   ✓ index             2 document(s), 4 chunks, provider hash:v1-4096
   ✓ context           2 passage(s), ranking hybrid
-  ✓ mcp               server dep 0.3.1 answered initialize
+  ✓ mcp               server dep 0.3.2 answered initialize
 
 All checks pass — dep works on this machine.
 ```
@@ -714,34 +714,34 @@ step.support.alreadySupplied // what an earlier step already gave you
 
 ## 11. From Claude Desktop (MCP)
 
-`dep mcp` speaks the Model Context Protocol over stdio; the `@maxios/dep-mcp`
-launcher gets the CLI onto the machine first and keeps it there.
+`dep mcp` speaks the Model Context Protocol over stdio. Point Claude Desktop
+straight at the binary — the CLI prints the entry with the absolute paths the
+desktop app needs, on any operating system, with no other runtime:
 
 ```
-  claude_desktop_config.json
-  { "mcpServers": { "dep": { "command": "npx",
-                             "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"] } } }
-           │
-           ▼
-   npx @maxios/dep-mcp ──▶ ~/.dep/bin/dep missing?  ──▶ download · run · verify · place
-                ──▶ newer release (≤ daily)? ──▶ install, keep dep.prev
-                ──▶ exec  dep mcp --root …        stdout = protocol, stderr = notes
-           │
-           ▼
+$ dep mcp --print-config --root /path/to/project
+{ "mcpServers": { "dep": { "command": "/Users/you/.dep/bin/dep",
+                           "args": ["mcp", "--root", "/path/to/project"] } } }
+```
+
+```
+  claude_desktop_config.json ──▶ ~/.dep/bin/dep mcp --root …
+                                         │
+                                         ├─ newer release (≤ daily)? ─▶ replace self, keep dep.prev
+                                         │      DEP_MCP_UPGRADE = daily | always | never
+                                         └─ serve   stdout = protocol, stderr = notes
+
    tools:  dep_context  dep_search  dep_validate  dep_graph  dep_query
            dep_metadata dep_index   dap_resolve   dap_node   dap_trace  dep_version
 ```
 
-Same place on every operating system — `~/.dep/bin/dep`, `dep.exe` on
-Windows; `DEP_HOME` moves the tree. Every tool takes an optional `root`, so
-one server serves many projects. What a call returns is the same value the
-CLI's `--json` prints, as `structuredContent`:
+Every tool takes an optional `root`, so one server serves many projects. A
+call returns the same value the CLI's `--json` prints, as `structuredContent`.
 
-```
-  tools/call dep_context {question, budget: 1500}
-    → { content: [{type: "text", …}],
-        structuredContent: { passages: […], budget: {used: 1498, …}, … } }
-```
+Machines with Node 18+ can let the `@maxios/dep-mcp` launcher (GitHub
+Packages) install the binary too: `"command": "npx", "args": ["-y",
+"@maxios/dep-mcp", "--root", …]`. Never assume Node is there — the binary
+route above needs nothing.
 
 ## 12. From Claude Code
 

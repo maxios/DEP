@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, renameSync, unlinkSync, writeFileSync } from 'fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs'
 import { basename, dirname, join } from 'path'
 import { spawnSync } from 'child_process'
 import pkg from '../../package.json'
@@ -26,8 +26,81 @@ function fail(message: string, json?: boolean): never {
   process.exit(1)
 }
 
-function runningFromSource(): boolean {
+export function runningFromSource(): boolean {
   return basename(process.execPath).replace(/\.exe$/, '') === 'bun'
+}
+
+/** How to start this very CLI again: the binary, or bun plus the entry file. */
+export function selfCommand(): { command: string; args: string[] } {
+  const entry = process.argv[1] ?? ''
+  if (runningFromSource()) return { command: process.execPath, args: ['run', entry] }
+  return { command: process.execPath, args: [] }
+}
+
+export type UpgradePolicy = 'daily' | 'always' | 'never'
+
+const DAY = 24 * 60 * 60 * 1000
+
+/**
+ * The check a long-running command makes on start: at most once a day (or as
+ * DEP_MCP_UPGRADE says), ask for the latest release and, if it is newer,
+ * replace this binary — the same verified swap `dep upgrade` performs. Never
+ * throws and never takes long: a slow or absent release service is a note on
+ * stderr, not a failed start. Returns a one-line account of what happened.
+ */
+export async function selfUpgradeIfDue(options: { policy?: string; log?: (line: string) => void; timeoutMs?: number } = {}): Promise<string> {
+  const log = options.log ?? (() => {})
+  const policy = (options.policy ?? process.env.DEP_MCP_UPGRADE ?? 'daily') as UpgradePolicy
+  if (policy === 'never') return 'release check skipped: upgrades are declared off'
+  if (runningFromSource()) return 'release check skipped: running from source (git pull to update)'
+
+  const { depHome } = await import('../embeddings/native')
+  const statePath = join(depHome(), 'mcp-state.json')
+  let state: { lastCheck?: number; installed?: string } = {}
+  try { state = JSON.parse(readFileSync(statePath, 'utf-8')) } catch {}
+  if (policy === 'daily' && state.lastCheck && Date.now() - state.lastCheck < DAY) return 'release check skipped: already checked today'
+
+  const api = process.env.DEP_RELEASES_API ?? DEFAULT_API
+  const downloads = process.env.DEP_RELEASES_DOWNLOAD ?? DEFAULT_DOWNLOAD
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 5000)
+  try {
+    const response = await fetch(`${api}/latest`, { signal: controller.signal, headers: { accept: 'application/vnd.github+json', 'user-agent': `dep/${VERSION}` } })
+    if (!response.ok) return `release check failed: the release service answered ${response.status}`
+    const release = (await response.json()) as { tag_name?: string }
+    const latest = (release.tag_name ?? '').replace(/^v/, '')
+    writeState(statePath, { ...state, lastCheck: Date.now() })
+    if (!latest || compareVersions(latest, VERSION) <= 0) return `release check: dep ${VERSION} is current`
+
+    const target = process.execPath
+    const temp = join(dirname(target), `.${basename(target)}.download`)
+    const asset = `${downloads}/${release.tag_name}/${platformBinary()}`
+    const download = await fetch(asset, { signal: controller.signal, headers: { 'user-agent': `dep/${VERSION}` } })
+    if (!download.ok) return `release check: ${latest} is available but the download answered ${download.status}`
+    writeFileSync(temp, new Uint8Array(await download.arrayBuffer()))
+    chmodSync(temp, 0o755)
+    const probe = spawnSync(temp, ['version'], { encoding: 'utf-8' })
+    if (probe.status !== 0 || !/^dep \d+\.\d+/.test((probe.stdout ?? '').trim())) {
+      if (existsSync(temp)) unlinkSync(temp)
+      return `release check: ${latest} was downloaded but could not be verified; kept ${VERSION}`
+    }
+    if (existsSync(target)) renameSync(target, `${target}.prev`)
+    renameSync(temp, target)
+    writeState(statePath, { lastCheck: Date.now(), installed: latest })
+    log(`upgraded dep ${VERSION} → ${latest}; the new version serves from the next start`)
+    return `upgraded dep ${VERSION} → ${latest}`
+  } catch (err) {
+    return `release check skipped: the release service could not be reached (${err instanceof Error ? err.message : String(err)})`
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+function writeState(path: string, state: unknown) {
+  try {
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, JSON.stringify(state, null, 2))
+  } catch {}
 }
 
 function platformBinary(): string {

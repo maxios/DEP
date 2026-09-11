@@ -71,7 +71,7 @@ switch (command) {
     break
 
   case 'mcp':
-    await mcpCommand(flags.root ? resolve(flags.root as string) : process.cwd())
+    await mcpCommand(flags.root ? resolve(flags.root as string) : process.cwd(), { printConfig: !!flags['print-config'] })
     break
 
   case 'graph':
@@ -300,6 +300,7 @@ Query filters:
 
 Integration:
   dep mcp [--root <path>]               Serve DEP and DAP as MCP tools over stdio (Claude Desktop)
+  dep mcp --print-config [--root <path>]  Print the claude_desktop_config.json entry for this machine
 
 Maintenance:
   dep version                           Print the installed version

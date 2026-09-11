@@ -3,6 +3,11 @@
 Starts the DEP MCP server for Claude Desktop (or any MCP client), installing the
 `dep` CLI first if the machine does not have it and keeping it current.
 
+You do not need this launcher if the CLI is already installed: `dep mcp` checks
+for releases itself, and `dep mcp --print-config --root <project>` prints the
+Claude Desktop entry that points straight at the binary — no Node involved.
+Use the launcher when you have Node 18+ and want the install done for you.
+
 ```
   npx -y @maxios/dep-mcp --root /path/to/project
         │

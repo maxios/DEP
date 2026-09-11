@@ -1098,6 +1098,17 @@ Feature: FLOW-34 Use DEP from an MCP client
     When I call "dep_validate" naming a root that holds no DEP configuration
     Then the call is reported as an error that says ".docspec"
 
+  @happy-path @mvp
+  Scenario: Configure a desktop client without any other runtime
+    When I ask the CLI for the desktop client configuration for the project
+    Then I am given configuration whose command is the CLI itself and whose arguments name the project's root
+    And the configuration depends on no other runtime
+
+  @edge-case
+  Scenario: The server looks for a newer release when it starts
+    When I open a session with the server
+    Then I am told whether a release check ran, and why not if it did not
+
   @edge-case
   Scenario: Notifications get no reply and pings get an empty one
     Given I have opened a session with the server

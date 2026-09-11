@@ -50,13 +50,13 @@ fetched, download the asset directly from
 `https://github.com/maxios/DEP/releases/latest/download/<asset>`, make it
 executable (`chmod +x` on macOS/Linux), and put it at the install location.
 
-If the person already has `dep` and it is older than 0.3.1, run `dep upgrade`
+If the person already has `dep` and it is older than 0.3.2, run `dep upgrade`
 instead of reinstalling.
 
 ## 3. Prove it works
 
 ```bash
-dep version          # must print: dep 0.3.1 or newer
+dep version          # must print: dep 0.3.2 or newer
 dep doctor           # must end with: All checks pass — dep works on this machine.
 ```
 
@@ -65,12 +65,12 @@ binary runs, its home is writable, and that it validates, indexes (offline),
 answers a context bundle and serves MCP:
 
 ```
-  ✓ version           dep 0.3.1 (standalone binary)
+  ✓ version           dep 0.3.2 (standalone binary)
   ✓ home              ~/.dep is writable
   ✓ validate          2 document(s) pass, graph checks pass
   ✓ index             2 document(s), 4 chunks, provider hash:v1-4096
   ✓ context           2 passage(s), ranking hybrid
-  ✓ mcp               server dep 0.3.1 answered initialize
+  ✓ mcp               server dep 0.3.2 answered initialize
 
 All checks pass — dep works on this machine.
 ```
@@ -81,16 +81,30 @@ long it took to load.
 
 ## 4. Connect it
 
-Claude Desktop — add to `claude_desktop_config.json` (needs Node 18+; the
-launcher installs and upgrades the CLI itself):
+Claude Desktop — the CLI prints the exact entry for this machine (absolute
+paths, works on Windows, needs nothing but the binary):
 
-```json
-{ "mcpServers": { "dep": { "command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"] } } }
+```bash
+dep mcp --print-config --root /path/to/project
 ```
 
-The launcher lives on GitHub Packages, so `~/.npmrc` needs, once:
-`@maxios:registry=https://npm.pkg.github.com` and
-`//npm.pkg.github.com/:_authToken=<a token with read:packages>`.
+Merge its output into `claude_desktop_config.json`
+(macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`).
+It looks like this:
+
+```json
+{ "mcpServers": { "dep": { "command": "C:\\Users\\NAME\\.dep\\bin\\dep.exe", "args": ["mcp", "--root", "C:\\path\\to\\project"] } } }
+```
+
+The server looks for a newer release each day when it starts and replaces
+itself, so this entry stays current with no other runtime involved.
+(`DEP_MCP_UPGRADE=never` in the entry's `env` turns that off.)
+
+Only if the person prefers not to install the binary by hand *and* has Node 18+:
+the `@maxios/dep-mcp` launcher does steps 2–3 itself —
+`"command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"]`,
+with `~/.npmrc` pointed at GitHub Packages (`@maxios:registry=https://npm.pkg.github.com`
+plus a token with `read:packages`). Do not assume Node exists; check with `node --version` first.
 
 Claude Code — `/plugin marketplace add maxios/DEP` then `/plugin install dep@dep-marketplace`.
 

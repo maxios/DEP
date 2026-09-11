@@ -86,7 +86,7 @@ All commands support `--json` for machine-readable output.
 | `dep neighbors <file> --depth 2 --root .` | Transitive graph traversal |
 | `dep roadmap <audience> --root .` | Learning path for an audience persona |
 | `dep prereqs <file> --root .` | Prerequisite chain for a document |
-| `dep mcp --root .` | Serve DEP and DAP as MCP tools over stdio |
+| `dep mcp --root .` | Serve DEP and DAP as MCP tools over stdio (`--print-config` prints the Claude Desktop entry) |
 | `dep version` | Print the installed version |
 | `dep doctor` | Prove the installation works end to end (`--json`; `--issue` prints a prefilled bug-report link; `--full` also loads the local model) |
 | `dep upgrade` | Replace the installed binary with the latest release (`--check` only reports; `--version vX.Y.Z` pins) |
@@ -118,11 +118,13 @@ const bundle = await set.context('how is freshness decided', { budget: 4000, aud
 
 ### Claude Desktop (MCP)
 
-`dep mcp` serves the same capabilities as Model Context Protocol tools over stdio. The `@maxios/dep-mcp` launcher installs the CLI at `~/.dep/bin/dep` (`dep.exe` on Windows), keeps it current, and starts the server:
+`dep mcp` serves the same capabilities as Model Context Protocol tools over stdio, and checks for a newer release each day when it starts. No Node required — the CLI prints its own entry for `claude_desktop_config.json`:
 
-```json
-{ "mcpServers": { "dep": { "command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"] } } }
+```bash
+dep mcp --print-config --root /path/to/project
 ```
+
+With Node 18+, the `@maxios/dep-mcp` launcher can instead install the CLI itself (`"command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"]`).
 
 Tools: `dep_context`, `dep_search`, `dep_validate`, `dep_graph`, `dep_query`, `dep_metadata`, `dep_index`, `dap_resolve`, `dap_node`, `dap_trace`, `dep_version`. See [packages/dep-mcp](packages/dep-mcp/README.md) and [How-To: Use DEP from Claude Desktop](docs/how-to/use-dep-from-claude-desktop.md).
 

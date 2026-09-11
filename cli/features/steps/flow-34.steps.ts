@@ -178,3 +178,31 @@ When('I send a ping', async function (this: DepWorld) {
 Then('I receive an empty result', function (this: DepWorld) {
   assert.deepEqual(this.result, {})
 })
+
+When('I ask the CLI for the desktop client configuration for the project', async function (this: DepWorld) {
+  await this.materialise()
+  await this.runCliAsync(['mcp', '--print-config', '--root', this.root])
+})
+
+Then("I am given configuration whose command is the CLI itself and whose arguments name the project's root", function (this: DepWorld) {
+  assert.equal(this.cli!.code, 0, this.cli!.stderr)
+  const config = JSON.parse(this.cli!.stdout)
+  const entry = config.mcpServers.dep
+  assert.equal(entry.command, process.execPath)
+  assert.ok(entry.args.includes('mcp'))
+  assert.ok(entry.args.includes('--root') && entry.args.includes(this.root), JSON.stringify(entry.args))
+  this.result = entry
+})
+
+Then('the configuration depends on no other runtime', function (this: DepWorld) {
+  const entry = this.result as { command: string; args: string[] }
+  assert.ok(!/npx|npm|node$/.test(entry.command), entry.command)
+  assert.ok(!entry.args.some((a) => /npx|@maxios\/dep-mcp/.test(a)), JSON.stringify(entry.args))
+})
+
+Then('I am told whether a release check ran, and why not if it did not', async function (this: DepWorld) {
+  const c = client(this)
+  await new Promise((r) => setTimeout(r, 200))
+  assert.match(c.stderr, /release check|upgraded dep/, c.stderr)
+  assert.match(c.stderr, /skipped: running from source|is current|skipped: already checked today|could not be reached/, c.stderr)
+})
