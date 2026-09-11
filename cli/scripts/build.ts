@@ -18,6 +18,7 @@ const ALL_TARGETS = [
   "bun-darwin-x64",
   "bun-linux-x64",
   "bun-linux-arm64",
+  "bun-windows-x64",
 ] as const;
 
 type Target = (typeof ALL_TARGETS)[number];
@@ -65,7 +66,7 @@ if (local) {
   console.log("Building DEP CLI for all platforms...\n");
 
   for (const target of ALL_TARGETS) {
-    const binaryName = `dep-${target.replace("bun-", "")}`;
+    const binaryName = `dep-${target.replace("bun-", "")}${target.includes("windows") ? ".exe" : ""}`;
     console.log(`Building ${binaryName}...`);
     await compile(target, join(distDir, binaryName));
     console.log(`  ✓ ${binaryName}\n`);

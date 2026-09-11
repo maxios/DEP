@@ -1,0 +1,11 @@
+{
+  "name": "@dep/mcp",
+  "version": "0.3.0",
+  "description": "Launcher for the DEP MCP server: installs the dep CLI in a fixed per-user location on macOS, Linux or Windows, keeps it current, and serves DEP/DAP as Model Context Protocol tools for Claude Desktop.",
+  "type": "module",
+  "bin": { "dep-mcp": "index.mjs" },
+  "files": ["index.mjs", "README.md"],
+  "engines": { "node": ">=18" },
+  "license": "SEE LICENSE IN ../../README.md",
+  "repository": { "type": "git", "url": "https://github.com/maxios/DEP", "directory": "packages/dep-mcp" }
+}

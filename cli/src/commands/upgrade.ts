@@ -31,7 +31,8 @@ function runningFromSource(): boolean {
 }
 
 function platformBinary(): string {
-  return `dep-${process.platform}-${process.arch}`
+  const os = process.platform === 'win32' ? 'windows' : process.platform
+  return `dep-${os}-${process.arch}${process.platform === 'win32' ? '.exe' : ''}`
 }
 
 async function fetchJson(url: string): Promise<Response> {

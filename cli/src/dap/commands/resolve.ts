@@ -1,9 +1,15 @@
 import { buildDapGraph } from '../tree-builder'
-import type { DapTree } from '../types'
+import type { DapGraph, DapTree } from '../types'
 
-export function resolveCommand(dapRoot: string, query: string, flags: { json?: boolean }) {
-  const graph = buildDapGraph(dapRoot)
-  const matches: Array<{ id: string; tree: DapTree; score: number }> = []
+export interface TreeMatch {
+  id: string
+  tree: DapTree
+  score: number
+}
+
+/** Trees whose trigger, patterns, intents or tags match a request, best first. */
+export function resolveTrees(graph: DapGraph, query: string): TreeMatch[] {
+  const matches: TreeMatch[] = []
 
   const queryLower = query.toLowerCase()
   const queryWords = queryLower.split(/\s+/)
@@ -56,6 +62,12 @@ export function resolveCommand(dapRoot: string, query: string, flags: { json?: b
   }
 
   matches.sort((a, b) => b.score - a.score)
+  return matches
+}
+
+export function resolveCommand(dapRoot: string, query: string, flags: { json?: boolean }) {
+  const graph = buildDapGraph(dapRoot)
+  const matches = resolveTrees(graph, query)
 
   if (flags.json) {
     console.log(JSON.stringify({

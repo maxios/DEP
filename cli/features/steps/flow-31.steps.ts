@@ -29,7 +29,7 @@ ${body}
 `
 }
 
-const REVIEW_TREE = tree(TREE, 'review a document for freshness', 'check-freshness', `
+export const REVIEW_TREE = tree(TREE, 'review a document for freshness', 'check-freshness', `
 ## check-freshness [?]
 
 Find out how a document's freshness is decided, and whether this document is past its review date.
@@ -66,7 +66,7 @@ Hand over to the installation procedure, which installs the binary on the machin
 - **on_return**: mark-verified
 `)
 
-const INSTALL_TREE = tree('install-binary', 'install the binary', 'fetch-binary', `
+export const INSTALL_TREE = tree('install-binary', 'install the binary', 'fetch-binary', `
 ## fetch-binary [?]
 
 Install the binary on the machine by following the installation steps, then confirm the installed version.

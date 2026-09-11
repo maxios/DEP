@@ -17,6 +17,7 @@ import { linkCommand } from './commands/link'
 import { vectorizeCommand } from './commands/vectorize'
 import { contextCommand } from './commands/context'
 import { upgradeCommand, versionCommand } from './commands/upgrade'
+import { mcpCommand } from './commands/mcp'
 import { dapCommand } from './dap/index'
 
 const args = process.argv.slice(2)
@@ -62,6 +63,10 @@ switch (command) {
       target: flags.target as string | undefined,
       json: !!flags.json,
     })
+    break
+
+  case 'mcp':
+    await mcpCommand(flags.root ? resolve(flags.root as string) : process.cwd())
     break
 
   case 'graph':
@@ -287,6 +292,9 @@ Query filters:
   --confidence <level>                  Filter by confidence level
   --lifecycle <state>                   Filter by lifecycle state (FRESH|AGING|STALE)
   --owner <owner>                       Filter by owner
+
+Integration:
+  dep mcp [--root <path>]               Serve DEP and DAP as MCP tools over stdio (Claude Desktop)
 
 Maintenance:
   dep version                           Print the installed version

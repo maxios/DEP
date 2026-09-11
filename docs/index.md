@@ -4,7 +4,7 @@ dep:
   audience: [ai-generator, ai-agent, human-author, project-lead]
   owner: "@dep-core"
   created: 2026-03-22
-  last_verified: 2026-09-10T15:30:28.055Z
+  last_verified: 2026-09-11T08:33:09.126Z
   confidence: high
   depends_on: [.docspec]
   tags: [navigation, root, index]
@@ -49,6 +49,7 @@ dep:
 
 - [Why Budgeted Context](explanation/why-budgeted-context.md)
 - [How-To: Generate a Document Set](how-to/generate-a-document-set.md)
+- [How-To: Use DEP from Claude Desktop](how-to/use-dep-from-claude-desktop.md)
 - [How-To: Validate a Document](how-to/validate-a-document.md)
 - [How-To: Embed DEP in Your Own Program](how-to/embed-dep-in-your-program.md)
 - [How-To: Keep the Retrieval Index Current](how-to/keep-the-index-current.md)
@@ -105,6 +106,7 @@ dep:
 - [Extension Points](explanation/extension-points.md)
 - [DEP vs Other Documentation Frameworks](explanation/dep-vs-other-frameworks.md)
 - [How-To: Configure Governance](how-to/configure-governance.md)
+- [How-To: Use DEP from Claude Desktop](how-to/use-dep-from-claude-desktop.md)
 - [How-To: Keep the Retrieval Index Current](how-to/keep-the-index-current.md)
 - [Tutorial: Bootstrap DEP for Your Project](tutorials/bootstrap-dep-for-your-project.md)
 - [.docspec Schema Reference](reference/docspec-schema.md)
@@ -129,6 +131,7 @@ dep:
 
 - [How-To: Configure Governance](how-to/configure-governance.md)
 - [How-To: Generate a Document Set](how-to/generate-a-document-set.md)
+- [How-To: Use DEP from Claude Desktop](how-to/use-dep-from-claude-desktop.md)
 - [How-To: Validate a Document](how-to/validate-a-document.md)
 - [How-To: Add DEP Metadata to Existing Docs](how-to/add-dep-metadata.md)
 - [How-To: Embed DEP in Your Own Program](how-to/embed-dep-in-your-program.md)

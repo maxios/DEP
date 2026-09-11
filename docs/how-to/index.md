@@ -7,4 +7,5 @@
 - [How-To: Embed DEP in Your Own Program](embed-dep-in-your-program.md) ● `high` — ai-agent, human-author
 - [How-To: Generate a Document Set](generate-a-document-set.md) ○ `high` — ai-agent, human-author
 - [How-To: Keep the Retrieval Index Current](keep-the-index-current.md) ● `high` — ai-agent, human-author, project-lead
+- [How-To: Use DEP from Claude Desktop](use-dep-from-claude-desktop.md) ● `high` — project-lead, ai-agent
 - [How-To: Validate a Document](validate-a-document.md) ○ `high` — ai-agent, human-author

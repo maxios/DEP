@@ -41,6 +41,9 @@ dep context "how is freshness decided" --budget 8000 --audience ai-agent --json 
 dep vectorize --install-hook --root .       # post-commit hook keeps the index current
 dep vectorize --only docs/ref/schema.md     # refresh one document
 
+# Serve DEP/DAP to Claude Desktop (MCP over stdio)
+dep mcp --root .                 # tools: dep_context, dep_search, dep_validate, dep_graph, dep_query, dep_metadata, dep_index, dap_resolve, dap_node, dap_trace, dep_version
+
 # Keep the binary current
 dep version                      # prints the installed version
 dep upgrade [--check]            # replace the binary with the latest release (verifies it first)
@@ -66,7 +69,7 @@ bun run src/index.ts validate --root ..
 # Build standalone binary for current platform
 bun run build:local
 
-# Build for all platforms (macOS + Linux, arm64 + x64)
+# Build for all platforms (macOS + Linux arm64/x64, Windows x64)
 bun run build
 
 # Run tests
@@ -91,6 +94,9 @@ The CLI parses markdown files with YAML frontmatter, builds a directed graph of 
 - `cli/src/commands/` — One file per command (graph, backlinks, validate, query, index-gen, search, vectorize, context, neighbors, roadmap, prereqs, set, bump, tag, link)
 - `cli/src/lib.ts` — The embeddable surface: `openDocumentationSet(root)` returns a `DocumentationSet` that answers `context()`, `search()`, `graph()`, `validate()`, `metadata()`, `index()`, `procedureStep()` and the usage record as values; failures are thrown as `DepError` (never printed, never `process.exit`). The CLI commands `context`, `vectorize` and `validate` are thin wrappers over it.
 - `cli/src/context/` — The context engine: `retrieve.ts` (hybrid ranking with IDF-weighted keywords, typed-edge expansion, freshness policy, budget packing, provenance), `set.ts` (the `DocumentationSet`), `indexer.ts` (incremental index updates), `procedure.ts` (DAP steps with a carried budget), `usage.ts` (local record of what consumers used), `freshness.ts`, `options.ts`, `tokens.ts`
+- `cli/src/mcp/` — The MCP server: `protocol.ts` (newline-delimited JSON-RPC over stdio, no SDK), `tools.ts` (the eleven tools, each taking an optional `root`); `commands/mcp.ts` is the `dep mcp` entry. stdout is the wire — nothing else may print while it runs
+- `packages/dep-mcp/` — Zero-dependency Node launcher (`npx -y @dep/mcp`): installs the CLI at `<DEP_HOME>/bin/dep[.exe]` (default `~/.dep`), upgrades it daily (verifying the download runs first), then execs `dep mcp`. Cucumber covers it (FLOW-35) against a fake release service
+- `cli/src/commands/upgrade.ts` — `dep version` / `dep upgrade` (self-update from GitHub releases; the download must report a version before it replaces the binary; previous kept as `dep.prev`)
 - `cli/src/embeddings/hash.ts` — Deterministic, offline embedding provider (`vectorization.provider: hash`); lexical, used by tests and as a no-model fallback
 - `cli/src/embeddings/` — Embedding providers for semantic search (`local.ts` uses @huggingface/transformers, `openai.ts` for OpenAI API, `provider.ts` factory)
 - `cli/src/vectorstore/` — SQLite-backed vector store (`db.ts` for storage, `chunker.ts` for document splitting, `similarity.ts` for cosine similarity)

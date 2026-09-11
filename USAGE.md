@@ -694,7 +694,38 @@ step.support.alreadySupplied // what an earlier step already gave you
 
 ---
 
-## 11. From Claude Code
+## 11. From Claude Desktop (MCP)
+
+`dep mcp` speaks the Model Context Protocol over stdio; the `@dep/mcp`
+launcher gets the CLI onto the machine first and keeps it there.
+
+```
+  claude_desktop_config.json
+  { "mcpServers": { "dep": { "command": "npx",
+                             "args": ["-y", "@dep/mcp", "--root", "/path/to/project"] } } }
+           │
+           ▼
+   npx @dep/mcp ──▶ ~/.dep/bin/dep missing?  ──▶ download · run · verify · place
+                ──▶ newer release (≤ daily)? ──▶ install, keep dep.prev
+                ──▶ exec  dep mcp --root …        stdout = protocol, stderr = notes
+           │
+           ▼
+   tools:  dep_context  dep_search  dep_validate  dep_graph  dep_query
+           dep_metadata dep_index   dap_resolve   dap_node   dap_trace  dep_version
+```
+
+Same place on every operating system — `~/.dep/bin/dep`, `dep.exe` on
+Windows; `DEP_HOME` moves the tree. Every tool takes an optional `root`, so
+one server serves many projects. What a call returns is the same value the
+CLI's `--json` prints, as `structuredContent`:
+
+```
+  tools/call dep_context {question, budget: 1500}
+    → { content: [{type: "text", …}],
+        structuredContent: { passages: […], budget: {used: 1498, …}, … } }
+```
+
+## 12. From Claude Code
 
 The plugin exposes the procedures as skills; each one runs the matching tree.
 
@@ -709,7 +740,7 @@ Install: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketpl
 
 ---
 
-## 12. Reading the glyphs
+## 13. Reading the glyphs
 
 ```
   ● FRESH   verified within its cadence        ✓ passed     → outgoing edge
@@ -722,7 +753,7 @@ Install: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketpl
 
 ---
 
-## 13. When something looks wrong
+## 14. When something looks wrong
 
 ```
   YOU SEE                                  BECAUSE                          DO

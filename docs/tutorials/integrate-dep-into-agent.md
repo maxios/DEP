@@ -26,6 +26,8 @@ dep:
       rel: NEXT
     - target: ../how-to/embed-dep-in-your-program.md
       rel: NEXT
+    - target: ../how-to/use-dep-from-claude-desktop.md
+      rel: NEXT
 ---
 
 # Tutorial: Integrate DEP into Your Agent

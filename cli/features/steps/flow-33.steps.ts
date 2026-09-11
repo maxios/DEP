@@ -1,13 +1,13 @@
 import { Given, When, Then, After } from '@cucumber/cucumber'
 import assert from 'node:assert/strict'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
-import { join } from 'path'
+import { dirname, join } from 'path'
 import { spawnSync } from 'child_process'
 import { DepWorld } from '../support/world'
 import pkg from '../../package.json'
 
-const INSTALLED = pkg.version
-const NEWER = '9.9.9'
+export const INSTALLED = pkg.version
+export const NEWER = '9.9.9'
 const platformBinary = `dep-${process.platform}-${process.arch}`
 
 interface Release {
@@ -19,19 +19,23 @@ interface Release {
   tags: string[]
 }
 
-interface Fake {
+export interface Fake {
   server: ReturnType<typeof Bun.serve>
   api: string
   downloads: string
   release: Release
+  /** Every path the launcher or CLI asked for. */
+  requests: string[]
 }
 
 /** A stand-in for GitHub releases, serving whatever the scenario declared. */
-function startFakeReleases(release: Release): Fake {
+export function startFakeReleases(release: Release): Fake {
+  const requests: string[] = []
   const server = Bun.serve({
     port: 0,
     fetch(req) {
       const url = new URL(req.url)
+      requests.push(url.pathname)
       if (url.pathname === '/releases/latest') return Response.json({ tag_name: `v${release.latest}` })
       const tagMatch = url.pathname.match(/^\/releases\/tags\/v?(.+)$/)
       if (tagMatch) {
@@ -41,16 +45,27 @@ function startFakeReleases(release: Release): Fake {
       if (dl && dl[2] === platformBinary) {
         if (release.asset === 'fail') return new Response('boom', { status: 500 })
         if (release.asset === 'corrupt') return new Response(new Uint8Array([0, 1, 2, 3, 255, 254]))
-        return new Response(`#!/bin/sh\necho "dep ${dl[1]}"\n`)
+        return new Response(runnableAsset(dl[1]!))
       }
       return new Response('not found', { status: 404 })
     },
   })
   const base = `http://127.0.0.1:${server.port}`
-  return { server, api: `${base}/releases`, downloads: `${base}/download`, release }
+  return { server, api: `${base}/releases`, downloads: `${base}/download`, release, requests }
 }
 
-function fake(world: DepWorld): Fake {
+/** A stand-in binary: reports a version, and as an MCP server answers the first request. */
+export function runnableAsset(version: string): string {
+  return `#!/bin/sh
+case "$1" in
+  version) echo "dep ${version}" ;;
+  mcp) read line; echo '{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"dep","version":"${version}"}}}' ;;
+  *) echo "dep: unknown command $1" >&2; exit 1 ;;
+esac
+`
+}
+
+export function fake(world: DepWorld): Fake {
   let f = world.notes.get('fake') as Fake | undefined
   if (!f) {
     f = startFakeReleases({ latest: INSTALLED, asset: 'runnable', tags: [INSTALLED] })
@@ -59,8 +74,8 @@ function fake(world: DepWorld): Fake {
   return f
 }
 
-function installedPath(world: DepWorld): string {
-  return join(world.root, 'bin', 'dep')
+export function installedPath(world: DepWorld): string {
+  return (world.notes.get('installedPath') as string | undefined) ?? join(world.root, 'bin', 'dep')
 }
 
 function upgrade(world: DepWorld, extra: string[] = []) {
@@ -80,7 +95,7 @@ Given('the CLI is installed', function (this: DepWorld) {
   this.ensureRoot()
   mkdirSync(join(this.root, 'bin'), { recursive: true })
   const path = installedPath(this)
-  writeFileSync(path, `#!/bin/sh\necho "dep ${INSTALLED}"\n`)
+  writeFileSync(path, runnableAsset(INSTALLED))
   chmodSync(path, 0o755)
   this.notes.set('installedBefore', readFileSync(path, 'utf-8'))
 })
@@ -167,7 +182,7 @@ Then('the installed CLI is left as it was', function (this: DepWorld) {
   const path = installedPath(this)
   assert.equal(readFileSync(path, 'utf-8'), this.notes.get('installedBefore'))
   assert.ok(!existsSync(`${path}.prev`))
-  assert.ok(!existsSync(join(this.root, 'bin', '.dep.download')), 'a partial download was left behind')
+  assert.ok(!existsSync(`${path}.download`) && !existsSync(join(dirname(path), '.dep.download')), 'a partial download was left behind')
 })
 
 Then('I am told it is already up to date', function (this: DepWorld) {
