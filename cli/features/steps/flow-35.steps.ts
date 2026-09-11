@@ -45,12 +45,16 @@ function launch(world: DepWorld, args: string[] = []): Promise<Launch> {
       if (finished) return
       finished = true
       try { child.kill() } catch {}
+      try { child.stdin.destroy() } catch {}
       done({ stdout, stderr, code })
     }
     child.stdout.on('data', (d) => { stdout += String(d); if (stdout.includes('\n')) setTimeout(() => finish(0), 100) })
     child.stderr.on('data', (d) => { stderr += String(d) })
+    child.stdin.on('error', () => {}) // a launcher that stops early closes the pipe; that is the scenario, not a failure
     child.on('exit', (code) => finish(code))
-    child.stdin.write('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"story","version":"0"}}}\n')
+    try {
+      child.stdin.write('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"story","version":"0"}}}\n')
+    } catch {}
     setTimeout(() => finish(null), 10_000)
   })
 }

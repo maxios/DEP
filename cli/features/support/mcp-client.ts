@@ -35,6 +35,8 @@ export class McpClient {
     })
     this.child.stderr!.setEncoding('utf-8')
     this.child.stderr!.on('data', (chunk: string) => { this.stderr += chunk })
+    // a server that has already exited makes any further stdin traffic EPIPE; that is not a test failure
+    this.child.stdin!.on('error', () => {})
   }
 
   request(method: string, params?: Record<string, unknown>): Promise<Message> {
@@ -61,7 +63,7 @@ export class McpClient {
   }
 
   close() {
-    try { this.child.stdin!.end() } catch {}
     try { this.child.kill() } catch {}
+    try { this.child.stdin!.destroy() } catch {}
   }
 }

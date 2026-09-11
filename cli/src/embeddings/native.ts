@@ -30,7 +30,16 @@ export function depHome(): string {
   return process.env.DEP_HOME || join(homedir(), '.dep')
 }
 
-const EMBEDDED_PREFIX = '/$bunfs/'
+/**
+ * Where a compiled executable keeps its embedded files: `/$bunfs/…` on macOS
+ * and Linux, `B:/~BUN/…` on Windows. A library still at such a path must be
+ * copied out under its real name — on Windows especially, because the loader
+ * matches a binding's import against already-loaded modules by base name, and
+ * a stale system onnxruntime.dll wins otherwise.
+ */
+function isEmbedded(path: string): boolean {
+  return path.includes('/$bunfs/') || /[\\/]~BUN[\\/]/.test(path)
+}
 
 /** Each branch is resolved at build time from the compile target, so a binary only embeds its own platform's libraries. */
 async function embeddedLibraries(): Promise<NativeLibrary[]> {
@@ -66,7 +75,7 @@ export function preloadOnnxRuntime(): Promise<void> {
   preloaded ??= (async () => {
     const libDir = join(depHome(), 'lib', `onnxruntime-${ONNXRUNTIME_VERSION}`)
     for (const lib of await embeddedLibraries()) {
-      const path = lib.source.startsWith(EMBEDDED_PREFIX) ? await materialise(lib, libDir) : lib.source
+      const path = isEmbedded(lib.source) ? await materialise(lib, libDir) : lib.source
       // bun:ffi refuses an empty symbol table; OrtGetApiBase is the C API entry point every build exports.
       if (lib.preload !== false) dlopen(path, { [lib.symbol ?? 'OrtGetApiBase']: { args: [], returns: 'ptr' } })
     }
