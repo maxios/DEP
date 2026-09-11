@@ -79,31 +79,51 @@ ${body}
 
 async function mcpHandshake(root: string): Promise<string> {
   const self = selfCommand()
-  return new Promise((resolve, reject) => {
-    const child = spawn(self.command, [...self.args, 'mcp', '--root', root], { stdio: ['pipe', 'pipe', 'pipe'] })
-    let out = ''
-    let err = ''
-    const timer = setTimeout(() => { child.kill(); reject(new Error(`no answer within 15s${err ? `: ${err.trim()}` : ''}`)) }, 15_000)
-    child.stdout.on('data', (d) => {
-      out += String(d)
-      const line = out.split('\n').find((l) => l.trim())
-      if (!line) return
-      clearTimeout(timer)
-      child.kill()
-      try {
-        const reply = JSON.parse(line)
-        const info = reply?.result?.serverInfo
-        if (info?.name === 'dep') resolve(`server ${info.name} ${info.version} answered initialize`)
-        else reject(new Error(`unexpected answer: ${line.slice(0, 200)}`))
-      } catch (e) {
-        reject(new Error(`unparseable answer: ${line.slice(0, 200)}`))
-      }
+  const child = spawn(self.command, [...self.args, 'mcp', '--root', root], { stdio: ['pipe', 'pipe', 'pipe'] })
+  const exited = new Promise<void>((done) => { child.on('exit', () => done()); child.on('error', () => done()) })
+  try {
+    return await new Promise<string>((resolve, reject) => {
+      let out = ''
+      let err = ''
+      const timer = setTimeout(() => reject(new Error(`no answer within 15s${err ? `: ${err.trim()}` : ''}`)), 15_000)
+      child.stdout.on('data', (d) => {
+        out += String(d)
+        const line = out.split('\n').find((l) => l.trim())
+        if (!line) return
+        clearTimeout(timer)
+        try {
+          const reply = JSON.parse(line)
+          const info = reply?.result?.serverInfo
+          if (info?.name === 'dep') resolve(`server ${info.name} ${info.version} answered initialize`)
+          else reject(new Error(`unexpected answer: ${line.slice(0, 200)}`))
+        } catch {
+          reject(new Error(`unparseable answer: ${line.slice(0, 200)}`))
+        }
+      })
+      child.stderr.on('data', (d) => { err += String(d) })
+      child.on('error', (e) => { clearTimeout(timer); reject(e) })
+      child.stdin.on('error', () => {})
+      child.stdin.write('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"dep doctor","version":"0"}}}\n')
     })
-    child.stderr.on('data', (d) => { err += String(d) })
-    child.on('error', (e) => { clearTimeout(timer); reject(e) })
-    child.stdin.on('error', () => {})
-    child.stdin.write('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"dep doctor","version":"0"}}}\n')
-  })
+  } finally {
+    // Closing stdin ends the server cleanly; only then may the fixture be removed —
+    // Windows refuses to delete files a still-running child has open.
+    try { child.stdin.end() } catch {}
+    await Promise.race([exited, new Promise<void>((done) => setTimeout(done, 3000))])
+    if (child.exitCode === null) { try { child.kill() } catch {} ; await Promise.race([exited, new Promise<void>((done) => setTimeout(done, 2000))]) }
+  }
+}
+
+/** Remove the throwaway project; on Windows a handle can outlive its process for a moment, so retry, then let it go. */
+async function removeFixture(dir: string): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      rmSync(dir, { recursive: true, force: true })
+      return
+    } catch {
+      await new Promise((done) => setTimeout(done, 200 * (attempt + 1)))
+    }
+  }
 }
 
 /**
@@ -169,7 +189,7 @@ export async function runDoctor(options: { full?: boolean } = {}): Promise<Docto
     }
     set.close()
   } finally {
-    rmSync(fixture, { recursive: true, force: true })
+    await removeFixture(fixture)
   }
 
   const ok = checks.every((c) => c.ok)
