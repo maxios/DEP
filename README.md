@@ -88,6 +88,7 @@ All commands support `--json` for machine-readable output.
 | `dep prereqs <file> --root .` | Prerequisite chain for a document |
 | `dep mcp --root .` | Serve DEP and DAP as MCP tools over stdio (`--print-config` prints the Claude Desktop entry) |
 | `dep version` | Print the installed version |
+| `dep setup` | Install this file to `~/.dep/bin`, register with Claude Desktop (`--root`), run doctor — no shell needed |
 | `dep doctor` | Prove the installation works end to end (`--json`; `--issue` prints a prefilled bug-report link; `--full` also loads the local model) |
 | `dep upgrade` | Replace the installed binary with the latest release (`--check` only reports; `--version vX.Y.Z` pins) |
 
@@ -118,11 +119,13 @@ const bundle = await set.context('how is freshness decided', { budget: 4000, aud
 
 ### Claude Desktop (MCP)
 
-`dep mcp` serves the same capabilities as Model Context Protocol tools over stdio, and checks for a newer release each day when it starts. No Node required — the CLI prints its own entry for `claude_desktop_config.json`:
+`dep mcp` serves the same capabilities as Model Context Protocol tools over stdio, and checks for a newer release each day when it starts. Three ways in, none needing a runtime, script or shell:
 
-```bash
-dep mcp --print-config --root /path/to/project
-```
+- **Bundle** — open `dep-<os>-<arch>.mcpb` from the release with Claude Desktop; it asks for the project folder and configures itself.
+- **Self-setup** — run the downloaded binary once: `dep-windows-x64.exe setup --root C:\path\to\project` (a copy opened with no arguments does the same). Installs to `~/.dep/bin`, sets the user PATH, writes the Claude Desktop entry, runs `dep doctor`.
+- **Installed CLI** — `dep setup --root …` or `dep mcp --print-config --root …`.
+
+Windows without PowerShell: `install.cmd` needs only `cmd` and `curl.exe`.
 
 With Node 18+, the `@maxios/dep-mcp` launcher can instead install the CLI itself (`"command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"]`).
 

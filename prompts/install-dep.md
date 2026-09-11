@@ -8,6 +8,7 @@ command and wait for its output. Stop at the first failure and go to step 5.
 Ground rules:
 
 - Install only under the user's home: `~/.dep` (Windows: `%USERPROFILE%\.dep`). No `sudo`, no system directories, no package managers.
+- Never assume PowerShell, Node, npm or any runtime is available. The CLI is one self-contained file and installs itself.
 - Never paste tokens, keys or the contents of `.npmrc`/`.env` into any output or report.
 - Say what you did, where the binary is, and what version it reports — before you stop.
 
@@ -15,7 +16,7 @@ Ground rules:
 
 ```
   uname -s / uname -m          (macOS, Linux)
-  $env:PROCESSOR_ARCHITECTURE  (Windows PowerShell)
+  echo %PROCESSOR_ARCHITECTURE%  (Windows, cmd)
 
   OS       ARCH            RELEASE ASSET            INSTALL LOCATION
   ───────  ──────────────  ───────────────────────  ─────────────────────────────
@@ -29,34 +30,47 @@ Ground rules:
 Any other combination is not published: skip to step 5 and file the report
 with the platform named — do not try to build from source unless asked.
 
-## 2. Install
+## 2. Get the file onto the machine
 
-macOS or Linux:
+Pick the first option that works on this machine. All of them end with the
+same binary in the same place; the binary then does the rest itself.
+
+**Windows, no PowerShell** (cmd only — `curl.exe` ships with Windows 10 1803+):
+
+```cmd
+curl.exe -fsSL -o %TEMP%\install-dep.cmd https://raw.githubusercontent.com/maxios/DEP/main/install.cmd && %TEMP%\install-dep.cmd --root C:\path\to\project
+```
+
+**Windows, no terminal at all:** download
+`https://github.com/maxios/DEP/releases/latest/download/dep-windows-x64.exe`
+in a browser and open it. A downloaded copy run with no arguments installs
+itself, registers with Claude Desktop (asks for nothing if run from inside the
+project folder; otherwise run it later with `setup --root <project>`), runs its
+self-check, and waits for Enter before closing. SmartScreen will warn once
+about an unsigned download — "More info → Run anyway".
+
+**Windows with PowerShell allowed:** `irm https://raw.githubusercontent.com/maxios/DEP/main/install.ps1 | iex`
+
+**macOS or Linux:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
 export PATH="$HOME/.dep/bin:$PATH"
 ```
 
-Windows (PowerShell):
-
-```powershell
-irm https://raw.githubusercontent.com/maxios/DEP/main/install.ps1 | iex
-```
-
-Both scripts download the asset from the latest GitHub Release, place it at the
-location above, and add `~/.dep/bin` to the user's PATH. If a script cannot be
-fetched, download the asset directly from
+**Any OS, by hand:** download the asset from
 `https://github.com/maxios/DEP/releases/latest/download/<asset>`, make it
-executable (`chmod +x` on macOS/Linux), and put it at the install location.
+executable on macOS/Linux (`chmod +x`), and run `<asset> setup --root <project>`.
+`setup` copies the file to the install location, puts it on the user's search
+path (Windows registry, no shell needed), writes the Claude Desktop entry, and
+runs the self-check.
 
-If the person already has `dep` and it is older than 0.3.2, run `dep upgrade`
-instead of reinstalling.
+If the person already has `dep` and it is older than 0.3.3, run `dep upgrade`.
 
 ## 3. Prove it works
 
 ```bash
-dep version          # must print: dep 0.3.2 or newer
+dep version          # must print: dep 0.3.3 or newer
 dep doctor           # must end with: All checks pass — dep works on this machine.
 ```
 
@@ -65,12 +79,12 @@ binary runs, its home is writable, and that it validates, indexes (offline),
 answers a context bundle and serves MCP:
 
 ```
-  ✓ version           dep 0.3.2 (standalone binary)
+  ✓ version           dep 0.3.3 (standalone binary)
   ✓ home              ~/.dep is writable
   ✓ validate          2 document(s) pass, graph checks pass
   ✓ index             2 document(s), 4 chunks, provider hash:v1-4096
   ✓ context           2 passage(s), ranking hybrid
-  ✓ mcp               server dep 0.3.2 answered initialize
+  ✓ mcp               server dep 0.3.3 answered initialize
 
 All checks pass — dep works on this machine.
 ```
@@ -79,32 +93,30 @@ If the person will use meaning-based search with the built-in model, also run
 `dep doctor --full` once; it downloads the model (about 90 MB) and reports how
 long it took to load.
 
-## 4. Connect it
+## 4. Connect it to Claude Desktop
 
-Claude Desktop — the CLI prints the exact entry for this machine (absolute
-paths, works on Windows, needs nothing but the binary):
+If step 2 ran `setup` with `--root`, this is already done — the entry is in
+`claude_desktop_config.json`; tell the person to restart Claude Desktop.
+Otherwise, one of:
 
 ```bash
-dep mcp --print-config --root /path/to/project
+dep setup --root /path/to/project        # writes the entry (merges; keeps other servers; backs up to .bak)
+dep mcp --print-config --root /path/to/project   # prints the entry to paste by hand
 ```
 
-Merge its output into `claude_desktop_config.json`
-(macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`).
-It looks like this:
+The entry points straight at the binary with absolute paths and needs nothing
+else on the machine. The server checks for a newer release each day when it
+starts and replaces itself (`DEP_MCP_UPGRADE=never` in the entry's `env`
+turns that off).
 
-```json
-{ "mcpServers": { "dep": { "command": "C:\\Users\\NAME\\.dep\\bin\\dep.exe", "args": ["mcp", "--root", "C:\\path\\to\\project"] } } }
-```
+Alternative with no terminal and no file editing: the release also carries a
+Claude Desktop bundle per platform (`dep-<os>-<arch>.mcpb`). Open it with
+Claude Desktop → it asks for the project folder → done.
 
-The server looks for a newer release each day when it starts and replaces
-itself, so this entry stays current with no other runtime involved.
-(`DEP_MCP_UPGRADE=never` in the entry's `env` turns that off.)
-
-Only if the person prefers not to install the binary by hand *and* has Node 18+:
-the `@maxios/dep-mcp` launcher does steps 2–3 itself —
-`"command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"]`,
-with `~/.npmrc` pointed at GitHub Packages (`@maxios:registry=https://npm.pkg.github.com`
-plus a token with `read:packages`). Do not assume Node exists; check with `node --version` first.
+Alternative for machines that have Node 18+: the `@maxios/dep-mcp` launcher
+(`"command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", …]`, with
+`~/.npmrc` pointed at GitHub Packages). Check `node --version` first; never
+assume it.
 
 Claude Code — `/plugin marketplace add maxios/DEP` then `/plugin install dep@dep-marketplace`.
 
@@ -126,17 +138,15 @@ Then file it on the project's issue tracker — one of, in order of preference:
 dep doctor --issue
 
 # b) GitHub CLI is available and signed in
-dep doctor --json > /tmp/dep-doctor.json
-gh issue create --repo maxios/DEP \
-  --title "install: <os>-<arch>: <failing check or step>" \
-  --body-file /tmp/dep-doctor.json
+dep doctor --json > %TEMP%\dep-doctor.json      (Windows)   /   /tmp/dep-doctor.json
+gh issue create --repo maxios/DEP --title "install: <os>-<arch>: <failing check or step>" --body-file <that file>
 
 # c) neither: give the person this link and the report text to paste
 https://github.com/maxios/DEP/issues/new
 ```
 
 Title format: `install: <os>-<arch>: <what failed>` — for example
-`install: linux-arm64: mcp check failed` or `install: windows-x64: install.ps1 download 404`.
+`install: linux-arm64: mcp check failed` or `install: windows-x64: install.cmd download 404`.
 Redact anything that looks like a token or a password before it leaves the machine;
 `dep doctor` already replaces the user's home directory with `~`.
 

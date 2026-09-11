@@ -1288,6 +1288,120 @@ Feature: FLOW-36 Check an installation and report what is wrong
     Then the check "local-embeddings" passes
     And I am told how long the model took to load
 
+# ═══════════════════════════════════════════════════════════════
+
+@flow-37 @project-lead @install @mvp
+Feature: FLOW-37 Install from a downloaded file, with no shell at all
+  """
+  As a project lead on a machine where scripts are blocked,
+  I want the downloaded CLI to install itself, register with the desktop client and prove it works,
+  so that one file and one run is the whole setup on Windows, macOS or Linux.
+  """
+  # Design: docs/desired-user-stories/context-engine-design.md#api
+  # Source: prompts/install-dep.md
+  # Source: cli/src/commands/setup.ts
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path @mvp
+  Scenario: Set up for a project
+    Given a project configured for DEP
+    When I run setup for that project with a home location and a desktop configuration file
+    Then the desktop configuration names the CLI as the server for that project
+    And I am told where the CLI lives, that the desktop client was configured, and that the checks pass
+    And I am told to restart the desktop client
+
+  @happy-path @mvp
+  Scenario: An existing desktop configuration is merged, not replaced
+    Given a project configured for DEP
+    And a desktop configuration that already names another server
+    When I run setup for that project with a home location and a desktop configuration file
+    Then the desktop configuration still names the other server
+    And it names the CLI as the "dep" server
+    And the previous configuration is kept beside it
+
+  @happy-path
+  Scenario: Running setup again changes nothing
+    Given a project configured for DEP
+    And setup has already been run for that project
+    When I run setup for that project with a home location and a desktop configuration file
+    Then the desktop configuration names the CLI as the server for that project
+    And the desktop configuration names exactly one "dep" server
+
+  @happy-path
+  Scenario: The outcome is available as data
+    Given a project configured for DEP
+    When I run setup for that project and request a machine-readable answer
+    Then I receive each step by name with its outcome
+    And I receive the paths that were written
+
+  # ─────────────────────────────────────────────
+  # Edge Cases & Errors
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: Setup without naming a project
+    When I run setup without naming a project, from a place that is not a project
+    Then the desktop client is not configured
+    And I am told to name a project
+
+  @edge-case
+  Scenario: Only the desktop client, not the search path
+    Given a project configured for DEP
+    When I run setup for that project and decline changes to the search path
+    Then the search path step reports that it was skipped
+
+  @error @mvp
+  Scenario: The home location cannot be written
+    Given a project configured for DEP
+    And a home location that cannot be written
+    When I run setup for that project with that home location
+    Then the install step fails and names the location
+    And the verdict is that setup did not complete
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-38 @project-lead @install @should
+Feature: FLOW-38 Install into the desktop client with one file
+  """
+  As a project lead who does not want a terminal,
+  I want a bundle the desktop client installs by itself — the CLI inside, the project asked for on install,
+  so that no terminal, script, runtime or configuration file is ever involved.
+  """
+  # Design: docs/desired-user-stories/context-engine-design.md#api
+  # Source: cli/scripts/bundle.ts
+  # Source: https://github.com/modelcontextprotocol/mcpb/blob/main/MANIFEST.md
+
+  @happy-path @should
+  Scenario: A bundle is produced for a platform
+    Given a built CLI for "windows-x64"
+    When I build the desktop bundle for it
+    Then I receive one bundle file for "windows-x64"
+    And it holds a manifest and the CLI under the server directory
+
+  @data-driven @should
+  Scenario Outline: The manifest tells the desktop client what it needs
+    Given a built CLI for "<platform>"
+    When I build the desktop bundle for it
+    Then the manifest declares a binary server whose command is the bundled CLI
+    And the manifest asks the person for the project root when installing
+    And the manifest names the platform "<desktop-platform>"
+    And the manifest carries the CLI's version
+
+    Examples:
+      | platform     | desktop-platform |
+      | windows-x64  | win32            |
+      | darwin-arm64 | darwin           |
+      | linux-x64    | linux            |
+
+  @validation
+  Scenario: Reject a platform with no built CLI
+    When I build the desktop bundle for a platform that was not built
+    Then the request is refused
+    And I am told which platforms are built
+
 ```
 
 ## Open questions
@@ -1332,6 +1446,11 @@ someone should confirm before implementation starts.
     provider, which fetches the model on first use; the scenario is parked as `@later` because the
     acceptance suite must stay offline. Should the full check be the default when a network is
     available?
-11. **Behaviours deliberately left out** — no scenarios were written for output with no observable
+11. **Unsigned downloads** (FLOW-37, FLOW-38) — Windows SmartScreen warns once on any unsigned file,
+    installer or bundle alike. Code signing (or Azure Trusted Signing) removes the warning; nothing in
+    the install path can. Worth a certificate?
+12. **The bundle install itself is not observed** (FLOW-38) — the stories check what the bundle
+    contains; what Claude Desktop does with it can only be tried by hand.
+13. **Behaviours deliberately left out** — no scenarios were written for output with no observable
    verdict: how a bundle is laid out for reading, the progress counter shown while indexing, or the
    wording used to separate passages from one another.

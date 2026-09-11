@@ -41,18 +41,34 @@ dep version    # → dep 0.3.0
 
 Or hand the whole job to an agent: [`prompts/install-dep.md`](prompts/install-dep.md)
 detects the platform, installs, proves the install with `dep doctor`, and files
-an issue if something fails. Windows: `irm …/install.ps1 | iex`.
+an issue if something fails.
+
+No shell available (Windows with PowerShell blocked, or no terminal at all)?
+The binary installs itself — download `dep-windows-x64.exe` and open it, or:
+
+```
+dep-windows-x64.exe setup --root C:\path\to\project
+  ✓ install  copied to ~\.dep\bin\dep.exe
+  ✓ path     ~\.dep\bin added to the user's search path (new terminals will see it)
+  ✓ desktop  ~\AppData\Roaming\Claude\claude_desktop_config.json: "dep" serves C:\path\to\project
+  ✓ doctor   all 6 checks pass
+Done. Restart Claude Desktop to see the "dep" server.
+```
+
+`install.cmd` does the download with only `cmd` + `curl.exe`; `install.ps1`
+when PowerShell is allowed; and the release also carries `dep-<os>-<arch>.mcpb`
+bundles that Claude Desktop installs by itself.
 
 ```
 $ dep doctor
-dep 0.3.2 · darwin-arm64 (dep-darwin-arm64) · home ~/.dep
+dep 0.3.3 · darwin-arm64 (dep-darwin-arm64) · home ~/.dep
 
-  ✓ version           dep 0.3.2 (standalone binary)
+  ✓ version           dep 0.3.3 (standalone binary)
   ✓ home              ~/.dep is writable
   ✓ validate          2 document(s) pass, graph checks pass
   ✓ index             2 document(s), 4 chunks, provider hash:v1-4096
   ✓ context           2 passage(s), ranking hybrid
-  ✓ mcp               server dep 0.3.2 answered initialize
+  ✓ mcp               server dep 0.3.3 answered initialize
 
 All checks pass — dep works on this machine.
 ```
@@ -714,9 +730,11 @@ step.support.alreadySupplied // what an earlier step already gave you
 
 ## 11. From Claude Desktop (MCP)
 
-`dep mcp` speaks the Model Context Protocol over stdio. Point Claude Desktop
-straight at the binary — the CLI prints the entry with the absolute paths the
-desktop app needs, on any operating system, with no other runtime:
+`dep mcp` speaks the Model Context Protocol over stdio. Three ways to connect
+Claude Desktop, none needing a runtime or a shell: open the release's
+`dep-<os>-<arch>.mcpb` bundle with Claude Desktop; run the downloaded binary
+once with `setup --root <project>`; or, with the CLI installed, let it print
+the entry with the absolute paths the desktop app needs:
 
 ```
 $ dep mcp --print-config --root /path/to/project

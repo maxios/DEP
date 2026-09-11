@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: cd cli && bun install && bun run build
+      - run: cd cli && bun install && bun run build && bun run scripts/bundle.ts --all
       - uses: actions/upload-artifact@v4
         with:
           name: binaries
@@ -55,6 +55,9 @@ jobs:
           "$BIN" version
           "$BIN" vectorize --root . --provider local --json
           "$BIN" context "how is a document's freshness decided" --budget 600 --root . --json | head -c 400
+          "$BIN" setup --root . --home "$RUNNER_TEMP/dep-home" --desktop-config "$RUNNER_TEMP/claude_desktop_config.json" --no-path
+          cat "$RUNNER_TEMP/claude_desktop_config.json"
+          "$RUNNER_TEMP/dep-home/bin/"dep* version
 
   release:
     needs: verify
@@ -73,6 +76,7 @@ jobs:
             binaries/dep-*
             install.sh
             install.ps1
+            install.cmd
           generate_release_notes: true
 
   publish-launcher:

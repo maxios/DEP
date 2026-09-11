@@ -49,6 +49,7 @@ dep mcp --root .                 # tools: dep_context, dep_search, dep_validate,
 dep version                      # prints the installed version
 dep upgrade [--check]            # replace the binary with the latest release (verifies it first)
 dep doctor [--json|--issue]      # prove the install works on a throwaway project; --issue prints a bug-report link
+dep setup --root <project>       # a downloaded copy installs itself, sets PATH (Windows registry), writes the Claude Desktop entry, runs doctor
 
 # Metadata write commands (use these instead of editing YAML directly)
 dep set docs/ref/schema.md --confidence high --root .   # set metadata field(s)
@@ -98,6 +99,7 @@ The CLI parses markdown files with YAML frontmatter, builds a directed graph of 
 - `cli/src/context/` — The context engine: `retrieve.ts` (hybrid ranking with IDF-weighted keywords, typed-edge expansion, freshness policy, budget packing, provenance), `set.ts` (the `DocumentationSet`), `indexer.ts` (incremental index updates), `procedure.ts` (DAP steps with a carried budget), `usage.ts` (local record of what consumers used), `freshness.ts`, `options.ts`, `tokens.ts`
 - `cli/src/mcp/` — The MCP server: `protocol.ts` (newline-delimited JSON-RPC over stdio, no SDK), `tools.ts` (the eleven tools, each taking an optional `root`); `commands/mcp.ts` is the `dep mcp` entry: it runs `selfUpgradeIfDue()` (daily release check, same verified swap as `dep upgrade`; `DEP_MCP_UPGRADE`) before serving, and `--print-config` prints the desktop entry. stdout is the wire — nothing else may print while it runs
 - `packages/dep-mcp/` — Zero-dependency Node launcher (`npx -y @maxios/dep-mcp`): installs the CLI at `<DEP_HOME>/bin/dep[.exe]` (default `~/.dep`), upgrades it daily (verifying the download runs first), then execs `dep mcp`. Cucumber covers it (FLOW-35) against a fake release service
+- `cli/src/commands/setup.ts` — `dep setup`: self-install for a downloaded copy (copy to `<DEP_HOME>/bin`, user PATH via `reg` on Windows, merge the `dep` entry into `claude_desktop_config.json`, then doctor). A non-installed copy run with no args does this by itself. `cli/scripts/bundle.ts` builds the Claude Desktop `.mcpb` bundles (manifest 0.3, binary server, `user_config.project_root`) with the dependency-free zip writer in `scripts/zip.ts`; `install.cmd` is the cmd-only Windows installer
 - `cli/src/commands/doctor.ts` — `dep doctor`: self-check on a throwaway project (validate, hash index, context, MCP handshake; `--full` loads the local model), JSON report with the user's home redacted, `--issue` → prefilled GitHub issue URL. `prompts/install-dep.md` is the agent-facing install prompt built on it
 - `cli/src/commands/upgrade.ts` — `dep version` / `dep upgrade` (self-update from GitHub releases; the download must report a version before it replaces the binary; previous kept as `dep.prev`)
 - `cli/src/embeddings/hash.ts` — Deterministic, offline embedding provider (`vectorization.provider: hash`); lexical, used by tests and as a no-model fallback

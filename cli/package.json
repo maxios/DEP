@@ -1,6 +1,6 @@
 {
   "name": "@dep/cli",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "CLI tool for the Documentation Engineering Protocol",
   "module": "src/index.ts",
   "type": "module",

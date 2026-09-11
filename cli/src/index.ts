@@ -19,6 +19,11 @@ import { contextCommand } from './commands/context'
 import { upgradeCommand, versionCommand } from './commands/upgrade'
 import { mcpCommand } from './commands/mcp'
 import { doctorCommand } from './commands/doctor'
+import { setupCommand } from './commands/setup'
+import { runningFromSource } from './commands/upgrade'
+import { depHome } from './embeddings/native'
+import { existsSync, realpathSync } from 'fs'
+import { join } from 'path'
 import { dapCommand } from './dap/index'
 
 const args = process.argv.slice(2)
@@ -50,7 +55,29 @@ function getRoot(flags: Record<string, string | boolean>): string {
 const flags = parseFlags(args.slice(1))
 const root = getRoot(flags)
 
+// A downloaded copy run with no arguments — typically opened from a file
+// manager — installs itself; the installed binary and the source tree show help.
+if (command === undefined && !runningFromSource()) {
+  const installed = join(depHome(), 'bin', process.platform === 'win32' ? 'dep.exe' : 'dep')
+  const isInstalled = existsSync(installed) && realpathSync(installed) === realpathSync(process.execPath)
+  if (!isInstalled) {
+    await setupCommand({ pause: process.stdin.isTTY === true })
+  }
+}
+
 switch (command) {
+  case 'setup':
+    await setupCommand({
+      root: flags.root as string | undefined,
+      home: flags.home as string | undefined,
+      desktopConfig: flags['desktop-config'] as string | undefined,
+      noDesktop: !!flags['no-desktop'],
+      noPath: !!flags['no-path'],
+      json: !!flags.json,
+      pause: !!flags.pause,
+    })
+    break
+
   case 'version':
   case '--version':
   case '-v':
@@ -305,6 +332,9 @@ Integration:
 Maintenance:
   dep version                           Print the installed version
   dep doctor [--full] [--json|--issue]  Prove the installation works; --issue prints a prefilled bug-report link
+  dep setup [--root <project>] [--home <dir>] [--desktop-config <file>] [--no-desktop] [--no-path] [--json]
+                                        Install this file to ~/.dep/bin, register with Claude Desktop, run doctor
+                                        (a downloaded copy run with no arguments does this by itself)
   dep upgrade [--check] [--version vX.Y.Z]
                                         Replace this binary with the latest (or a named) release
 

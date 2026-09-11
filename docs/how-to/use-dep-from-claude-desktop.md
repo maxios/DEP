@@ -6,11 +6,12 @@ dep:
     - ai-agent
   owner: "@dep-core"
   created: 2026-09-11T10:00:00+03:00
-  last_verified: 2026-09-11T10:00:00+03:00
+  last_verified: 2026-09-11T15:28:12.451+03:00
   confidence: high
   depends_on:
-    - packages/dep-mcp/index.mjs
+    - cli/src/commands/setup.ts
     - cli/src/mcp/tools.ts
+    - cli/scripts/bundle.ts
   tags:
     - mcp
     - integration
@@ -24,42 +25,59 @@ dep:
 
 # How-To: Use DEP from Claude Desktop
 
-**Goal**: Give Claude Desktop (or any MCP client) DEP's knowledge and DAP's procedures as tools, with the CLI installed and kept current on every machine from one line of configuration.
+**Goal**: Give Claude Desktop (or any MCP client) DEP's knowledge and DAP's procedures as tools, on macOS, Linux or Windows — including a Windows machine where scripts and PowerShell are blocked.
 
 ## Prerequisites
 
 - A project with a `.docspec`
-- The `dep` CLI installed (`install.sh` on macOS/Linux, `install.ps1` on Windows, or `dep upgrade` if an older one is present). Node is **not** required.
+- Nothing else: the CLI is one self-contained file and needs no runtime, shell or script
 
 ## Steps
 
-### 1. Print the entry for this machine
+Pick one of the three routes; they end in the same place.
+
+### Route A — the bundle (no terminal, no file editing)
+
+1. Download the bundle for the machine from the latest release: `dep-windows-x64.mcpb`, `dep-darwin-arm64.mcpb`, `dep-darwin-x64.mcpb`, `dep-linux-x64.mcpb` or `dep-linux-arm64.mcpb`.
+2. Open it with Claude Desktop (Settings → Extensions, or double-open the file). Claude Desktop copies the CLI inside it, asks for the **Project root** folder, and writes its own configuration.
+3. Restart Claude Desktop; the `dep` server lists eleven tools.
+
+### Route B — the binary sets itself up (one file, no scripts)
+
+1. Download the CLI for the machine: `dep-windows-x64.exe` (or `dep-darwin-…`, `dep-linux-…`) from the latest release.
+2. Run it once with `setup`, naming the project:
+
+   ```
+   dep-windows-x64.exe setup --root C:\path\to\project
+   ```
+
+   On Windows a downloaded copy opened with no arguments does the same thing and waits for Enter before closing. `setup` copies the file to `~/.dep/bin`, adds that folder to the user's PATH (through the registry — no shell involved), merges a `dep` entry into `claude_desktop_config.json` (other servers kept, previous file kept as `.bak`), and runs the self-check.
+3. Restart Claude Desktop.
+
+On Windows without PowerShell, `install.cmd` does the download for you with nothing but `cmd` and `curl.exe`:
+
+```
+curl.exe -fsSL -o %TEMP%\install-dep.cmd https://raw.githubusercontent.com/maxios/DEP/main/install.cmd && %TEMP%\install-dep.cmd --root C:\path\to\project
+```
+
+### Route C — an installed CLI writes or prints the entry
 
 ```bash
-dep mcp --print-config --root /path/to/your/project
+dep setup --root /path/to/project              # writes claude_desktop_config.json
+dep mcp --print-config --root /path/to/project # or prints the entry to paste
 ```
 
-The output names the installed binary and the project root with absolute paths, which is what Claude Desktop needs — `~` and `%USERPROFILE%` are not expanded in its configuration.
+The entry names the binary and the project with absolute paths, which is what Claude Desktop needs (`~` and `%USERPROFILE%` are not expanded there).
 
-### 2. Add it to Claude Desktop
+### Keeping the CLI current
 
-Merge the printed `mcpServers.dep` entry into `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`) and restart Claude Desktop.
+Each time it starts, `dep mcp` looks for a newer release at most once a day and replaces the binary after running the download and requiring it to report a version; the previous binary is kept as `dep.prev`. Put `"env": { "DEP_MCP_UPGRADE": "never" }` in the entry to turn that off.
 
-### 3. Let the server keep the CLI current
+### With Node 18+ only: a launcher that installs for you
 
-Each time it starts, `dep mcp` looks for a newer release at most once a day and replaces the binary (after running the download and requiring it to report a version), keeping the previous one as `dep.prev`. Put `"env": { "DEP_MCP_UPGRADE": "never" }` in the entry to turn that off, or `"always"` to check on every start.
+`@maxios/dep-mcp` (GitHub Packages) installs the CLI and starts the server: `"command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"]`, with `~/.npmrc` carrying `@maxios:registry=https://npm.pkg.github.com` and a token with `read:packages`. Routes A–C need none of this.
 
-### 4. Alternatively, let a launcher install it (needs Node 18+)
-
-If the machine has Node and you would rather not install the binary yourself, the `@maxios/dep-mcp` launcher does the install and the daily upgrade, then starts `dep mcp`:
-
-```json
-{ "mcpServers": { "dep": { "command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/your/project"] } } }
-```
-
-It is published on GitHub Packages, so `~/.npmrc` needs `@maxios:registry=https://npm.pkg.github.com` and a token with `read:packages` (GitHub requires one even for public packages). Without Node, use steps 1–3.
-
-### 5. Use the tools
+### The tools
 
 | Tool | Use it to |
 |------|-----------|
@@ -74,11 +92,10 @@ Every tool takes an optional `root`, so one server can serve several projects.
 
 ## Verification
 
-- `dep mcp --print-config` prints an entry whose `command` exists on disk
-- Claude Desktop lists the eleven tools under the `dep` server
-- `dep_version` reports 0.3.0 or newer
+- `dep doctor` ends with "All checks pass" — its `mcp` check performs the same handshake Claude Desktop does
+- Claude Desktop lists the eleven tools under the `dep` server; `dep_version` reports 0.3.3 or newer
 
 ## Related
 
-- The CLI-side command the launcher runs: `dep mcp --root <project>`
 - [Keep the retrieval index current](keep-the-index-current.md) — `dep_index` is the same operation
+- Windows SmartScreen warns once on any unsigned download; that is a signing question, not an installation one

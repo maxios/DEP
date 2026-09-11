@@ -55,3 +55,6 @@ jobs:
           "$BIN" vectorize --root . --provider local --json
           "$BIN" search "lifecycle freshness" --semantic --root . --json | head -c 400
           "$BIN" context "how is a document's freshness decided" --budget 600 --root . --json | head -c 400
+          "$BIN" setup --root . --home "$RUNNER_TEMP/dep-home" --desktop-config "$RUNNER_TEMP/claude_desktop_config.json" --no-path
+          cat "$RUNNER_TEMP/claude_desktop_config.json"
+          "$RUNNER_TEMP/dep-home/bin/"dep* version
