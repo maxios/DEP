@@ -39,6 +39,24 @@ export PATH="$HOME/.dep/bin:$PATH"
 dep version    # → dep 0.3.0
 ```
 
+Or hand the whole job to an agent: [`prompts/install-dep.md`](prompts/install-dep.md)
+detects the platform, installs, proves the install with `dep doctor`, and files
+an issue if something fails. Windows: `irm …/install.ps1 | iex`.
+
+```
+$ dep doctor
+dep 0.3.1 · darwin-arm64 (dep-darwin-arm64) · home ~/.dep
+
+  ✓ version           dep 0.3.1 (standalone binary)
+  ✓ home              ~/.dep is writable
+  ✓ validate          2 document(s) pass, graph checks pass
+  ✓ index             2 document(s), 4 chunks, provider hash:v1-4096
+  ✓ context           2 passage(s), ranking hybrid
+  ✓ mcp               server dep 0.3.1 answered initialize
+
+All checks pass — dep works on this machine.
+```
+
 Skills need `dep context`, which binaries older than 0.3.0 lack. Check and
 upgrade in place — the download is run and must report a version before it
 replaces anything, and the previous binary is kept as `dep.prev`:
@@ -772,4 +790,5 @@ Install: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketpl
   "dep: unknown command context"           binary older than 0.3.0          dep upgrade
   dep upgrade: "running from its source"   you run from cli/src, not a      git pull && bun install
                                            binary
+  anything else after installing           unknown                          dep doctor --issue
 ```

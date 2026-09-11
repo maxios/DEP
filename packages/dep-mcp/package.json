@@ -1,6 +1,6 @@
 {
   "name": "@maxios/dep-mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Launcher for the DEP MCP server: installs the dep CLI in a fixed per-user location on macOS, Linux or Windows, keeps it current, and serves DEP/DAP as Model Context Protocol tools for Claude Desktop.",
   "type": "module",
   "bin": {

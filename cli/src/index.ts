@@ -18,6 +18,7 @@ import { vectorizeCommand } from './commands/vectorize'
 import { contextCommand } from './commands/context'
 import { upgradeCommand, versionCommand } from './commands/upgrade'
 import { mcpCommand } from './commands/mcp'
+import { doctorCommand } from './commands/doctor'
 import { dapCommand } from './dap/index'
 
 const args = process.argv.slice(2)
@@ -54,6 +55,10 @@ switch (command) {
   case '--version':
   case '-v':
     versionCommand({ json: !!flags.json })
+    break
+
+  case 'doctor':
+    await doctorCommand({ json: !!flags.json, full: !!flags.full, issue: !!flags.issue })
     break
 
   case 'upgrade':
@@ -298,6 +303,7 @@ Integration:
 
 Maintenance:
   dep version                           Print the installed version
+  dep doctor [--full] [--json|--issue]  Prove the installation works; --issue prints a prefilled bug-report link
   dep upgrade [--check] [--version vX.Y.Z]
                                         Replace this binary with the latest (or a named) release
 

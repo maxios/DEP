@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-12 flows, 112 scenarios.
+13 flows, 119 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -21,3 +21,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-33 Keep the CLI up to date](flow-33-keep-the-cli-up-to-date.feature) | As an AI agent whose skills depend on capabilities the CLI only recently gained, I want to learn which version is installed and bring it up to the latest release in one step, so that a skill never fails on a machine that installed the CLI before the capability existed. | 9 | @flow-33 @ai-agent @install @mvp |
 | [FLOW-34 Use DEP from an MCP client](flow-34-use-dep-from-an-mcp-client.feature) | As an AI agent hosted in a desktop application that speaks the Model Context Protocol, I want DEP's knowledge and DAP's procedures offered to me as tools over that protocol, so that I can retrieve governed context and follow procedures without a shell. | 9 | @flow-34 @ai-agent @mcp @mvp |
 | [FLOW-35 Set up the MCP server on any machine](flow-35-set-up-the-mcp-server-on-any-machine.feature) | As a project lead adding DEP to a desktop assistant, I want one launcher that puts the CLI in a known place on macOS, Linux or Windows, keeps it current, and starts the server, so that every machine on the team gets the same setup from one line of configuration. | 9 | @flow-35 @project-lead @install @mvp |
+| [FLOW-36 Check an installation and report what is wrong](flow-36-check-an-installation-and-report-what-is-wrong.feature) | As a project lead — or the agent installing on their behalf — on a machine that just received the CLI, I want the CLI to prove it works end to end and hand me a report I can file when it does not, so that a broken installation is diagnosed in one step instead of discovered in the middle of a task. | 7 | @flow-36 @project-lead @install @mvp |

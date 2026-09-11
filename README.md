@@ -18,6 +18,12 @@ New here? [**USAGE.md**](USAGE.md) walks every command with the output you shoul
 
 ### Install the CLI
 
+Have an AI agent do it: give Claude (Desktop or Code) the prompt at
+[`prompts/install-dep.md`](prompts/install-dep.md) — it detects the platform,
+installs, runs `dep doctor` to prove the install works, and files an issue here
+if it does not.
+
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
 export PATH="$HOME/.dep/bin:$PATH"
@@ -82,6 +88,7 @@ All commands support `--json` for machine-readable output.
 | `dep prereqs <file> --root .` | Prerequisite chain for a document |
 | `dep mcp --root .` | Serve DEP and DAP as MCP tools over stdio |
 | `dep version` | Print the installed version |
+| `dep doctor` | Prove the installation works end to end (`--json`; `--issue` prints a prefilled bug-report link; `--full` also loads the local model) |
 | `dep upgrade` | Replace the installed binary with the latest release (`--check` only reports; `--version vX.Y.Z` pins) |
 
 ### Metadata write commands

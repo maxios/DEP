@@ -1,9 +1,17 @@
 {
   "default": {
-    "paths": ["../docs/desired-user-stories/features/*.feature"],
-    "import": ["features/support/*.ts", "features/steps/*.ts"],
-    "format": ["progress"],
+    "paths": [
+      "../docs/desired-user-stories/features/*.feature"
+    ],
+    "import": [
+      "features/support/*.ts",
+      "features/steps/*.ts"
+    ],
+    "format": [
+      "progress"
+    ],
     "publishQuiet": true,
-    "failFast": false
+    "failFast": false,
+    "tags": "not @wip and not @later"
   }
 }

@@ -72,6 +72,7 @@ jobs:
           files: |
             binaries/dep-*
             install.sh
+            install.ps1
           generate_release_notes: true
 
   publish-launcher:
