@@ -21,6 +21,8 @@ export interface NativeLibrary {
   source: string
   /** Load into the process before the binding. Defaults to true. */
   preload?: boolean
+  /** A symbol the library exports, so `dlopen` has something to resolve. Defaults to onnxruntime's C API entry. */
+  symbol?: string
 }
 
 /** DEP's per-user home: binaries in `bin/`, native libraries in `lib/`, model cache in `cache/`. */
@@ -36,6 +38,7 @@ async function embeddedLibraries(): Promise<NativeLibrary[]> {
   if (process.platform === 'darwin' && process.arch === 'x64') return (await import('./native/darwin-x64')).default
   if (process.platform === 'linux' && process.arch === 'x64') return (await import('./native/linux-x64')).default
   if (process.platform === 'linux' && process.arch === 'arm64') return (await import('./native/linux-arm64')).default
+  if (process.platform === 'win32' && process.arch === 'x64') return (await import('./native/win32-x64')).default
   return []
 }
 
@@ -65,7 +68,7 @@ export function preloadOnnxRuntime(): Promise<void> {
     for (const lib of await embeddedLibraries()) {
       const path = lib.source.startsWith(EMBEDDED_PREFIX) ? await materialise(lib, libDir) : lib.source
       // bun:ffi refuses an empty symbol table; OrtGetApiBase is the C API entry point every build exports.
-      if (lib.preload !== false) dlopen(path, { OrtGetApiBase: { args: [], returns: 'ptr' } })
+      if (lib.preload !== false) dlopen(path, { [lib.symbol ?? 'OrtGetApiBase']: { args: [], returns: 'ptr' } })
     }
   })()
   return preloaded

@@ -1,10 +1,10 @@
-# @dep/mcp
+# @maxios/dep-mcp
 
 Starts the DEP MCP server for Claude Desktop (or any MCP client), installing the
 `dep` CLI first if the machine does not have it and keeping it current.
 
 ```
-  npx -y @dep/mcp --root /path/to/project
+  npx -y @maxios/dep-mcp --root /path/to/project
         │
         ├─ ~/.dep/bin/dep missing?  ──▶ download latest release for this OS/arch,
         │                               run it, require it to report a version,
@@ -17,6 +17,21 @@ Starts the DEP MCP server for Claude Desktop (or any MCP client), installing the
 The CLI lives at the same place on every operating system: `~/.dep/bin/dep`
 (`~/.dep/bin/dep.exe` on Windows). Set `DEP_HOME` to move the whole tree.
 
+## Install
+
+GitHub Packages serves the package; npm needs to know that for the `@maxios`
+scope, and — GitHub's rule, even for public packages — a token with
+`read:packages`. Once, on each machine:
+
+```bash
+cat >> ~/.npmrc <<'EOF'
+@maxios:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+EOF
+```
+
+(`GITHUB_TOKEN` being a personal access token with `read:packages`; `gh auth token` prints yours.)
+
 ## Claude Desktop
 
 `claude_desktop_config.json`:
@@ -26,13 +41,13 @@ The CLI lives at the same place on every operating system: `~/.dep/bin/dep`
   "mcpServers": {
     "dep": {
       "command": "npx",
-      "args": ["-y", "@dep/mcp", "--root", "/path/to/your/project"]
+      "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/your/project"]
     }
   }
 }
 ```
 
-Until the package is on npm, point at the file directly:
+Without the registry setup, point at a checkout directly:
 
 ```json
 { "mcpServers": { "dep": { "command": "node", "args": ["/path/to/DEP/packages/dep-mcp/index.mjs", "--root", "/path/to/your/project"] } } }

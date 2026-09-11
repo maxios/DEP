@@ -6,7 +6,7 @@
  * defaults to ~/.dep on every operating system. Everything a person should
  * read goes to stderr: stdout belongs to the MCP client.
  *
- *   npx -y @dep/mcp --root /path/to/project
+ *   npx -y @maxios/dep-mcp --root /path/to/project
  *
  * Environment:
  *   DEP_HOME               where the CLI, its libraries and caches live (default ~/.dep)

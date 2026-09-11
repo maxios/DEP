@@ -2,8 +2,9 @@
 /**
  * Build standalone `dep` executables.
  *
- *   bun run scripts/build.ts            # every supported target into cli/dist/
- *   bun run scripts/build.ts --local    # current platform only, as cli/dist/dep
+ *   bun run scripts/build.ts                       # every supported target into cli/dist/
+ *   bun run scripts/build.ts --local               # current platform only, as cli/dist/dep
+ *   bun run scripts/build.ts --target=windows-x64  # one target, named like its release asset
  *
  * The bundle swaps `sharp` for a stub (see src/embeddings/native/sharp-stub.ts)
  * and embeds each target's onnxruntime shared libraries (see src/embeddings/native.ts).
@@ -49,8 +50,17 @@ async function compile(target: Target, outfile: string): Promise<void> {
 }
 
 const local = process.argv.includes("--local");
+const only = process.argv.find((a) => a.startsWith("--target="))?.slice("--target=".length);
 
-if (local) {
+if (only) {
+  const target = `bun-${only}` as Target;
+  if (!ALL_TARGETS.includes(target)) throw new Error(`Unknown target ${only}; known: ${ALL_TARGETS.map((t) => t.replace("bun-", "")).join(", ")}`);
+  await mkdir(distDir, { recursive: true });
+  const outfile = join(distDir, `dep-${only}${only.includes("windows") ? ".exe" : ""}`);
+  console.log(`Building ${outfile} for ${target}...`);
+  await compile(target, outfile);
+  console.log(`  ✓ ${outfile}`);
+} else if (local) {
   const target = `bun-${process.platform}-${process.arch}` as Target;
   if (!ALL_TARGETS.includes(target)) throw new Error(`Unsupported platform: ${target}`);
   await mkdir(distDir, { recursive: true });

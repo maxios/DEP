@@ -111,10 +111,10 @@ const bundle = await set.context('how is freshness decided', { budget: 4000, aud
 
 ### Claude Desktop (MCP)
 
-`dep mcp` serves the same capabilities as Model Context Protocol tools over stdio. The `@dep/mcp` launcher installs the CLI at `~/.dep/bin/dep` (`dep.exe` on Windows), keeps it current, and starts the server:
+`dep mcp` serves the same capabilities as Model Context Protocol tools over stdio. The `@maxios/dep-mcp` launcher installs the CLI at `~/.dep/bin/dep` (`dep.exe` on Windows), keeps it current, and starts the server:
 
 ```json
-{ "mcpServers": { "dep": { "command": "npx", "args": ["-y", "@dep/mcp", "--root", "/path/to/project"] } } }
+{ "mcpServers": { "dep": { "command": "npx", "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"] } } }
 ```
 
 Tools: `dep_context`, `dep_search`, `dep_validate`, `dep_graph`, `dep_query`, `dep_metadata`, `dep_index`, `dap_resolve`, `dap_node`, `dap_trace`, `dep_version`. See [packages/dep-mcp](packages/dep-mcp/README.md) and [How-To: Use DEP from Claude Desktop](docs/how-to/use-dep-from-claude-desktop.md).
@@ -259,7 +259,7 @@ Releases are automated via GitHub Actions — push a version tag (`v*`) to trigg
 - **DAP spec**: [dap/dap-seed.md](dap/dap-seed.md) — the DAP specification
 - **Browse by audience or type**: [docs/index.md](docs/index.md)
 - **Tutorials**: [Write your first DEP document](docs/tutorials/write-your-first-dep-document.md) | [Bootstrap DEP for your project](docs/tutorials/bootstrap-dep-for-your-project.md) | [Integrate DEP into an agent](docs/tutorials/integrate-dep-into-agent.md)
-- **Claude Desktop**: [Use DEP from Claude Desktop](docs/how-to/use-dep-from-claude-desktop.md) | [@dep/mcp launcher](packages/dep-mcp/README.md)
+- **Claude Desktop**: [Use DEP from Claude Desktop](docs/how-to/use-dep-from-claude-desktop.md) | [@maxios/dep-mcp launcher](packages/dep-mcp/README.md)
 - **Context engine**: [Assemble a context bundle](docs/how-to/assemble-a-context-bundle.md) | [Keep the index current](docs/how-to/keep-the-index-current.md) | [Embed DEP in your program](docs/how-to/embed-dep-in-your-program.md) | [Bundle schema](docs/reference/context-bundle-schema.md) | [Why budgeted context](docs/explanation/why-budgeted-context.md)
 - **User stories**: [shipped](docs/user-stories/features/README.md) (FLOW-01…23) | [desired](docs/desired-user-stories/features/README.md) (FLOW-24…32) — black-box Gherkin, each with a Cucumber harness
 

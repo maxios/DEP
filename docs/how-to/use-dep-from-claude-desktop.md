@@ -33,7 +33,18 @@ dep:
 
 ## Steps
 
-### 1. Add the server to Claude Desktop
+### 1. Point npm at GitHub Packages
+
+The launcher is published on GitHub Packages under the `@maxios` scope, which npm must be told about — and, by GitHub's rule, needs a token with `read:packages` even for a public package. Once per machine:
+
+```bash
+cat >> ~/.npmrc <<'EOF'
+@maxios:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+EOF
+```
+
+### 2. Add the server to Claude Desktop
 
 In `claude_desktop_config.json`:
 
@@ -42,23 +53,23 @@ In `claude_desktop_config.json`:
   "mcpServers": {
     "dep": {
       "command": "npx",
-      "args": ["-y", "@dep/mcp", "--root", "/path/to/your/project"]
+      "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/your/project"]
     }
   }
 }
 ```
 
-Until the package is on npm, point at the file in a checkout: `"command": "node", "args": ["/path/to/DEP/packages/dep-mcp/index.mjs", "--root", "/path/to/your/project"]`.
+Without the registry setup, point at the file in a checkout: `"command": "node", "args": ["/path/to/DEP/packages/dep-mcp/index.mjs", "--root", "/path/to/your/project"]`.
 
-### 2. Let the launcher place the CLI
+### 3. Let the launcher place the CLI
 
 On first start the launcher downloads the release for the machine's operating system and architecture to `~/.dep/bin/dep` (`~/.dep/bin/dep.exe` on Windows), runs it, requires it to report a version, and only then moves it into place. Set `DEP_HOME` to move the whole tree.
 
-### 3. Let it keep the CLI current
+### 4. Let it keep the CLI current
 
 Once a day the launcher asks for the latest release and installs it before starting the server, keeping the previous binary as `dep.prev`. `DEP_MCP_UPGRADE=never` (or `--no-upgrade`) turns this off; `DEP_VERSION=v0.3.0` pins a release.
 
-### 4. Use the tools
+### 5. Use the tools
 
 | Tool | Use it to |
 |------|-----------|

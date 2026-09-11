@@ -696,16 +696,16 @@ step.support.alreadySupplied // what an earlier step already gave you
 
 ## 11. From Claude Desktop (MCP)
 
-`dep mcp` speaks the Model Context Protocol over stdio; the `@dep/mcp`
+`dep mcp` speaks the Model Context Protocol over stdio; the `@maxios/dep-mcp`
 launcher gets the CLI onto the machine first and keeps it there.
 
 ```
   claude_desktop_config.json
   { "mcpServers": { "dep": { "command": "npx",
-                             "args": ["-y", "@dep/mcp", "--root", "/path/to/project"] } } }
+                             "args": ["-y", "@maxios/dep-mcp", "--root", "/path/to/project"] } } }
            │
            ▼
-   npx @dep/mcp ──▶ ~/.dep/bin/dep missing?  ──▶ download · run · verify · place
+   npx @maxios/dep-mcp ──▶ ~/.dep/bin/dep missing?  ──▶ download · run · verify · place
                 ──▶ newer release (≤ daily)? ──▶ install, keep dep.prev
                 ──▶ exec  dep mcp --root …        stdout = protocol, stderr = notes
            │

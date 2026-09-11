@@ -1,8 +1,10 @@
-name: Release
+name: CI
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
@@ -10,13 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: |
-          cd cli && bun install
-          if find . -name '*.test.*' -o -name '*.spec.*' | grep -q .; then
-            bun test
-          else
-            echo "No test files found, skipping"
-          fi
+      - run: cd cli && bun install && bun test && bun run test:stories
 
   build:
     needs: test
@@ -30,6 +26,8 @@ jobs:
           name: binaries
           path: cli/dist/dep-*
 
+  # The standalone binaries must embed and load onnxruntime on their own — the
+  # one thing a source-tree test cannot prove. Runs the local provider end to end.
   verify:
     needs: build
     strategy:
@@ -53,40 +51,7 @@ jobs:
           chmod +x "binaries/${{ matrix.binary }}"
           BIN="$PWD/binaries/${{ matrix.binary }}"
           "$BIN" version
+          "$BIN" validate --root . --json > /dev/null
           "$BIN" vectorize --root . --provider local --json
+          "$BIN" search "lifecycle freshness" --semantic --root . --json | head -c 400
           "$BIN" context "how is a document's freshness decided" --budget 600 --root . --json | head -c 400
-
-  release:
-    needs: verify
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: binaries
-          path: binaries
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            binaries/dep-*
-            install.sh
-          generate_release_notes: true
-
-  publish-launcher:
-    needs: release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          registry-url: https://npm.pkg.github.com
-          scope: '@maxios'
-      - run: cd packages/dep-mcp && npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
