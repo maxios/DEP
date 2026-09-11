@@ -9,7 +9,7 @@
 import { World, type IWorldOptions } from '@cucumber/cucumber'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, chmodSync, unlinkSync } from 'fs'
 import { join, dirname, resolve, relative } from 'path'
-import { spawnSync } from 'child_process'
+import { spawn, spawnSync } from 'child_process'
 import { stringify as yamlStringify } from 'yaml'
 import { openDocumentationSet, DepError } from '../../src/lib'
 import type { DocumentationSet, Bundle, ContextOptions, EmbeddingProvider } from '../../src/lib'
@@ -412,6 +412,24 @@ export class DepWorld extends World {
     })
     this.cli = { stdout: res.stdout ?? '', stderr: res.stderr ?? '', code: res.status }
     return this.cli
+  }
+
+  /** Like runCli, but without blocking this process — needed when the CLI must talk to a server hosted here. */
+  runCliAsync(args: string[], opts: { env?: Record<string, string>; cwd?: string } = {}): Promise<{ stdout: string; stderr: string; code: number | null }> {
+    return new Promise((resolvePromise) => {
+      const child = spawn('bun', ['run', CLI_ENTRY, ...args], {
+        cwd: opts.cwd ?? this.root,
+        env: { ...process.env, ...(opts.env ?? {}) },
+      })
+      let stdout = ''
+      let stderr = ''
+      child.stdout.on('data', (d) => { stdout += String(d) })
+      child.stderr.on('data', (d) => { stderr += String(d) })
+      child.on('close', (code) => {
+        this.cli = { stdout, stderr, code }
+        resolvePromise(this.cli)
+      })
+    })
   }
 
   git(args: string[]) {

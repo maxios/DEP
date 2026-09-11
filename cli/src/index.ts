@@ -16,6 +16,7 @@ import { tagCommand } from './commands/tag'
 import { linkCommand } from './commands/link'
 import { vectorizeCommand } from './commands/vectorize'
 import { contextCommand } from './commands/context'
+import { upgradeCommand, versionCommand } from './commands/upgrade'
 import { dapCommand } from './dap/index'
 
 const args = process.argv.slice(2)
@@ -48,6 +49,21 @@ const flags = parseFlags(args.slice(1))
 const root = getRoot(flags)
 
 switch (command) {
+  case 'version':
+  case '--version':
+  case '-v':
+    versionCommand({ json: !!flags.json })
+    break
+
+  case 'upgrade':
+    await upgradeCommand({
+      check: !!flags.check,
+      version: flags.version as string | undefined,
+      target: flags.target as string | undefined,
+      json: !!flags.json,
+    })
+    break
+
   case 'graph':
     graphCommand(root, { json: !!flags.json, dot: !!flags.dot, mermaid: !!flags.mermaid })
     break
@@ -271,6 +287,11 @@ Query filters:
   --confidence <level>                  Filter by confidence level
   --lifecycle <state>                   Filter by lifecycle state (FRESH|AGING|STALE)
   --owner <owner>                       Filter by owner
+
+Maintenance:
+  dep version                           Print the installed version
+  dep upgrade [--check] [--version vX.Y.Z]
+                                        Replace this binary with the latest (or a named) release
 
 Global flags:
   --root <path>                         Project root (default: parent of cli/)

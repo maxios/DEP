@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-9 flows, 85 scenarios.
+10 flows, 94 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -18,3 +18,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-30 Keep retrieval current as the documents change](flow-30-keep-retrieval-current-as-the-documents-change.feature) | As a developer whose documentation changes every day, I want the retrievable knowledge to follow the documents without a full rebuild, so that what my assistant retrieves is what the set actually says right now. | 10 | @flow-30 @developer @indexing @should |
 | [FLOW-31 Carry a budget through a procedure](flow-31-carry-a-budget-through-a-procedure.feature) | As an AI agent following a project's own decision procedure, I want each step handed to me with the supporting knowledge it needs and a budget kept across the whole procedure, so that a long procedure does not consume the context window it was meant to protect. | 8 | @flow-31 @ai-agent @dap @could |
 | [FLOW-32 Learn from what the context was actually used for](flow-32-learn-from-what-the-context-was-actually-used-for.feature) | As a developer running an assistant against my documentation set, I want to record which retrieved knowledge actually got used and which never does, so that retrieval improves with use and I can see which documents are dead weight. | 9 | @flow-32 @developer @telemetry @could |
+| [FLOW-33 Keep the CLI up to date](flow-33-keep-the-cli-up-to-date.feature) | As an AI agent whose skills depend on capabilities the CLI only recently gained, I want to learn which version is installed and bring it up to the latest release in one step, so that a skill never fails on a machine that installed the CLI before the capability existed. | 9 | @flow-33 @ai-agent @install @mvp |

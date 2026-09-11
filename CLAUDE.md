@@ -41,6 +41,10 @@ dep context "how is freshness decided" --budget 8000 --audience ai-agent --json 
 dep vectorize --install-hook --root .       # post-commit hook keeps the index current
 dep vectorize --only docs/ref/schema.md     # refresh one document
 
+# Keep the binary current
+dep version                      # prints the installed version
+dep upgrade [--check]            # replace the binary with the latest release (verifies it first)
+
 # Metadata write commands (use these instead of editing YAML directly)
 dep set docs/ref/schema.md --confidence high --root .   # set metadata field(s)
 dep bump docs/ref/schema.md --root .                    # bump last_verified to now

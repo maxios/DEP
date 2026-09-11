@@ -17,6 +17,7 @@ The `dep` CLI binary must be available. Resolve in order:
 1. Check: `which dep || test -x ~/.dep/bin/dep`
 2. If not found, install: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
 3. Ensure PATH: `export PATH="$HOME/.dep/bin:$PATH"`
+4. Ensure it is current: `dep version` must print `dep 0.3.0` or newer. If it prints usage text instead (a binary from before `version` existed) or an older number, run `dep upgrade` — or re-run the installer from step 2 when `upgrade` is not available either — and check again. This skill needs `dep context`, which older binaries do not have.
 
 ## CLI-First Principle
 
@@ -64,10 +65,11 @@ Use the `dep` CLI as the primary tool for all documentation queries.
 
 ### CLI Availability
 
-If `dep` is not in PATH:
+If `dep` is not in PATH, or is older than 0.3.0:
 1. Check: `which dep || test -x ~/.dep/bin/dep`
 2. Install if missing: `curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh`
 3. Add to PATH: `export PATH="$HOME/.dep/bin:$PATH"`
+4. Keep it current: `dep version` should print `dep 0.3.0` or newer; otherwise `dep upgrade` (or re-run the installer if `upgrade` is unknown)
 ```
 
 This ensures all future Claude Code sessions in this project automatically use DEP/DAP as the primary intelligence layer.

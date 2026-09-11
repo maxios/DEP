@@ -88,6 +88,10 @@ Then('I receive an empty bundle', function (this: DepWorld) {
 })
 
 Then('the request is refused', function (this: DepWorld) {
+  if (this.cli && !this.error) {
+    assert.notEqual(this.cli.code, 0, `command succeeded:\n${this.cli.stdout}`)
+    return
+  }
   assert.ok(this.error, 'expected the request to be refused, but it succeeded')
   assert.equal(this.bundle, undefined)
 })

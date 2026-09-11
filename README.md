@@ -80,6 +80,8 @@ All commands support `--json` for machine-readable output.
 | `dep neighbors <file> --depth 2 --root .` | Transitive graph traversal |
 | `dep roadmap <audience> --root .` | Learning path for an audience persona |
 | `dep prereqs <file> --root .` | Prerequisite chain for a document |
+| `dep version` | Print the installed version |
+| `dep upgrade` | Replace the installed binary with the latest release (`--check` only reports; `--version vX.Y.Z` pins) |
 
 ### Metadata write commands
 

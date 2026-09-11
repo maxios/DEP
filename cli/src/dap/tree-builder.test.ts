@@ -1,6 +1,8 @@
 import { describe, test, expect } from 'bun:test'
 import { buildDapGraph, detectNodeCycles, detectOrphanNodes } from './tree-builder'
 import { join } from 'path'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
 
 const DAP_ROOT = join(import.meta.dir, '..', '..', '..', 'dap')
 
@@ -15,10 +17,22 @@ describe('tree-builder', () => {
     expect(graph.trees.has('audit-existing-docs')).toBe(true)
   })
 
-  test('computes lifecycle state', () => {
-    const graph = buildDapGraph(DAP_ROOT)
-    const tree = graph.trees.get('choose-document-type')!
-    expect(tree.lifecycle).toBe('FRESH')
+  test('computes lifecycle state from last_verified and the cadence', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dap-lifecycle-'))
+    mkdirSync(join(root, 'trees'))
+    writeFileSync(join(root, '.dapspec'), 'dap_version: "0.1.0"\nproject: { name: t, trees_root: ./trees }\ngovernance: { review_cadence: 60, fallback_owner: "@t" }\n')
+    const tree = (id: string, daysAgo: number) => {
+      const verified = new Date(Date.now() - daysAgo * 86_400_000).toISOString()
+      writeFileSync(join(root, 'trees', `${id}.md`), `---\ndap:\n  id: ${id}\n  version: 1\n  trigger: "${id}"\n  audience: [ai-agent]\n  owner: "@t"\n  created: ${verified}\n  last_verified: ${verified}\n  confidence: high\n  depends_on: []\n  tags: []\n  entry_node: go\n---\n\n# ${id}\n\n## go [!]\n\nDone.\n\n- **action_type**: intent\n- **intent**: report_success\n- **terminal**: true\n`)
+    }
+    tree('fresh', 1)
+    tree('aging', 90)
+    tree('stale', 400)
+    const graph = buildDapGraph(root)
+    expect(graph.trees.get('fresh')!.lifecycle).toBe('FRESH')
+    expect(graph.trees.get('aging')!.lifecycle).toBe('AGING')
+    expect(graph.trees.get('stale')!.lifecycle).toBe('STALE')
+    rmSync(root, { recursive: true, force: true })
   })
 
   test('detects delegations', () => {

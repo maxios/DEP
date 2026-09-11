@@ -36,7 +36,21 @@ An agent asks DEP *what is true* and DAP *what to do next*.
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
 export PATH="$HOME/.dep/bin:$PATH"
-dep            # prints the command list
+dep version    # → dep 0.3.0
+```
+
+Skills need `dep context`, which binaries older than 0.3.0 lack. Check and
+upgrade in place — the download is run and must report a version before it
+replaces anything, and the previous binary is kept as `dep.prev`:
+
+```
+$ dep upgrade --check
+Installed 0.2.0, latest 0.3.0 — upgrade available: run `dep upgrade`
+
+$ dep upgrade
+Installed: dep 0.2.0
+Installing: dep 0.3.0
+Installed dep 0.3.0 at /Users/you/.dep/bin/dep (previous kept as /Users/you/.dep/bin/dep.prev)
 ```
 
 Every command takes `--root <project>`; the project root is where `.docspec`
@@ -724,4 +738,7 @@ Install: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketpl
   "cannot be mixed" from vectorize         provider changed in .docspec     dep vectorize --force
   CREDENTIAL_MISSING                       openai provider, no key          export DEP_OPENAI_API_KEY
   dap resolve scores all 0                 no tree declares that trigger    add trigger_patterns
+  "dep: unknown command context"           binary older than 0.3.0          dep upgrade
+  dep upgrade: "running from its source"   you run from cli/src, not a      git pull && bun install
+                                           binary
 ```
