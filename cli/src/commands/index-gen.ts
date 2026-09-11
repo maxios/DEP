@@ -4,6 +4,7 @@ import { extractTitle as extractTitleFromPath } from '../parser'
 import { writeFileSync } from 'fs'
 import { join, relative, dirname, basename } from 'path'
 import type { DepNode } from '../types'
+import { posix } from '../paths'
 
 export function indexCommand(root: string, flags: { json?: boolean; dry?: boolean }) {
   const config = loadDocspec(root)
@@ -16,7 +17,7 @@ export function indexCommand(root: string, flags: { json?: boolean; dry?: boolea
   for (const [typeName, dirPath] of Object.entries(dirMap)) {
     const fullDirPath = join(root, dirPath)
     const indexPath = join(fullDirPath, 'index.md')
-    const relIndexPath = relative(root, indexPath)
+    const relIndexPath = posix(relative(root, indexPath))
 
     // Get all documents in this directory (excluding index.md)
     const docsInDir = Array.from(graph.nodes.values()).filter((n) => {
@@ -32,7 +33,7 @@ export function indexCommand(root: string, flags: { json?: boolean; dry?: boolea
 
   // Generate root index
   const rootIndexPath = join(root, config.project.docs_root, 'index.md')
-  const rootRelPath = relative(root, rootIndexPath)
+  const rootRelPath = posix(relative(root, rootIndexPath))
   const rootContent = generateRootIndex(graph, config)
   generated.push({ path: rootRelPath, content: rootContent })
 
@@ -109,7 +110,7 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
     lines.push(`### ${audience.name}`)
     lines.push('')
     const epPath = audience.entry_point.replace(/^\.\//, '')
-    const epRelPath = relative(config.project.docs_root, epPath)
+    const epRelPath = posix(relative(config.project.docs_root, epPath))
     lines.push(`**Entry point**: [${basename(audience.entry_point)}](${epRelPath})`)
     lines.push('')
 
@@ -120,7 +121,7 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
 
     for (const doc of docs) {
       const title = extractTitle(doc)
-      const relPath = relative('docs', doc.path)
+      const relPath = posix(relative('docs', doc.path))
       lines.push(`- [${title}](${relPath})`)
     }
     lines.push('')
@@ -145,7 +146,7 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
     lines.push('')
     for (const node of nodes) {
       const title = extractTitle(node)
-      const relPath = relative('docs', node.path)
+      const relPath = posix(relative('docs', node.path))
       lines.push(`- [${title}](${relPath})`)
     }
     lines.push('')

@@ -51,7 +51,7 @@ jobs:
           chmod +x "binaries/${{ matrix.binary }}"
           BIN="$PWD/binaries/${{ matrix.binary }}"
           "$BIN" version
-          "$BIN" validate --root . --json > /dev/null
+          "$BIN" validate --root . | tail -6
           "$BIN" vectorize --root . --provider local --json
           "$BIN" search "lifecycle freshness" --semantic --root . --json | head -c 400
           "$BIN" context "how is a document's freshness decided" --budget 600 --root . --json | head -c 400

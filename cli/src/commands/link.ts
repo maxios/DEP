@@ -1,6 +1,7 @@
 import { resolve, relative } from 'path'
 import { readDepFile, writeDepFile, validateRel } from '../writer'
 import { loadDocspec } from '../config'
+import { posix } from '../paths'
 
 interface LinkFlags {
   target?: string
@@ -28,7 +29,7 @@ export function linkCommand(root: string, file: string, flags: LinkFlags) {
   }
 
   const links: Array<{ target: string; rel: string }> = fileData.dep.links ?? []
-  const relPath = relative(root, filePath)
+  const relPath = posix(relative(root, filePath))
 
   if (flags.remove) {
     const before = links.length

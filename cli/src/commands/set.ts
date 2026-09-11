@@ -1,6 +1,7 @@
 import { resolve, relative } from 'path'
 import { readDepFile, writeDepFile, validateField, parseFieldValue, isValidField } from '../writer'
 import { loadDocspec } from '../config'
+import { posix } from '../paths'
 
 interface SetFlags {
   json?: boolean
@@ -65,7 +66,7 @@ export function setCommand(root: string, file: string, flags: SetFlags) {
     writeDepFile(filePath, fileData)
   }
 
-  const relPath = relative(root, filePath)
+  const relPath = posix(relative(root, filePath))
 
   if (flags.json) {
     console.log(JSON.stringify({ path: relPath, changes, dry: !!flags.dry }, null, 2))

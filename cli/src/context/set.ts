@@ -24,6 +24,7 @@ import type {
   Bundle, CandidateChunk, ContextOptions, DocumentMetadata, IndexOptions, IndexReport, OpenOptions, SearchOptions, SearchResults,
 } from './types'
 import { relative, resolve } from 'path'
+import { posix } from '../paths'
 
 const METADATA_SECTION = '[metadata]'
 
@@ -323,7 +324,7 @@ export class DocumentationSet {
   /** A document's declared metadata, with its computed freshness. */
   metadata(document: string): DocumentMetadata {
     this.ensureLoaded()
-    const path = relative(this.root, resolve(this.root, document))
+    const path = posix(relative(this.root, resolve(this.root, document)))
     const node = this._graph!.nodes.get(path)
     if (!node) {
       throw new DepError('DOCUMENT_NOT_FOUND', `${document} is not a document in the set`, { document })

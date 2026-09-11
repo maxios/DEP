@@ -3,6 +3,7 @@ import { parse as yamlParse, stringify as yamlStringify } from 'yaml'
 import { join, relative, resolve } from 'path'
 import { loadDocspec } from './config'
 import type { DocspecConfig } from './types'
+import { posix } from './paths'
 
 export interface DepFileData {
   dep: Record<string, any>
@@ -172,7 +173,7 @@ export function resolveFiles(
   // Filter by glob pattern if it contains wildcards
   if (pattern.includes('*')) {
     const glob = new Bun.Glob(pattern)
-    return files.filter((f) => glob.match(relative(root, f)))
+    return files.filter((f) => glob.match(posix(relative(root, f))))
   }
 
   return files

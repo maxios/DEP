@@ -2,6 +2,7 @@ import { resolve, relative } from 'path'
 import { buildGraph } from '../graph'
 import { readDepFile, writeDepFile, generateTimestamp, resolveFiles, resolveAllDepFiles } from '../writer'
 import type { DepNode } from '../types'
+import { posix } from '../paths'
 
 interface BumpFlags {
   json?: boolean
@@ -70,12 +71,12 @@ export function bumpCommand(root: string, fileOrGlob: string | undefined, flags:
       }
 
       results.push({
-        path: relative(root, filePath),
+        path: posix(relative(root, filePath)),
         old: oldValue,
         new: timestamp,
       })
     } catch {
-      skipped.push(relative(root, filePath))
+      skipped.push(posix(relative(root, filePath)))
     }
   }
 

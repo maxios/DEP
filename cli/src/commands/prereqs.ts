@@ -1,6 +1,7 @@
 import { buildGraph } from '../graph'
 import { extractTitle } from '../parser'
 import { resolve, relative, join } from 'path'
+import { posix } from '../paths'
 
 export function prereqsCommand(
   root: string,
@@ -10,7 +11,7 @@ export function prereqsCommand(
   const graph = buildGraph(root)
 
   // Normalize file path
-  const normalized = relative(root, resolve(root, file))
+  const normalized = posix(relative(root, resolve(root, file)))
   if (!graph.nodes.has(normalized)) {
     console.error(`Document not found in graph: ${normalized}`)
     process.exit(1)

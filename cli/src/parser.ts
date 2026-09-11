@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from 'fs'
 import matter from 'gray-matter'
 import { resolve, dirname, relative, basename, join } from 'path'
 import type { DepMetadata, DepEdge } from './types'
+import { posix } from './paths'
 
 export interface ParsedDocument {
   path: string
@@ -17,7 +18,7 @@ export function parseDocument(filePath: string, projectRoot: string): ParsedDocu
   if (!data.dep) return null
 
   const meta = data.dep as DepMetadata
-  const relPath = relative(projectRoot, filePath)
+  const relPath = posix(relative(projectRoot, filePath))
 
   // Extract typed links from metadata
   const typedLinks: DepEdge[] = (meta.links ?? []).map((link) => ({
@@ -64,7 +65,7 @@ function resolveRelativePath(fromPath: string, toPath: string): string {
   const fromDir = dirname(fromPath)
   const resolved = resolve(fromDir, toPath)
   // Make it relative to project root (remove leading /)
-  return relative(process.cwd(), resolved)
+  return posix(relative(process.cwd(), resolved))
 }
 
 export function extractTitle(filePath: string): string {

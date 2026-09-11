@@ -8,6 +8,7 @@ import {
 } from '../vectorstore/db'
 import { DepError } from './errors'
 import type { IndexOptions, IndexReport } from './types'
+import { posix } from '../paths'
 
 export interface IndexContext {
   root: string
@@ -27,7 +28,7 @@ export async function runIndex(ctx: IndexContext, options: IndexOptions = {}): P
 
   let documents = [...graph.nodes.keys()]
   if (options.only !== undefined) {
-    const normalized = relative(root, resolve(root, options.only))
+    const normalized = posix(relative(root, resolve(root, options.only)))
     if (!graph.nodes.has(normalized)) {
       throw new DepError('OUTSIDE_SET', `${options.only} is outside the documentation set`, { document: options.only })
     }

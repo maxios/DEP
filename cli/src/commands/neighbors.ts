@@ -1,5 +1,6 @@
 import { buildGraph } from '../graph'
 import { resolve, relative } from 'path'
+import { posix } from '../paths'
 
 interface NeighborEntry {
   path: string
@@ -20,7 +21,7 @@ export function neighborsCommand(
   const dir = flags.direction ?? 'both'
 
   // Normalize file path
-  const normalized = relative(root, resolve(root, file))
+  const normalized = posix(relative(root, resolve(root, file)))
   if (!graph.nodes.has(normalized)) {
     console.error(`Document not found in graph: ${normalized}`)
     process.exit(1)

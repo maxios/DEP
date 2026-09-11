@@ -1,12 +1,13 @@
 import { buildGraph } from '../graph'
 import { formatBacklinks } from '../output'
 import { relative, resolve } from 'path'
+import { posix } from '../paths'
 
 export function backlinksCommand(root: string, filePath: string, flags: { json?: boolean }) {
   const graph = buildGraph(root)
 
   // Normalize path to be relative to project root
-  const normalizedPath = relative(root, resolve(root, filePath))
+  const normalizedPath = posix(relative(root, resolve(root, filePath)))
   const node = graph.nodes.get(normalizedPath)
 
   if (!node) {

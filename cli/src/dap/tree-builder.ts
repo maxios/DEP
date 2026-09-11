@@ -3,6 +3,7 @@ import { join, relative } from 'path'
 import { parseTreeFile } from './parser'
 import { loadDapspec } from './config'
 import type { DapGraph, DapTree, DapNode, DapEdge, DapspecConfig, Lifecycle } from './types'
+import { posix } from '../paths'
 
 export function buildDapGraph(dapRoot: string): DapGraph {
   const config = loadDapspec(dapRoot)
@@ -20,7 +21,7 @@ export function buildDapGraph(dapRoot: string): DapGraph {
     const parsed = parseTreeFile(filePath)
     if (!parsed) continue
 
-    const relPath = relative(dapRoot, filePath)
+    const relPath = posix(relative(dapRoot, filePath))
     const nodeMap = new Map<string, DapNode>()
     for (const node of parsed.nodes) {
       nodeMap.set(node.id, node)

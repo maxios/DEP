@@ -3,6 +3,7 @@ import { join, relative } from 'path'
 import { parseDocument } from './parser'
 import { loadDocspec } from './config'
 import type { DepGraph, DepNode, DepEdge, DocspecConfig } from './types'
+import { posix } from './paths'
 
 export function buildGraph(projectRoot: string): DepGraph {
   const config = loadDocspec(projectRoot)
@@ -10,7 +11,7 @@ export function buildGraph(projectRoot: string): DepGraph {
   // Also include seed.md if it exists
   const seedPath = join(projectRoot, 'seed.md')
   if (existsSync(seedPath)) {
-    const rel = relative(projectRoot, seedPath)
+    const rel = posix(relative(projectRoot, seedPath))
     if (!mdFiles.includes(rel)) mdFiles.push(rel)
   }
 
@@ -79,7 +80,7 @@ function findMarkdownFiles(root: string, config: DocspecConfig): string[] {
       if (stat.isDirectory()) {
         walk(fullPath)
       } else if (entry.endsWith('.md')) {
-        files.push(relative(root, fullPath))
+        files.push(posix(relative(root, fullPath)))
       }
     }
   }

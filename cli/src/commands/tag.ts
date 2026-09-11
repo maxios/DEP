@@ -1,5 +1,6 @@
 import { resolve, relative } from 'path'
 import { readDepFile, writeDepFile } from '../writer'
+import { posix } from '../paths'
 
 interface TagFlags {
   add?: string
@@ -57,7 +58,7 @@ export function tagCommand(root: string, file: string, flags: TagFlags) {
   fileData.dep.tags = tags
   writeDepFile(filePath, fileData)
 
-  const relPath = relative(root, filePath)
+  const relPath = posix(relative(root, filePath))
 
   if (flags.json) {
     console.log(JSON.stringify({ path: relPath, tags, added, removed, warnings }, null, 2))
