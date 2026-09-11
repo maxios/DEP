@@ -9,13 +9,13 @@
 import { World, type IWorldOptions } from '@cucumber/cucumber'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, chmodSync, unlinkSync } from 'fs'
 import { join, dirname, resolve, relative } from 'path'
+import { tmpdir } from 'os'
 import { spawn, spawnSync } from 'child_process'
 import { stringify as yamlStringify } from 'yaml'
 import { openDocumentationSet, DepError } from '../../src/lib'
 import type { DocumentationSet, Bundle, ContextOptions, EmbeddingProvider } from '../../src/lib'
 
-export const SCRATCH = process.env.DEP_STORY_SCRATCH
-  ?? '/private/tmp/claude-501/-Volumes-storeHub-repos-ontology-dep/fe61f426-cbbb-46c5-88eb-b90a2941aa35/scratchpad/stories'
+export const SCRATCH = process.env.DEP_STORY_SCRATCH ?? join(tmpdir(), 'dep-stories')
 
 export const CLI_ENTRY = resolve(import.meta.dir, '..', '..', 'src', 'index.ts')
 
