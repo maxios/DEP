@@ -152,6 +152,12 @@ DEP is packaged as a Claude Code plugin (`.claude-plugin/`). Four skills in `ski
 
 Install via marketplace: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketplace`
 
+Maintainer skills (project-local, `.claude/skills/`, not shipped with the plugin):
+
+- `/dep-story` — add a capability story-first: feature in `docs/desired-user-stories`, mirrors, Cucumber steps red → green, one commit per flow
+- `/dep-build` — build binaries and `.mcpb` bundles, verify a built binary the way CI does, reinstall `~/.dep/bin/dep`, add a platform
+- `/dep-release` — the release procedure → `dap://release-dep` (preflight, version gate, CI proof of Linux + Windows, tag, release, verify 13 assets + launcher, upgrade local)
+
 ## DAP Commands (via `dep dap`)
 
 DAP (Decision Action Protocol) is the companion protocol to DEP. While DEP structures knowledge, DAP structures decisions. The AI agent uses DAP trees as its decision engine — traversing nodes one at a time via CLI for progressive context loading. DAP is integrated into the `dep` CLI as a subcommand group.
@@ -205,7 +211,7 @@ dap:
 
 ## Decision Trees
 
-Five trees in `dap/trees/`:
+Six trees in `dap/trees/`:
 
 | Tree | Trigger | Entry Node |
 | --- | --- | --- |
@@ -214,3 +220,4 @@ Five trees in `dap/trees/`:
 | `audit-existing-docs` | migrate existing documentation to DEP | `inventory-docs` |
 | `sync-stale-docs` | documentation may be out of date | `check-staleness` |
 | `choose-document-type` | determine what type a DEP document should be | `identify-reader-question` |
+| `release-dep` | release a new version of the dep CLI | `preflight` |
