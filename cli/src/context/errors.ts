@@ -17,6 +17,7 @@ export type DepErrorCode =
   | 'UNKNOWN_PASSAGE'
   | 'UNKNOWN_BUNDLE'
   | 'DOCUMENT_NOT_FOUND'
+  | 'PORT_TAKEN'
 
 /**
  * The one error type the library raises. Carries a stable code a program can

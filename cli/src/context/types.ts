@@ -144,7 +144,7 @@ export interface OpenOptions {
    * Keep an ordered record of the requests this set answers. Default: true.
    * `{ keep }` bounds how many requests the record holds.
    */
-  trace?: boolean | { keep?: number }
+  trace?: boolean | { keep?: number; record?: boolean }
   /** How this consumer identifies itself in that record. Default: "library". */
   caller?: string
 }

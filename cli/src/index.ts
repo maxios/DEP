@@ -18,6 +18,7 @@ import { vectorizeCommand } from './commands/vectorize'
 import { contextCommand } from './commands/context'
 import { upgradeCommand, versionCommand } from './commands/upgrade'
 import { mcpCommand } from './commands/mcp'
+import { consoleCommand } from './commands/console'
 import { doctorCommand } from './commands/doctor'
 import { setupCommand } from './commands/setup'
 import { runningFromSource } from './commands/upgrade'
@@ -164,6 +165,12 @@ switch (command) {
     break
   }
 
+  case 'console': {
+    const consoleFlags = parseFlags(args.slice(1))
+    await consoleCommand(getRoot(consoleFlags), consoleFlags as any)
+    break
+  }
+
   case 'vectorize': {
     await vectorizeCommand(root, {
       json: !!flags.json,
@@ -299,6 +306,7 @@ Usage:
                                         Assemble a budgeted, freshness-aware context bundle
   dep vectorize [--force] [--provider local|openai|hash] [--only <file>] [--install-hook] [--dry] [--json]
                                         Build/refresh the vector index (or install a post-commit hook that does)
+  dep console [--port N] [--json]       Serve a local console: the graph, health, procedures, and what agents asked for
   dep neighbors <file> [--depth=N] [--follow=RELS] [--direction=in|out|both] [--json]
                                         Transitive graph traversal
   dep roadmap <audience_id> [--json]    Audience-specific learning path

@@ -60,12 +60,15 @@ type Line =
 export class TraceStore {
   readonly path: string
   readonly keep: number
+  /** False for a consumer that only reads the record — a console watching it. */
+  readonly writes: boolean
   private writeFailed = false
   private lines: number | null = null
 
-  constructor(path: string, options: { keep?: number } = {}) {
+  constructor(path: string, options: { keep?: number; record?: boolean } = {}) {
     this.path = path
     this.keep = options.keep && options.keep > 0 ? Math.floor(options.keep) : DEFAULT_KEEP
+    this.writes = options.record !== false
   }
 
   record(entry: TraceEntry): TraceReceipt {
@@ -98,6 +101,7 @@ export class TraceStore {
   }
 
   private append(line: Line): TraceReceipt {
+    if (!this.writes) return { recorded: false, silenced: true }
     try {
       appendFileSync(this.path, `${JSON.stringify(line)}\n`)
       this.lines = (this.lines ?? this.countLines()) + 1

@@ -429,10 +429,10 @@ export class DocumentationSet {
       this.ensureLoaded()
       report = runValidation(this.root, this._config, this._graph!)
     } catch (err) {
-      this.traceRefusal('validate', this.root, err)
+      this.traceRefusal('validate', '', err)
       throw err
     }
-    this.traceAnswer('validate', this.root, { passages: [] })
+    this.traceAnswer('validate', '', { passages: [] })
     return report
   }
 
