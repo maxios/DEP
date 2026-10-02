@@ -18,10 +18,13 @@ export async function mcpCommand(root: string, flags: { printConfig?: boolean } 
   }
   const note = await selfUpgradeIfDue({ log: (line) => process.stderr.write(`dep mcp: ${line}\n`) })
   process.stderr.write(`dep ${VERSION} mcp server — root ${root} — ${note}\n`)
-  await serveStdio(depTools(root), {
+  let client = 'mcp-client'
+  await serveStdio(depTools(root, { caller: () => client }), {
     name: 'dep',
     version: VERSION,
     instructions: 'DEP structures knowledge; DAP structures decisions. Ask dep_context for the passages a task needs (budgeted, stale-withheld, with provenance) instead of reading whole documents. For a procedure, dap_resolve finds the tree and dap_node hands you one step at a time.',
+  }, {
+    onClient: (who) => { if (who.name) client = who.name },
   })
 }
 

@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-16 flows, 145 scenarios.
+17 flows, 150 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -25,3 +25,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-37 Install from a downloaded file, with no shell at all](flow-37-install-from-a-downloaded-file-with-no-shell-at-all.feature) | As a project lead on a machine where scripts are blocked, I want the downloaded CLI to install itself, register with the desktop client and prove it works, so that one file and one run is the whole setup on Windows, macOS or Linux. | 7 | @flow-37 @project-lead @install @mvp |
 | [FLOW-38 Install into the desktop client with one file](flow-38-install-into-the-desktop-client-with-one-file.feature) | As a project lead who does not want a terminal, I want a bundle the desktop client installs by itself — the CLI inside, the project asked for on install, so that no terminal, script, runtime or configuration file is ever involved. | 3 | @flow-38 @project-lead @install @should |
 | [FLOW-39 Watch how an agent moved through the documentation](flow-39-watch-how-an-agent-moved-through-the-documentation.feature) | As a developer running agents against my documentation set, I want every request the set answered kept in order, with what it offered and what came back used, so that I can watch how an agent moved through the docs instead of inferring it from the answer. | 14 | @flow-39 @developer @telemetry @should |
+| [FLOW-40 Tell which consumer a request came from](flow-40-tell-which-consumer-a-request-came-from.feature) | As a developer watching agents work against my documentation set, I want every request to name the consumer that made it without my configuring anything, so that one project's record can be read per client instead of as one undifferentiated stream. | 5 | @flow-40 @ai-agent @telemetry @should |

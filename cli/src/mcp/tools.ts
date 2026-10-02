@@ -14,17 +14,26 @@ const number = (description: string) => ({ type: 'number', description })
 const boolean = (description: string) => ({ type: 'boolean', description })
 const rootProperty = { root: string('Project root holding .docspec. Defaults to the root the server was started with.') }
 
+export interface ToolOptions {
+  /**
+   * How the connected client identifies itself, read when a set is first
+   * opened — which is never before the client has introduced itself.
+   */
+  caller?: () => string
+}
+
 /**
  * DEP's tools as an MCP client sees them. Each call names a project root
  * (or uses the server's default); sets are opened once per root and reused.
  */
-export function depTools(defaultRoot: string): ToolDefinition[] {
+export function depTools(defaultRoot: string, options: ToolOptions = {}): ToolDefinition[] {
   const sets = new Map<string, DocumentationSet>()
   const setFor = (args: Record<string, unknown>): DocumentationSet => {
     const root = resolve(typeof args.root === 'string' && args.root ? args.root : defaultRoot)
     let set = sets.get(root)
     if (!set) {
-      set = openDocumentationSet(root)
+      const caller = options.caller?.()
+      set = openDocumentationSet(root, caller ? { caller } : {})
       sets.set(root, set)
     }
     return set

@@ -52,8 +52,10 @@ export class McpClient {
     this.child.stdin!.write(JSON.stringify({ jsonrpc: '2.0', method, ...(params ? { params } : {}) }) + '\n')
   }
 
-  async initialize() {
-    const reply = await this.request('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'story', version: '0' } })
+  /** `null` initializes without naming the client at all. */
+  async initialize(name: string | null = 'story') {
+    const clientInfo = name === null ? {} : { clientInfo: { name, version: '0' } }
+    const reply = await this.request('initialize', { protocolVersion: '2025-06-18', capabilities: {}, ...clientInfo })
     this.notify('notifications/initialized')
     return reply
   }

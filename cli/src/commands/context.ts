@@ -41,7 +41,7 @@ export async function contextCommand(root: string, question: string, flags: Cont
   }
 
   try {
-    const set = openDocumentationSet(root)
+    const set = openDocumentationSet(root, { caller: 'cli:context' })
     const bundle = await set.context(question, options)
     set.close()
     if (flags.json) {
