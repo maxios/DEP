@@ -1,4 +1,5 @@
 import { existsSync, statSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from 'fs'
+import { randomBytes } from 'crypto'
 import { join } from 'path'
 import { loadDocspec } from '../config'
 import { buildGraph } from '../graph'
@@ -11,6 +12,7 @@ import { DepError } from './errors'
 import { normalizeOptions } from './options'
 import { retrieve, type RetrievalContext, type RetrievalInternals } from './retrieve'
 import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
+import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
 import { ProcedureSession, stepParts, treeIdFromRef, type ProcedureStep, type ProcedureStepOptions, type SupportPassage } from './procedure'
 import { buildDapGraph } from '../dap/tree-builder'
 import { getNodeTargets } from '../dap/tree-builder'
@@ -33,6 +35,11 @@ const METADATA_SECTION = '[metadata]'
  * from disk on first use and again only when asked to refresh; every request
  * returns a value or throws a DepError. Nothing is printed.
  */
+/** An identity for a request that produced no bundle of its own. */
+function requestId(): string {
+  return randomBytes(8).toString('hex')
+}
+
 export class DocumentationSet {
   readonly root: string
   readonly stats = { loads: 0 }
@@ -46,6 +53,8 @@ export class DocumentationSet {
   private _provider: EmbeddingProvider | null = null
   private _providerReady = false
   private _usage: UsageStore | null
+  private _trace: TraceStore | null
+  private _caller: string
   private _dap: DapGraph | null = null
 
   constructor(root: string, options: OpenOptions = {}) {
@@ -61,11 +70,20 @@ export class DocumentationSet {
     this.now = options.now ?? (() => new Date())
     this._config = loadDocspec(root)
     this._usage = options.usage === false ? null : new UsageStore(join(root, '.dep-usage.json'))
+    this._trace = options.trace === false
+      ? null
+      : new TraceStore(join(root, '.dep-trace.jsonl'), typeof options.trace === 'object' ? options.trace : {})
+    this._caller = options.caller ?? 'library'
   }
 
   /** Where the usage record lives, if one is kept. */
   get usagePath(): string | null {
     return this._usage?.path ?? null
+  }
+
+  /** Where the record of answered requests lives, if one is kept. */
+  get tracePath(): string | null {
+    return this._trace?.path ?? null
   }
 
   config(): DocspecConfig {
@@ -85,7 +103,64 @@ export class DocumentationSet {
   }
 
   async context(question: string, options: ContextOptions = {}): Promise<Bundle> {
-    return this.assemble(question, options)
+    let bundle: Bundle
+    try {
+      bundle = await this.assemble(question, options)
+    } catch (err) {
+      this.traceRefusal('context', question, err)
+      throw err
+    }
+    const notice = traceNotice(this.traceAnswer('context', question, bundle))
+    if (notice) bundle.notices.push(notice)
+    return bundle
+  }
+
+  // ── record of answered requests ───────────────────────────────────────
+
+  /** The requests this set has answered, oldest first. */
+  traceReport(options: { caller?: string } = {}): TraceReport {
+    if (!this._trace) return { entries: [], dropped: 0, ...(options.caller === undefined ? {} : { caller: options.caller }) }
+    return this._trace.report(options)
+  }
+
+  clearTrace(): { cleared: boolean; removed: number } {
+    if (!this._trace) return { cleared: false, removed: 0 }
+    return this._trace.clear()
+  }
+
+  private traceAnswer(kind: TraceKind, question: string, from: { id?: string; budget?: { declared: number; used: number }; passages: Array<{ id: string; document: string; section: string; reason: { kind: string } }> }): TraceReceipt {
+    if (!this._trace) return { recorded: false }
+    const offered: TraceOffered[] = from.passages.map((p) => ({ id: p.id, document: p.document, section: p.section, reason: p.reason.kind }))
+    return this._trace.record({
+      id: from.id ?? requestId(),
+      kind,
+      caller: this._caller,
+      at: this.now().toISOString(),
+      question,
+      outcome: 'answered',
+      ...(from.budget ? { budget: { declared: from.budget.declared, used: from.budget.used } } : {}),
+      offered,
+      used: [],
+    })
+  }
+
+  private traceRefusal(kind: TraceKind, question: string, err: unknown): void {
+    if (!this._trace) return
+    const entry: TraceEntry = {
+      id: requestId(),
+      kind,
+      caller: this._caller,
+      at: this.now().toISOString(),
+      question,
+      outcome: 'refused',
+      error: {
+        code: err instanceof DepError ? err.code : 'ERROR',
+        message: err instanceof Error ? err.message : String(err),
+      },
+      offered: [],
+      used: [],
+    }
+    this._trace.record(entry)
   }
 
   // ── usage record ──────────────────────────────────────────────────────
@@ -103,7 +178,9 @@ export class DocumentationSet {
         throw new DepError('UNKNOWN_PASSAGE', `passage "${id}" cannot be matched to a bundle this set produced`, { bundleId, passageId: id })
       }
     }
-    return this._usage.record(bundleId, bundle, used)
+    const receipt = this._usage.record(bundleId, bundle, used)
+    this._trace?.attach(bundleId, used)
+    return receipt
   }
 
   usageReport(): UsageReport {
@@ -130,6 +207,23 @@ export class DocumentationSet {
    * it needs packed to a budget — per step, or carried in a session.
    */
   async procedureStep(treeId: string, nodeId: string, options: ProcedureStepOptions = {}): Promise<ProcedureStep> {
+    const asked = `${treeId}/${nodeId}`
+    let step: ProcedureStep
+    try {
+      step = await this.takeStep(treeId, nodeId, options)
+    } catch (err) {
+      this.traceRefusal('procedure', asked, err)
+      throw err
+    }
+    const notice = traceNotice(this.traceAnswer('procedure', asked, {
+      budget: { declared: step.support.budget.declared, used: step.support.budget.used },
+      passages: step.support.passages,
+    }))
+    if (notice) step.notices.push(notice)
+    return step
+  }
+
+  private async takeStep(treeId: string, nodeId: string, options: ProcedureStepOptions = {}): Promise<ProcedureStep> {
     const dap = this.procedures()
     const tree = dap.trees.get(treeId)
     if (!tree) {
@@ -293,9 +387,22 @@ export class DocumentationSet {
     return bundle
   }
 
+  /** Retrieval for a search: the same ranking, recorded as a search rather than as context. */
+  private async searched(query: string, options: ContextOptions): Promise<Bundle> {
+    let bundle: Bundle
+    try {
+      bundle = await this.assemble(query, options)
+    } catch (err) {
+      this.traceRefusal('search', query, err)
+      throw err
+    }
+    this.traceAnswer('search', query, bundle)
+    return bundle
+  }
+
   /** Documents ranked for a query — the same ranking a bundle uses, without a budget. */
   async search(query: string, options: SearchOptions = {}): Promise<SearchResults> {
-    const bundle = await this.context(query, {
+    const bundle = await this.searched(query, {
       budget: Number.MAX_SAFE_INTEGER,
       audience: options.audience,
       type: options.type,
@@ -317,8 +424,16 @@ export class DocumentationSet {
 
   /** One verdict per document plus a verdict on the set as a whole. */
   validate(): ValidationReport {
-    this.ensureLoaded()
-    return runValidation(this.root, this._config, this._graph!)
+    let report: ValidationReport
+    try {
+      this.ensureLoaded()
+      report = runValidation(this.root, this._config, this._graph!)
+    } catch (err) {
+      this.traceRefusal('validate', this.root, err)
+      throw err
+    }
+    this.traceAnswer('validate', this.root, { passages: [] })
+    return report
   }
 
   /** A document's declared metadata, with its computed freshness. */

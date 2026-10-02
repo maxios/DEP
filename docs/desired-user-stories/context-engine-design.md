@@ -84,3 +84,13 @@ two can never disagree about what a request means.
 A consumer can report which passages it actually used. That signal is local, additive, and
 clearable; without it ranking behaves exactly as it does today. It also exposes the inverse
 question — which documents are retrieved constantly and never used — as a rewriting signal.
+
+## <a id="trace"></a>Traversal record
+
+The feedback loop records what proved *useful*; this records what *happened*. Every request a
+documentation set answers is kept in order — its kind, who asked, when, what was offered and why,
+and how much of the declared budget it filled — and a report of what was used is attached to the
+request it came from. The record is local to the project, bounded, and readable by another program
+while the set is still answering, so an agent's path through the documentation can be watched
+rather than inferred from its answer. Keeping it is a choice made when the set is opened; with it
+off, nothing about a request is kept and every answer is exactly what it would otherwise be.

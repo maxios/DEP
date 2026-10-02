@@ -90,6 +90,10 @@ export class DepWorld extends World {
   question = DEFAULT_QUESTION
   options: ContextOptions = {}
   provider?: EmbeddingProvider
+  /** Whether the set keeps a record of the requests it answers, and how much of one. */
+  trace: boolean | { keep?: number } | undefined = undefined
+  /** How the consumer in this scenario identifies itself. */
+  caller?: string
 
   set?: DocumentationSet
   bundle?: Bundle
@@ -271,6 +275,8 @@ export class DepWorld extends World {
     this.set = openDocumentationSet(this.root, {
       now: () => this.now,
       ...(this.provider ? { embeddings: this.provider } : {}),
+      ...(this.trace === undefined ? {} : { trace: this.trace }),
+      ...(this.caller ? { caller: this.caller } : {}),
     })
     this.opened = true
     return this.set

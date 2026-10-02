@@ -140,6 +140,13 @@ export interface OpenOptions {
   dapRoot?: string
   /** Keep a local record of which passages consumers report using. Default: true */
   usage?: boolean
+  /**
+   * Keep an ordered record of the requests this set answers. Default: true.
+   * `{ keep }` bounds how many requests the record holds.
+   */
+  trace?: boolean | { keep?: number }
+  /** How this consumer identifies itself in that record. Default: "library". */
+  caller?: string
 }
 
 export interface CandidateChunk {
