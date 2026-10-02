@@ -119,6 +119,8 @@ lives. Add `--json` to any command when a program is the reader.
   regenerate index pages              dep index                    files written
   give an agent the right context     dep context "…" --budget N   packed, cited passages
   keep retrieval current              dep vectorize                processed / reused
+  say what the context was used for   dep report <id> --used <ids> used of offered
+  watch the set and who reads it      dep console                  a local URL to open
   find the procedure for a request    dep dap resolve "…"          scored trees
   follow a procedure one step         dep dap node <tree> <node>   one node, nothing more
   see a whole procedure               dep dap trace <tree>         ASCII tree

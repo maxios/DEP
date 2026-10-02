@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-18 flows, 163 scenarios.
+19 flows, 169 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -27,3 +27,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-39 Watch how an agent moved through the documentation](flow-39-watch-how-an-agent-moved-through-the-documentation.feature) | As a developer running agents against my documentation set, I want every request the set answered kept in order, with what it offered and what came back used, so that I can watch how an agent moved through the docs instead of inferring it from the answer. | 14 | @flow-39 @developer @telemetry @should |
 | [FLOW-40 Tell which consumer a request came from](flow-40-tell-which-consumer-a-request-came-from.feature) | As a developer watching agents work against my documentation set, I want every request to name the consumer that made it without my configuring anything, so that one project's record can be read per client instead of as one undifferentiated stream. | 5 | @flow-40 @ai-agent @telemetry @should |
 | [FLOW-41 Serve a documentation set to a console](flow-41-serve-a-documentation-set-to-a-console.feature) | As someone responsible for a documentation set, I want a local console I can open that shows the set as a graph and shows what the agents have been asking it for, so that I can see the shape of the documentation and how it is actually being used without reading 35 files or a log. | 13 | @flow-41 @project-lead @console @should |
+| [FLOW-42 Report which passages earned their place](flow-42-report-which-passages-earned-their-place.feature) | As an agent that was handed more context than it ended up needing, I want to say which of it I actually used, from wherever I am connected, so that the set learns what earns its place instead of only what was offered. | 6 | @flow-42 @ai-agent @telemetry @should |

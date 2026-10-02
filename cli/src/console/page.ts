@@ -952,6 +952,63 @@ const PAGE = `<!doctype html>
     cards.appendChild(c3);
     pane.appendChild(cards);
 
+    var usage = {};
+    var reported = false;
+    (state.trace ? state.trace.entries : []).forEach(function (entry) {
+      var usedIds = {};
+      (entry.used || []).forEach(function (id) { usedIds[id] = true; reported = true; });
+      (entry.offered || []).forEach(function (p) {
+        var u = usage[p.document] || (usage[p.document] = { offered: 0, used: 0 });
+        u.offered++;
+        if (usedIds[p.id]) u.used++;
+      });
+    });
+
+    var passedOver = Object.keys(usage).map(function (doc) {
+      return { document: doc, offered: usage[doc].offered, used: usage[doc].used, passedOver: usage[doc].offered - usage[doc].used };
+    }).filter(function (d) { return d.passedOver > 0; })
+      .sort(function (a, b) { return b.passedOver - a.passedOver; })
+      .slice(0, 8);
+
+    var rarely = el('div', 'card');
+    rarely.style.marginBottom = '22px';
+    rarely.appendChild(el('h3', null, 'Offered, rarely used'));
+    if (!reported) {
+      rarely.appendChild(el('div', 'muted', 'No consumer has reported back yet. An agent reports with dep_report_usage; from a terminal it is dep report <request-id> --used <ids>.'));
+    } else if (!passedOver.length) {
+      rarely.appendChild(el('div', 'muted', 'Everything offered has been used at least once.'));
+    } else {
+      rarely.appendChild(el('div', 'muted', 'Agents keep being handed these and leaving them. Candidates to rewrite or retire.'));
+      var rt = el('table');
+      rt.style.marginTop = '10px';
+      var rhead = el('thead');
+      var rhr = el('tr');
+      ['Document', 'Offered', 'Used', 'Passed over'].forEach(function (h) { rhr.appendChild(el('th', null, h)); });
+      rhead.appendChild(rhr);
+      rt.appendChild(rhead);
+      var rbody = el('tbody');
+      passedOver.forEach(function (d) {
+        var tr = el('tr', 'row');
+        var td = el('td');
+        td.appendChild(el('span', 'mono', d.document));
+        tr.appendChild(td);
+        tr.appendChild(el('td', 'num', d.offered));
+        tr.appendChild(el('td', 'num', d.used));
+        var pt = el('td', 'num');
+        var badge = el('span', 'overdue', String(d.passedOver));
+        badge.style.cssText = d.used === 0
+          ? 'background:rgba(255,69,58,0.18);color:#ff6961'
+          : 'background:rgba(255,214,10,0.16);color:#ffd60a';
+        pt.appendChild(badge);
+        tr.appendChild(pt);
+        tr.onclick = function () { showScreen('graph'); select(d.document); };
+        rbody.appendChild(tr);
+      });
+      rt.appendChild(rbody);
+      rarely.appendChild(rt);
+    }
+    pane.appendChild(rarely);
+
     var needing = g.nodes.filter(function (n) { return n.lifecycle !== 'FRESH'; });
     needing.sort(function (a, b) {
       if (a.lifecycle !== b.lifecycle) return a.lifecycle === 'STALE' ? -1 : 1;
@@ -970,7 +1027,7 @@ const PAGE = `<!doctype html>
     var table = el('table');
     var thead = el('thead');
     var hr = el('tr');
-    ['Document', 'Type', 'Lifecycle', 'Inbound'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    ['Document', 'Type', 'Lifecycle', 'Inbound', 'Offered', 'Used'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
     thead.appendChild(hr);
     table.appendChild(thead);
     var tbody = el('tbody');
@@ -990,6 +1047,9 @@ const PAGE = `<!doctype html>
       lt.appendChild(badge);
       tr.appendChild(lt);
       tr.appendChild(el('td', 'num', n.inbound));
+      var u = usage[n.path];
+      tr.appendChild(el('td', 'num', u ? u.offered : '-'));
+      tr.appendChild(el('td', 'num', u ? u.used : '-'));
       tr.onclick = function () { showScreen('graph'); select(n.path); };
       tbody.appendChild(tr);
     });

@@ -138,6 +138,23 @@ export function depTools(defaultRoot: string, options: ToolOptions = {}): ToolDe
       handler: (args) => setFor(args).index(pick(args, ['force', 'only'])),
     },
     {
+      name: 'dep_report_usage',
+      description: "Say which passages of a bundle you actually used, by their ids, after you have answered. Report honestly, including an empty list: it is what teaches the set which knowledge earns its place and which is retrieved constantly and never read.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          bundle: string('The id of the bundle you were given'),
+          used: { type: 'array', items: { type: 'string' }, description: 'The ids of the passages you used. An empty list is a valid report.' },
+          ...rootProperty,
+        },
+        required: ['bundle', 'used'],
+      },
+      handler: (args) => setFor(args).recordUsage(
+        String(args.bundle ?? ''),
+        Array.isArray(args.used) ? args.used.map((id) => String(id)) : []
+      ),
+    },
+    {
       name: 'dap_resolve',
       description: 'Find the decision procedure (DAP tree) that covers a request, with a score and its entry step. Follow it with dap_node, one step at a time.',
       inputSchema: { type: 'object', properties: { query: string('The request, in the user’s own words'), ...rootProperty }, required: ['query'] },

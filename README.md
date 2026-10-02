@@ -83,6 +83,8 @@ All commands support `--json` for machine-readable output.
 | `dep search "term" --root .` | Full-text search with relevance scoring (`--semantic`, `--hybrid`) |
 | `dep vectorize --root .` | Build/refresh the vector index (`--force`, `--provider local\|openai\|hash`, `--only <file>`, `--install-hook`) |
 | `dep context "question" --budget 8000 --root .` | Assemble a context bundle: passages packed to a budget, stale ones withheld, each with provenance (`--audience`, `--type`, `--tag`, `--within`, `--freshness`, `--depth`, `--json`) |
+| `dep report <request-id> --used <ids> --root .` | Report which passages of an earlier answer were actually used (`--json`) |
+| `dep console --root .` | Serve a local console: the graph, health, procedures, and what agents have been asking for (`--port N`, `--json`) |
 | `dep neighbors <file> --depth 2 --root .` | Transitive graph traversal |
 | `dep roadmap <audience> --root .` | Learning path for an audience persona |
 | `dep prereqs <file> --root .` | Prerequisite chain for a document |

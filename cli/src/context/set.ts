@@ -168,7 +168,7 @@ export class DocumentationSet {
   /** Report which passages of a bundle were actually used. */
   recordUsage(bundleId: string, used: string[]): UsageReceipt {
     if (!this._usage) return { recorded: false, reason: 'this set keeps no usage record' }
-    const bundle = this._usage.knows(bundleId)
+    const bundle = this._usage.knows(bundleId) ?? this.offeredEarlier(bundleId)
     if (!bundle) {
       throw new DepError('UNKNOWN_BUNDLE', `bundle "${bundleId}" cannot be matched to a bundle this set produced`, { bundleId })
     }
@@ -180,7 +180,19 @@ export class DocumentationSet {
     }
     const receipt = this._usage.record(bundleId, bundle, used)
     this._trace?.attach(bundleId, used)
-    return receipt
+    return { ...receipt, offered: bundle.passages.length, used: new Set(used).size }
+  }
+
+  /**
+   * What a request offered, recovered from the record of answered requests.
+   * It is what lets a consumer report against a request from an earlier run,
+   * or from a different process than the one that answered it.
+   */
+  private offeredEarlier(bundleId: string): { question: string; passages: Array<{ id: string; document: string }> } | null {
+    if (!this._trace) return null
+    const entry = this._trace.report().entries.filter((e) => e.id === bundleId).at(-1)
+    if (!entry) return null
+    return { question: entry.question, passages: entry.offered.map((p) => ({ id: p.id, document: p.document })) }
   }
 
   usageReport(): UsageReport {
