@@ -4,6 +4,9 @@ import type { Notice } from './types'
 
 export interface UsageReceipt {
   recorded: boolean
+  /** How many passages the request offered, and how many the consumer used. */
+  offered?: number
+  used?: number
   version?: number
   /** Why the report could not be recorded — said once, then silenced. */
   reason?: string

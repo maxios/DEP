@@ -37,6 +37,8 @@ export class ToolError extends Error {}
 export interface StdioServerOptions {
   input?: Readable
   output?: { write(chunk: string): unknown }
+  /** Told who connected, as soon as the client says — before any tool is called. */
+  onClient?: (client: { name?: string; version?: string }) => void
 }
 
 /** Serve tools until the input closes. Resolves when it does. */
@@ -56,6 +58,8 @@ export function serveStdio(tools: ToolDefinition[], info: ServerInfo, options: S
     switch (request.method) {
       case 'initialize': {
         const asked = String(request.params?.protocolVersion ?? '')
+        const client = request.params?.clientInfo
+        if (options.onClient) options.onClient(typeof client === 'object' && client ? client as { name?: string; version?: string } : {})
         reply({
           protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
           capabilities: { tools: { listChanged: false } },

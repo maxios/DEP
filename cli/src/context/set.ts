@@ -1,4 +1,5 @@
 import { existsSync, statSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from 'fs'
+import { randomBytes } from 'crypto'
 import { join } from 'path'
 import { loadDocspec } from '../config'
 import { buildGraph } from '../graph'
@@ -11,6 +12,8 @@ import { DepError } from './errors'
 import { normalizeOptions } from './options'
 import { retrieve, type RetrievalContext, type RetrievalInternals } from './retrieve'
 import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
+import { amendDocument, type Amendment, type AmendResult } from './amend'
+import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
 import { ProcedureSession, stepParts, treeIdFromRef, type ProcedureStep, type ProcedureStepOptions, type SupportPassage } from './procedure'
 import { buildDapGraph } from '../dap/tree-builder'
 import { getNodeTargets } from '../dap/tree-builder'
@@ -23,7 +26,7 @@ import { runValidation, type ValidationReport } from '../commands/validate'
 import type {
   Bundle, CandidateChunk, ContextOptions, DocumentMetadata, IndexOptions, IndexReport, OpenOptions, SearchOptions, SearchResults,
 } from './types'
-import { relative, resolve } from 'path'
+import { relative, resolve, isAbsolute } from 'path'
 import { posix } from '../paths'
 
 const METADATA_SECTION = '[metadata]'
@@ -33,6 +36,11 @@ const METADATA_SECTION = '[metadata]'
  * from disk on first use and again only when asked to refresh; every request
  * returns a value or throws a DepError. Nothing is printed.
  */
+/** An identity for a request that produced no bundle of its own. */
+function requestId(): string {
+  return randomBytes(8).toString('hex')
+}
+
 export class DocumentationSet {
   readonly root: string
   readonly stats = { loads: 0 }
@@ -46,6 +54,8 @@ export class DocumentationSet {
   private _provider: EmbeddingProvider | null = null
   private _providerReady = false
   private _usage: UsageStore | null
+  private _trace: TraceStore | null
+  private _caller: string
   private _dap: DapGraph | null = null
 
   constructor(root: string, options: OpenOptions = {}) {
@@ -61,11 +71,20 @@ export class DocumentationSet {
     this.now = options.now ?? (() => new Date())
     this._config = loadDocspec(root)
     this._usage = options.usage === false ? null : new UsageStore(join(root, '.dep-usage.json'))
+    this._trace = options.trace === false
+      ? null
+      : new TraceStore(join(root, '.dep-trace.jsonl'), typeof options.trace === 'object' ? options.trace : {})
+    this._caller = options.caller ?? 'library'
   }
 
   /** Where the usage record lives, if one is kept. */
   get usagePath(): string | null {
     return this._usage?.path ?? null
+  }
+
+  /** Where the record of answered requests lives, if one is kept. */
+  get tracePath(): string | null {
+    return this._trace?.path ?? null
   }
 
   config(): DocspecConfig {
@@ -85,7 +104,64 @@ export class DocumentationSet {
   }
 
   async context(question: string, options: ContextOptions = {}): Promise<Bundle> {
-    return this.assemble(question, options)
+    let bundle: Bundle
+    try {
+      bundle = await this.assemble(question, options)
+    } catch (err) {
+      this.traceRefusal('context', question, err)
+      throw err
+    }
+    const notice = traceNotice(this.traceAnswer('context', question, bundle))
+    if (notice) bundle.notices.push(notice)
+    return bundle
+  }
+
+  // ── record of answered requests ───────────────────────────────────────
+
+  /** The requests this set has answered, oldest first. */
+  traceReport(options: { caller?: string } = {}): TraceReport {
+    if (!this._trace) return { entries: [], dropped: 0, ...(options.caller === undefined ? {} : { caller: options.caller }) }
+    return this._trace.report(options)
+  }
+
+  clearTrace(): { cleared: boolean; removed: number } {
+    if (!this._trace) return { cleared: false, removed: 0 }
+    return this._trace.clear()
+  }
+
+  private traceAnswer(kind: TraceKind, question: string, from: { id?: string; budget?: { declared: number; used: number }; passages: Array<{ id: string; document: string; section: string; reason: { kind: string } }> }): TraceReceipt {
+    if (!this._trace) return { recorded: false }
+    const offered: TraceOffered[] = from.passages.map((p) => ({ id: p.id, document: p.document, section: p.section, reason: p.reason.kind }))
+    return this._trace.record({
+      id: from.id ?? requestId(),
+      kind,
+      caller: this._caller,
+      at: this.now().toISOString(),
+      question,
+      outcome: 'answered',
+      ...(from.budget ? { budget: { declared: from.budget.declared, used: from.budget.used } } : {}),
+      offered,
+      used: [],
+    })
+  }
+
+  private traceRefusal(kind: TraceKind, question: string, err: unknown): void {
+    if (!this._trace) return
+    const entry: TraceEntry = {
+      id: requestId(),
+      kind,
+      caller: this._caller,
+      at: this.now().toISOString(),
+      question,
+      outcome: 'refused',
+      error: {
+        code: err instanceof DepError ? err.code : 'ERROR',
+        message: err instanceof Error ? err.message : String(err),
+      },
+      offered: [],
+      used: [],
+    }
+    this._trace.record(entry)
   }
 
   // ── usage record ──────────────────────────────────────────────────────
@@ -93,7 +169,7 @@ export class DocumentationSet {
   /** Report which passages of a bundle were actually used. */
   recordUsage(bundleId: string, used: string[]): UsageReceipt {
     if (!this._usage) return { recorded: false, reason: 'this set keeps no usage record' }
-    const bundle = this._usage.knows(bundleId)
+    const bundle = this._usage.knows(bundleId) ?? this.offeredEarlier(bundleId)
     if (!bundle) {
       throw new DepError('UNKNOWN_BUNDLE', `bundle "${bundleId}" cannot be matched to a bundle this set produced`, { bundleId })
     }
@@ -103,7 +179,21 @@ export class DocumentationSet {
         throw new DepError('UNKNOWN_PASSAGE', `passage "${id}" cannot be matched to a bundle this set produced`, { bundleId, passageId: id })
       }
     }
-    return this._usage.record(bundleId, bundle, used)
+    const receipt = this._usage.record(bundleId, bundle, used)
+    this._trace?.attach(bundleId, used)
+    return { ...receipt, offered: bundle.passages.length, used: new Set(used).size }
+  }
+
+  /**
+   * What a request offered, recovered from the record of answered requests.
+   * It is what lets a consumer report against a request from an earlier run,
+   * or from a different process than the one that answered it.
+   */
+  private offeredEarlier(bundleId: string): { question: string; passages: Array<{ id: string; document: string }> } | null {
+    if (!this._trace) return null
+    const entry = this._trace.report().entries.filter((e) => e.id === bundleId).at(-1)
+    if (!entry) return null
+    return { question: entry.question, passages: entry.offered.map((p) => ({ id: p.id, document: p.document })) }
   }
 
   usageReport(): UsageReport {
@@ -130,6 +220,23 @@ export class DocumentationSet {
    * it needs packed to a budget — per step, or carried in a session.
    */
   async procedureStep(treeId: string, nodeId: string, options: ProcedureStepOptions = {}): Promise<ProcedureStep> {
+    const asked = `${treeId}/${nodeId}`
+    let step: ProcedureStep
+    try {
+      step = await this.takeStep(treeId, nodeId, options)
+    } catch (err) {
+      this.traceRefusal('procedure', asked, err)
+      throw err
+    }
+    const notice = traceNotice(this.traceAnswer('procedure', asked, {
+      budget: { declared: step.support.budget.declared, used: step.support.budget.used },
+      passages: step.support.passages,
+    }))
+    if (notice) step.notices.push(notice)
+    return step
+  }
+
+  private async takeStep(treeId: string, nodeId: string, options: ProcedureStepOptions = {}): Promise<ProcedureStep> {
     const dap = this.procedures()
     const tree = dap.trees.get(treeId)
     if (!tree) {
@@ -293,9 +400,22 @@ export class DocumentationSet {
     return bundle
   }
 
+  /** Retrieval for a search: the same ranking, recorded as a search rather than as context. */
+  private async searched(query: string, options: ContextOptions): Promise<Bundle> {
+    let bundle: Bundle
+    try {
+      bundle = await this.assemble(query, options)
+    } catch (err) {
+      this.traceRefusal('search', query, err)
+      throw err
+    }
+    this.traceAnswer('search', query, bundle)
+    return bundle
+  }
+
   /** Documents ranked for a query — the same ranking a bundle uses, without a budget. */
   async search(query: string, options: SearchOptions = {}): Promise<SearchResults> {
-    const bundle = await this.context(query, {
+    const bundle = await this.searched(query, {
       budget: Number.MAX_SAFE_INTEGER,
       audience: options.audience,
       type: options.type,
@@ -317,8 +437,31 @@ export class DocumentationSet {
 
   /** One verdict per document plus a verdict on the set as a whole. */
   validate(): ValidationReport {
+    let report: ValidationReport
+    try {
+      this.ensureLoaded()
+      report = runValidation(this.root, this._config, this._graph!)
+    } catch (err) {
+      this.traceRefusal('validate', '', err)
+      throw err
+    }
+    this.traceAnswer('validate', '', { passages: [] })
+    return report
+  }
+
+  /**
+   * Change a document's metadata, in its own frontmatter. Returns what changed;
+   * throws when the amendment is not one the schema allows, having written
+   * nothing.
+   */
+  amend(document: string, amendment: Amendment): AmendResult {
     this.ensureLoaded()
-    return runValidation(this.root, this._config, this._graph!)
+    if (isAbsolute(document) || posix(relative(this.root, resolve(this.root, document))).startsWith('..')) {
+      throw new DepError('OUTSIDE_SET', `${document} is outside the documentation set`, { document })
+    }
+    const result = amendDocument(this.root, this._config, document, amendment)
+    this.refresh()
+    return result
   }
 
   /** A document's declared metadata, with its computed freshness. */

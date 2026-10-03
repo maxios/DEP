@@ -1402,6 +1402,446 @@ Feature: FLOW-38 Install into the desktop client with one file
     Then the request is refused
     And I am told which platforms are built
 
+# ═══════════════════════════════════════════════════════════════
+
+@flow-39 @developer @telemetry @should
+Feature: FLOW-39 Watch how an agent moved through the documentation
+  """
+  As a developer running agents against my documentation set,
+  I want every request the set answered kept in order, with what it offered and what came back used,
+  so that I can watch how an agent moved through the docs instead of inferring it from the answer.
+  """
+  # Design: docs/desired-user-stories/context-engine-design.md#trace
+  # Design: docs/desired-user-stories/context-engine-design.md#api
+  # Source: cli/src/lib.ts
+  # Source: cli/src/context/usage.ts
+
+  Background:
+    Given a project whose retrieval keeps a record of the requests it answers
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Every request is kept, in the order it was answered
+    When I ask three questions one after another
+    Then the record holds all three in the order I asked them
+    And each entry carries the moment it was answered
+
+  @happy-path
+  Scenario: A request keeps what it offered and why
+    When I ask for context
+    Then the record of that request names the passages it offered me
+    And the record says why each passage was included
+    And the record says how much of my declared budget it filled
+
+  @happy-path
+  Scenario: Use reported afterwards is attached to the request it came from
+    Given I received a bundle for a question
+    When I report which of its passages I actually used
+    Then the record of that request separates what I used from what I passed over
+
+  @happy-path
+  Scenario: Each request says who asked for it
+    Given two consumers that identify themselves differently
+    When each of them asks a question
+    Then the record attributes each request to the consumer that made it
+    And I can read back the requests of one consumer alone
+
+  @happy-path
+  Scenario: Requests answered in separate runs land in one record
+    Given a consumer asked a question in one run
+    And another consumer asked a question in a later run
+    When I read the record
+    Then it holds both, in the order they were answered
+
+  @happy-path @data-driven
+  Scenario Outline: Every kind of request is kept
+    When I <request>
+    Then the record holds one entry for it
+    And the entry says which kind of request it was
+
+    Examples:
+      | request                         |
+      | ask for context                 |
+      | search                          |
+      | take a step through a procedure |
+      | validate the documentation set  |
+
+  @happy-path
+  Scenario: Read the record while requests are still being answered
+    Given a consumer is asking questions continuously
+    When I read the record without interrupting it
+    Then I am given the requests answered so far
+    And the consumer's later requests still succeed
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: Keeping no record changes nothing but the record
+    Given a project that keeps no record of the requests it answers
+    When I ask for context
+    Then the bundle is the same as it would be with the record kept
+    And nothing about the request is kept
+
+  @edge-case
+  Scenario: The record does not grow without bound
+    Given more requests have been answered than the record keeps
+    When I read the record
+    Then I am given the most recent ones
+    And I am told that older ones were dropped
+
+  @edge-case
+  Scenario: Clear the record
+    When I clear the record of requests
+    Then reading the record returns nothing
+    And I am told the record was cleared
+
+  @edge-case
+  Scenario: A request that was refused is kept too
+    When I ask for context in a way that is refused
+    Then the record holds the refused request
+    And the entry says it was refused, and why
+
+  @validation
+  Scenario: Ask for the requests of a consumer that never asked anything
+    Given requests have been recorded
+    When I read back the requests of a consumer that never asked anything
+    Then I am given nothing, and told so
+    And the record is left as it was
+
+  @error
+  Scenario: The record cannot be written
+    Given the record cannot be written
+    When I ask for context
+    Then I still receive the bundle
+    And I am told the request could not be recorded, and why
+    And I am not told again on every later request
+
+  @security
+  Scenario: The record never leaves the machine
+    Given requests have been recorded
+    When I read the record
+    Then the record is kept only inside the project
+    And neither my questions nor the record are sent to any external service
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-40 @ai-agent @telemetry @should
+Feature: FLOW-40 Tell which consumer a request came from
+  """
+  As a developer watching agents work against my documentation set,
+  I want every request to name the consumer that made it without my configuring anything,
+  so that one project's record can be read per client instead of as one undifferentiated stream.
+  """
+  # Design: docs/desired-user-stories/context-engine-design.md#trace
+  # Source: cli/src/mcp/tools.ts
+  # Source: cli/src/commands/context.ts
+
+  Background:
+    Given a project configured for DEP and indexed for retrieval
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: A client that names itself is recorded under that name
+    Given an agent client that calls itself "desktop-client"
+    When it asks for context
+    Then the record attributes the request to "desktop-client"
+
+  @happy-path
+  Scenario: Two clients working on one project are told apart
+    Given an agent client that calls itself "desktop-client"
+    And another agent client that calls itself "review-bot"
+    When each of them asks for context
+    Then I can read back what "desktop-client" asked for on its own
+    And nothing "review-bot" asked for is among it
+
+  @happy-path
+  Scenario: A request made from the command line says so
+    When I ask for context from the command line
+    Then the record attributes the request to the command line
+    And it is told apart from what an agent client asked for
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: A client that never says who it is still has its requests recorded
+    Given an agent client that does not name itself
+    When it asks for context
+    Then the request is in the record
+    And it is attributed to an unnamed consumer
+
+  @validation
+  Scenario: A client name that could break the record does not
+    Given an agent client whose name contains a newline and a quote
+    When it asks for context
+    Then the record still reads back as one request
+    And the name is kept exactly as the client gave it
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-41 @project-lead @console @should
+Feature: FLOW-41 Serve a documentation set to a console
+  """
+  As someone responsible for a documentation set,
+  I want a local console I can open that shows the set as a graph and shows what the
+  agents have been asking it for,
+  so that I can see the shape of the documentation and how it is actually being used
+  without reading 35 files or a log.
+  """
+  # Design: docs/desired-user-stories/context-engine-design.md#trace
+  # Design: docs/desired-user-stories/context-engine-design.md#api
+  # Source: cli/src/lib.ts
+
+  Background:
+    Given a project configured for DEP and indexed for retrieval
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Open a console on a project
+    When I start a console for the project
+    Then I am told where to open it
+    And opening it gives me the console
+
+  @happy-path
+  Scenario: The console shows the set as a graph
+    Given a running console
+    When I ask it for the graph
+    Then I am given every document in the set
+    And each one carries its type, its lifecycle and its links
+
+  @happy-path
+  Scenario: The console shows how healthy the set is
+    Given a running console
+    When I ask it how the set validates
+    Then I am given a verdict for every document and for the set as a whole
+
+  @happy-path
+  Scenario: The console shows one document on its own
+    Given a running console
+    When I ask it for a document in the set
+    Then I am given that document's metadata, its freshness and what links to it
+
+  @happy-path
+  Scenario: The console shows what the agents have been asking for
+    Given an agent has asked the set a question
+    And a running console
+    When I ask it for the record of requests
+    Then I am given that request, with what it offered and who asked for it
+
+  @happy-path
+  Scenario: The console keeps up with the documents
+    Given a running console
+    When a document is added to the project
+    Then the console serves the new document without being restarted
+
+  @happy-path
+  Scenario: The console shows the decision procedures
+    Given the project declares decision procedures
+    And a running console
+    When I ask it for the procedures
+    Then I am given each procedure, its steps and where it hands off to
+
+  @happy-path
+  Scenario: The console does not fill the record it is showing
+    Given an agent has asked the set a question
+    And a running console
+    When I leave the console running and watch the record
+    Then it still holds only what the agents asked for
+    And nothing the console itself asked for is in it
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: Let the console pick a port when I do not care which
+    When I start a console without naming a port
+    Then I am told which port it took
+
+  @edge-case
+  Scenario: Two consoles cannot hold one port
+    Given a running console
+    When I start another console on the same port
+    Then I am told that port is already taken
+    And the console that was already running still answers
+
+  @validation
+  Scenario: Ask for a document the set does not have
+    Given a running console
+    When I ask it for a document that is not in the set
+    Then I am told it is not a document in the set
+
+  @security
+  Scenario: The console is reachable only from this machine
+    Given a running console
+    Then it accepts connections only from this machine
+
+  @security
+  Scenario: The console will not serve what is outside the project
+    Given a running console
+    When I ask it for a file outside the project
+    Then the console refuses it
+    And the file is not served
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-42 @ai-agent @telemetry @should
+Feature: FLOW-42 Report which passages earned their place
+  """
+  As an agent that was handed more context than it ended up needing,
+  I want to say which of it I actually used, from wherever I am connected,
+  so that the set learns what earns its place instead of only what was offered.
+  """
+  # Design: docs/desired-user-stories/context-engine-design.md#feedback
+  # Design: docs/desired-user-stories/context-engine-design.md#trace
+  # Source: cli/src/mcp/tools.ts
+  # Source: cli/src/context/set.ts
+
+  Background:
+    Given a project configured for DEP and indexed for retrieval
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: An agent reports what it used
+    Given an agent client that calls itself "desktop-client"
+    When it asks for context and reports which passages it used
+    Then the record shows those passages as used
+    And the passages it passed over are not shown as used
+
+  @happy-path
+  Scenario: Report about a request from an earlier run
+    When I ask for context from the command line
+    And I report from the command line which passages that answer's context was used for
+    Then the record shows those passages as used
+
+  @happy-path
+  Scenario: A report says how much of what was offered earned its place
+    Given an agent client that calls itself "desktop-client"
+    When it asks for context and reports which passages it used
+    Then I am told how many of the offered passages were used
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @validation
+  Scenario: Report about a request the set never answered
+    Given an agent client that calls itself "desktop-client"
+    When it reports use against a request the set never answered
+    Then the report is turned down
+    And I am told the request cannot be matched
+
+  @validation
+  Scenario: Report a passage that request was never offered
+    Given an agent client that calls itself "desktop-client"
+    When it asks for context and reports a passage that was not in the answer
+    Then the report is turned down
+    And I am told the passage cannot be matched
+
+  @edge-case
+  Scenario: Saying nothing was used is still a report
+    Given an agent client that calls itself "desktop-client"
+    When it asks for context and reports that it used none of it
+    Then the record shows the request with nothing used
+    And the request itself is still in the record
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-43 @human-author @console @should
+Feature: FLOW-43 Fix a document from the console
+  """
+  As someone looking at a document the console has just told me is stale or mis-tagged,
+  I want to correct its metadata where I am looking at it,
+  so that acting on what the console shows does not mean finding the file and editing
+  frontmatter by hand.
+  """
+  # Design: docs/desired-user-stories/context-engine-design.md#api
+  # Source: cli/src/writer.ts
+  # Source: cli/src/console/server.ts
+
+  Background:
+    Given a project configured for DEP and indexed for retrieval
+    And a running console
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Mark a document reviewed
+    Given a document that is past its review date
+    When I mark it reviewed from the console
+    Then the console counts it as fresh again
+    And the document's own file records the new review date
+
+  @happy-path
+  Scenario: Change how far a document is trusted
+    When I set a document's confidence to "low" from the console
+    Then the console reports that confidence
+    And the document's own file records it
+
+  @happy-path
+  Scenario: Add a tag and take one away
+    When I add the tag "reviewed" to a document from the console
+    And I take the tag "lifecycle" off the same document from the console
+    Then the document carries only the tags I left on it
+
+  @happy-path
+  Scenario: Link one document to another
+    When I link a document to another as REQUIRES from the console
+    Then the graph holds that link
+    And the document it points at counts it as incoming
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @validation
+  Scenario: Refuse a value the schema does not allow
+    When I set a document's confidence to "quite sure" from the console
+    Then the change is refused
+    And I am told which values are allowed
+    And the document is left as it was
+
+  @validation
+  Scenario: Refuse a link to a document the set does not have
+    When I link a document to one that is not in the set from the console
+    Then the change is refused
+    And the document is left as it was
+
+  @validation
+  Scenario: Refuse to change a file outside the set
+    When I try to change a file outside the project from the console
+    Then the change is refused
+    And the file outside the project is untouched
+
+  @security
+  Scenario: A page on another site cannot make the console write
+    When another site asks the console to change a document
+    Then the change is refused
+    And the document is left as it was
+
+  @security
+  Scenario: A request addressed to somewhere else is refused
+    When a request arrives addressed to a host that is not this machine
+    Then the change is refused
+    And the document is left as it was
+
 ```
 
 ## Open questions
@@ -1454,3 +1894,14 @@ someone should confirm before implementation starts.
 13. **Behaviours deliberately left out** — no scenarios were written for output with no observable
    verdict: how a bundle is laid out for reading, the progress counter shown while indexing, or the
    wording used to separate passages from one another.
+14. **How much of the record to keep** (FLOW-39) — the record is bounded so it cannot grow without
+    limit, but the stories assert only that the most recent survive and that the drop is reported.
+    Is the bound a number of requests, an age, or a size on disk?
+15. **Who the consumer says it is** (FLOW-39) — a request is attributed to the consumer that made
+    it, which means a consumer declares its own identity when it opens the set, and nothing
+    verifies it. Is a self-declared caller enough for a local record, or should the record also
+    keep what can be observed without being told?
+16. **Two records or one** (FLOW-32, FLOW-39) — the usage record aggregates what proved useful; the
+    traversal record keeps each request in order. They overlap: both know which passages were
+    offered and which came back used. Should the aggregate be derived from the traversal record
+    instead of kept beside it?

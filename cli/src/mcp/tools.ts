@@ -14,17 +14,26 @@ const number = (description: string) => ({ type: 'number', description })
 const boolean = (description: string) => ({ type: 'boolean', description })
 const rootProperty = { root: string('Project root holding .docspec. Defaults to the root the server was started with.') }
 
+export interface ToolOptions {
+  /**
+   * How the connected client identifies itself, read when a set is first
+   * opened — which is never before the client has introduced itself.
+   */
+  caller?: () => string
+}
+
 /**
  * DEP's tools as an MCP client sees them. Each call names a project root
  * (or uses the server's default); sets are opened once per root and reused.
  */
-export function depTools(defaultRoot: string): ToolDefinition[] {
+export function depTools(defaultRoot: string, options: ToolOptions = {}): ToolDefinition[] {
   const sets = new Map<string, DocumentationSet>()
   const setFor = (args: Record<string, unknown>): DocumentationSet => {
     const root = resolve(typeof args.root === 'string' && args.root ? args.root : defaultRoot)
     let set = sets.get(root)
     if (!set) {
-      set = openDocumentationSet(root)
+      const caller = options.caller?.()
+      set = openDocumentationSet(root, caller ? { caller } : {})
       sets.set(root, set)
     }
     return set
@@ -127,6 +136,23 @@ export function depTools(defaultRoot: string): ToolDefinition[] {
       description: 'Bring the retrieval index up to date: only changed documents are embedded again. Returns what was processed, reused, removed or unreadable.',
       inputSchema: { type: 'object', properties: { force: boolean('Rebuild everything'), only: string('Confine the update to one document'), ...rootProperty } },
       handler: (args) => setFor(args).index(pick(args, ['force', 'only'])),
+    },
+    {
+      name: 'dep_report_usage',
+      description: "Say which passages of a bundle you actually used, by their ids, after you have answered. Report honestly, including an empty list: it is what teaches the set which knowledge earns its place and which is retrieved constantly and never read.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          bundle: string('The id of the bundle you were given'),
+          used: { type: 'array', items: { type: 'string' }, description: 'The ids of the passages you used. An empty list is a valid report.' },
+          ...rootProperty,
+        },
+        required: ['bundle', 'used'],
+      },
+      handler: (args) => setFor(args).recordUsage(
+        String(args.bundle ?? ''),
+        Array.isArray(args.used) ? args.used.map((id) => String(id)) : []
+      ),
     },
     {
       name: 'dap_resolve',
