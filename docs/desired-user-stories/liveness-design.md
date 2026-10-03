@@ -213,3 +213,107 @@ the heartbeat, and they inherit a scorer that already works.
 - **Merge needs a judge the player cannot be.** DEP has no second model. The
   cheapest honest judge for documentation merges is `dep validate` plus a human
   on the console, not another LLM.
+
+## Notating the game
+
+The game needs three things written down, and they want different notations.
+The standard worth borrowing is not a file format, it is the MDP tuple
+⟨situations, actions, reward, clocks⟩. Each part already has a home here.
+
+```
+ LAYER        WHAT IT SAYS                      NOTATION
+ ──────────   ───────────────────────────────   ─────────────────────────
+ the rules    key features, action space,       dep: game frontmatter
+              reward table, clocks, gate        (new, one block)
+ the levels   concrete situations and the       Gherkin — .feature files
+              outcome that counts as a win      (exists, 386 of them)
+ the policy   what the agent does, step         DAP trees
+              by step                           (exists)
+```
+
+### Gherkin is the honest matter
+
+Rule 2 wants a Scorer derived from the environment that the player cannot
+write. A scenario executed by a step runner is exactly that: the `Then` clause
+decides, the agent does not, and the verdict is reproducible.
+
+```
+ @flow-41 @security          ◀── situation key: categorical features
+ Scenario: The console is reachable only from this machine
+   Given a running console   ◀── precondition, part of the key
+   When ...                  ◀── the action the player must produce
+   Then it accepts connections only from this machine
+                             ◀── the Scorer. Binary, un-arguable,
+                                 and owned by someone other than the player
+```
+
+A `Scenario Outline` is better still: its `Examples` table is a parameterised
+family of situations that differ in one column, which is precisely the space a
+similarity function needs in order to generalise. Tags give the categorical
+features, the table gives the parametric ones, and the `Given` steps give the
+preconditions. The situation key does not need inventing; it needs reading off.
+
+### What Gherkin must not be asked to carry
+
+A reward table, a decay rate, a token budget and a convergence gate are
+declarative configuration. Writing them as scenarios would mean a `Then` that
+asserts a constant, which tests nothing and reads badly. Those go in the rules
+block.
+
+Binary pass or fail is also too coarse on its own. Shape it with cost, which
+the trace record already measures:
+
+```
+ reward = outcome + cost
+
+ outcome   scenario passed                      +1.0
+           scenario failed                      −1.0
+           a scenario that passed now fails     −2.0
+ cost      tokens spent on the attempt          −k · tokens
+           attempts before green                −k · retries
+```
+
+### The rules block
+
+```yaml
+---
+dep: game
+id: game.docs-retrieval
+arena: cli/features                 # where the levels live
+levels: "@flow-* and not @wip"      # which ones are in play
+situation:
+  features:
+    flow:    tag:flow-*
+    kind:    tag:happy-path|validation|edge-case|error|security
+    surface: given                  # the Given phrases, hashed
+    row:     examples               # the Examples row, when there is one
+actions:
+  may_write:  [cli/src/**, docs/**]
+  never_write: [cli/features/steps/**, tests/**]
+scoring:
+  authority: suite                  # the runner scores, never the player
+  pass: 1.0
+  fail: -1.0
+  regression: -2.0
+  cost_per_1k_tokens: -0.01
+clocks:
+  episode: one scenario
+  day: one full suite run
+  sleep: nightly
+gate:
+  pain_slope: "<= 0"
+  variance_below: 0.25
+---
+```
+
+`never_write` is what makes rule 2 enforceable rather than aspirational. The
+Scorer's territory is a path glob, so an episode whose diff touches it is void,
+and `git diff --name-only` is the whole check.
+
+### The loop this repo already runs
+
+`/dep-story` is the game, played by hand: write the scenario (the level), run
+it red (pain), implement (the action), run it green (gain), commit. Nothing
+about the loop is new. What the game adds is a store that remembers which
+context made which level go green, and a sleep that turns the strong grooves
+into documentation.
