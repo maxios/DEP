@@ -1,0 +1,15 @@
+{
+  "name": "dep-loop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The loop engine: a context game and a heartbeat over a DEP documentation set",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}

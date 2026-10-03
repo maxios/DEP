@@ -176,25 +176,93 @@ nothing live to show.
 
 ## Build order
 
-Each step is useful alone and leaves the system working.
+`maze-core/4` in `intel-loop` is already a working context game: a riverbed
+keyed by cell, habits keyed by situation that survive across mazes, the gate,
+three clocks, seeded bit-exact replay. So the store is proven first where
+everything is deterministic, and the maze is swapped for scenarios second.
 
-1. **Measure before building.** Plot passages-offered and budget-used per
-   question-key from `.dep-trace.jsonl`, on the console. No new subsystem; it
-   says whether the docs are improving and gives sleep its target.
-2. **The scorer, without the game.** A `dep score` that attaches an outcome to
-   a request id from observable facts, not opinion. Self-report becomes a
-   claim beside it.
-3. **The day clock.** Decay and merge on the usage record, so a passage that
-   stops earning its place loses strength. Rule 3 with a real forgetting term.
-4. **The heart block.** `heart:` inside `dep:`, validated, written, shown.
-   Documents become addressable by a scheduler.
-5. **Pulse and beat.** Deterministic sensing over the repo, no LLM. Wake ratio
-   reported from the first day.
-6. **Sleep as amendment.** Strong grooves become proposed document edits,
-   reviewed on the console before they land.
+```
+ PHASE  WHAT IT PROVES                             ENV        PLAYER
+ ─────  ─────────────────────────────────────────  ─────────  ──────
+  A     the store learns: grooves rise, then fall  maze       mock
+  B     the same store works on scenarios          gherkin    mock
+  C     strong grooves become docs you can read    gherkin    mock
+  D     documents wake, ask, follow up             repo       mock
+  E     a real agent plays the suite               gherkin    LLM
+  F     your judgement carves the riverbed         your work  LLM
+```
 
-Steps 1–3 sharpen DEP whether or not the heartbeat is ever built. Steps 4–6 are
-the heartbeat, and they inherit a scorer that already works.
+A is context-game M1–M3. B is its M5 plus the `dep: game` block. C is sleep
+as amendment. D is heartbeat M1–M3. E and F are where an LLM first appears and
+where the riverbed starts matching a person rather than a suite: accepted or
+rejected changes, useful or noise marks, a rewritten document.
+
+The engine lives in `packages/loop`, depending on `dep`'s library directly and
+tested through the same story harness. `maze-core.js` is vendored, pinned by
+its `VERSION` and a SHA-256, and refuses to load if either has moved.
+
+### Decided while building
+
+- **Credit goes to the claims the player followed.** The spec nudges every
+  claim that was read. A claim recommending a move the player did not make has
+  no causal part in the outcome, so it is read (and counted) but not credited.
+  `ReadTrace.action` is what makes the distinction possible.
+- **The baseline is what a situation is worth with no advice.** The spec's
+  baseline is the situation's running mean reward, which includes the episodes
+  where the claim itself was followed — so a claim competes with itself and
+  drifts. Measured against unadvised play instead, a claim gains strength
+  exactly when following it beats not following it.
+- **A claim weakened below where it started is not advice.** It is shown again
+  only through exploration. Without this, a refuted claim is followed exactly
+  as readily as a proven one, because the player is never told strengths.
+
+### Measured in Phase A
+
+Reproduce with `bun packages/loop/scripts/compare.ts` (seeds 1–6, five days,
+fresh mazes every episode, the store carried from day to day).
+
+```
+                   day        0     1     2     3     4
+ no store          pain    0.42  0.48  0.42  0.44  0.50
+                   stretch 3.79  4.27  3.91  4.00  4.09
+ store, bare key   pain    0.25  0.31  0.28  0.28  0.31
+                   stretch 2.74  3.36  2.88  2.75  3.10
+                   claims  0.87  0.78  0.72  0.74  0.74
+ store, + bearing  pain    0.30  0.37  0.26  0.28  0.32
+                   stretch 3.14  3.26  2.70  2.74  2.95
+                   claims  3.22  3.32  3.44  3.39  3.39
+```
+
+About 40% less pain and 25% shorter runs than playing without a store, held
+across every day. Four things the measurements settled:
+
+- **A store followed blindly is worse than no store.** Before the player kept
+  its per-run scratch in play, pain rose from 0.48 to 0.98 (seed 42). A claim
+  about a kind of crossroads cannot see that this run has already been through
+  this one, so obeying it walks the same loop to the move cap. Maze-core's
+  revision 3 learned this; the engine had to learn it again.
+- **The spec's baseline un-learns.** With the running-mean baseline and the
+  bearing key, day 0 opened at pain 0.25 and closed at 0.49, while claims shown
+  per step fell from 1.47 to 0.15: average claims random-walk around their
+  starting strength, half fall below it, stop being followed, and never earn
+  their way back. The unadvised baseline removed the collapse.
+- **The key is the ceiling, and a sharper key is not automatically better.**
+  Adding which way the goal lies made no difference to outcomes that six seeds
+  can distinguish — two seeds favour it, six do not — and cost four times the
+  context. A more specific key spreads the same evidence across more
+  situations. That is the problem the merge step exists to solve, which makes
+  it the next thing worth measuring.
+- **Learning is fast and then flat.** Against the same mazes played without a
+  store, the store wins on all five groups of eight seeds; "better late in the
+  day than early" holds on only two. The advantage arrives within the first few
+  episodes and plateaus. The spec's M1 acceptance — pain falling within a day —
+  is not what this environment shows; FLOW-44 asserts the paired comparison
+  instead.
+
+One caution on the baseline: the store is compared with a plain fresh-cell
+explorer (stretch about 4), which is weaker than maze-core's own player with
+its riverbed and planner (about 2.5). The margin is real; the reference point
+is modest.
 
 ## Open tensions
 

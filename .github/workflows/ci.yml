@@ -12,6 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      - run: cd packages/loop && bun install && bun test && bun run typecheck
       - run: cd cli && bun install && bun test && bun run test:stories
 
   build:
