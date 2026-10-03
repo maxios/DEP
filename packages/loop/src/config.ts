@@ -21,15 +21,30 @@ export const DEFAULTS = {
   // the case a rule should absorb. Measured in liveness-design.md.
   MERGE_SIM: 0.7,
   K: 20,
-  GATE_VAR: 0.25,
+  // The spec's gate — pain slope ≤ 0 and reward variance < 0.25 — shut on
+  // healthy days (fresh mazes make rewards vary 0.22–0.40) and opened on
+  // disasters (failing every maze is perfectly steady). The gate below asks
+  // what maze-core's gate asks: is the player competent, and not deteriorating.
+  // Measured in liveness-design.md.
+  GATE_VAR: 0.5,
+  /** Late-day pain rate above this shuts the gate. */
+  GATE_PAIN: 0.7,
+  /** Late-day pain rate exceeding early-day pain rate by more than this shuts it. */
+  GATE_DRIFT: 0.2,
   S_CONSOLIDATE: 0.6,
   N_MIN: 10,
-  GAIN_RATIO: 0.7,
+  // Of the times a claim was acted on, how often the episode gained. Credit is
+  // per episode, so this is capped near the day's success rate; strong claims
+  // measured 0.39–0.65. Strength already measures advantage over no advice,
+  // so the ratio only has to clear chance.
+  GAIN_RATIO: 0.5,
   REPLAY_RATIO: 0.3,
   DELTA: 0.02,
   DISTILL_DECAY: 0.2,
   FORGET_DELTA: 0.03,
   EPISODES_PER_DAY: 50,
+  /** Held-out mazes a night plays to check it has not made the player worse. */
+  REGRESSION_MAZES: 20,
 }
 
 export type Config = typeof DEFAULTS

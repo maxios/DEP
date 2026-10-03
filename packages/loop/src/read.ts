@@ -22,9 +22,10 @@ export interface Read {
 
 const tokens = (claim: string) => Math.max(1, Math.ceil(claim.length / 4))
 
-export function read(store: Store, situation: SituationKey, rng: Rng, config: Config, sim: Similarity): Read {
+export function read(store: Store, situation: SituationKey, rng: Rng, config: Config, sim: Similarity, hidden?: ReadonlySet<string>): Read {
   const candidates: Array<{ entry: MemoryEntry; sim: number; score: number }> = []
   for (const entry of store.active()) {
+    if (hidden?.has(entry.id)) continue
     const s = sim(situation, entry.key)
     if (s >= config.SIM_MIN) candidates.push({ entry, sim: s, score: s * entry.strength })
   }

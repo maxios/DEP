@@ -16,6 +16,8 @@ import type { Store } from './store'
 import { loadCore, type MazeCore } from './vendor/core'
 import { write } from './write'
 import { endDay, type ClockOptions, type ClockReport } from './clock'
+import type { Adapter } from './adapter'
+import type { ReadTrace, Score } from './types'
 
 export interface DayOptions {
   seed: number
@@ -32,6 +34,8 @@ export interface DayOptions {
   keying?: MazeKeying
   /** The end-of-day clock: fade, put away, fold. `false` skips it entirely. */
   clock?: false | ClockOptions
+  /** The player's instincts for the day. */
+  instincts?: Adapter
 }
 
 export interface EpisodeSummary {
@@ -67,6 +71,8 @@ export interface DayResult {
   fingerprint: string
   head: string
   clock: ClockReport | null
+  /** Each episode's reads and score — what a night learns from. */
+  record: Array<{ traces: ReadTrace[]; score: Score }>
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
@@ -80,12 +86,14 @@ export function playDay(o: DayOptions): DayResult {
   const useStore = o.useStore ?? true
   const count = o.episodes ?? config.EPISODES_PER_DAY
   const episodes: EpisodeSummary[] = []
+  const record: DayResult['record'] = []
 
   for (let ep = 0; ep < count; ep++) {
     const maze = new core.Maze(core.Rng(deriveSeed(o.seed, o.day, ep, 'maze')))
     const rng = core.Rng(deriveSeed(o.seed, o.day, ep, 'play'))
     const episodeId = `d${o.day}e${ep}`
-    const result = playEpisode({ core, maze, store: o.store, player, config, sim, rng, day: o.day, episodeId, useStore, keying })
+    const result = playEpisode({ core, maze, store: o.store, player, config, sim, rng, day: o.day, episodeId, useStore, keying, instincts: o.instincts })
+    record.push({ traces: result.traces, score: result.score })
     const written = useStore ? write(o.store, result, config, sim) : { created: 0, credited: 0 }
     episodes.push({
       episodeId,
@@ -125,5 +133,6 @@ export function playDay(o: DayOptions): DayResult {
     fingerprint: o.store.fingerprint(),
     head: o.store.head,
     clock,
+    record,
   }
 }

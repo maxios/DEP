@@ -113,6 +113,10 @@ export function write(
     if (followed.length === 0) unadvised.set(keyText(trace.situation), trace.situation)
     const total = followed.reduce((sum, e) => sum + e.share, 0)
     for (const e of followed) {
+      // an absorbed claim is on its way out of context: evidence against it
+      // still counts, so it leaves sooner when it misleads, but it never gains
+      const absorbed = store.entries.get(e.id)?.distilled === true
+      if (absorbed && err >= 0) continue
       const set = touch(e.id)
       if (!set) continue
       const share = total > 0 ? e.share / total : 1 / followed.length

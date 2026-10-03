@@ -30,6 +30,7 @@ export interface BaselineSet {
 export type EventBody =
   | { type: 'episode'; episodeId: string; day: number; creates: MemoryEntry[]; sets: EntrySet[]; baselines: BaselineSet[] }
   | { type: 'day-end'; day: number; sets: EntrySet[]; rules: MemoryEntry[]; archive: string[] }
+  | { type: 'sleep'; day: number; slept: boolean; undone: boolean; version: number; absorbed: string[]; reason: string }
 
 export interface StoreEvent {
   seq: number
@@ -97,6 +98,14 @@ export class Store {
   }
 
   private mutate(body: EventBody): void {
+    if (body.type === 'sleep') {
+      for (const id of body.absorbed) {
+        const entry = this.entries.get(id)
+        if (!entry) throw new Error(`the record absorbs ${id}, which the store never held`)
+        entry.distilled = true
+      }
+      return
+    }
     if (body.type === 'day-end') {
       this.assign(body.sets)
       for (const rule of body.rules) this.entries.set(rule.id, { ...rule, parents: [...rule.parents] })

@@ -71,8 +71,10 @@ export function endDay(store: Store, day: number, config: Config, sim: Similarit
   let faded = 0
   if (fade) {
     for (const entry of working.values()) {
-      if (entry.lastReadDay === day) continue
-      entry.strength *= 1 - config.DECAY
+      // an absorbed claim leaves context on its own clock, read or not
+      if (entry.distilled) entry.strength *= 1 - config.DISTILL_DECAY
+      else if (entry.lastReadDay === day) continue
+      else entry.strength *= 1 - config.DECAY
       sets.push({ id: entry.id, strength: entry.strength, reads: entry.reads, gains: entry.gains, pains: entry.pains, lastReadDay: entry.lastReadDay })
       faded++
     }
@@ -95,7 +97,7 @@ export function endDay(store: Store, day: number, config: Config, sim: Similarit
 
     // claims an existing rule already covers are folded into it
     for (const rule of [...working.values()].filter((e) => e.kind === 'rule').sort(byId)) {
-      const members = episodes().filter((e) => e.claim === rule.claim && covers(rule.key, e.key))
+      const members = episodes().filter((e) => !e.distilled && e.claim === rule.claim && covers(rule.key, e.key))
       if (members.length === 0) continue
       const next = ruleFrom(members, rules.get(rule.id) ?? rule, rule.key, rule.claim, day)
       rules.set(next.id, next)
@@ -111,7 +113,8 @@ export function endDay(store: Store, day: number, config: Config, sim: Similarit
     const taken = new Set<string>()
     for (const seed of episodes()) {
       if (taken.has(seed.id)) continue
-      const group = episodes().filter((e) => !taken.has(e.id) && e.claim === seed.claim && sim(seed.key, e.key) >= config.MERGE_SIM)
+      if (seed.distilled) continue
+      const group = episodes().filter((e) => !taken.has(e.id) && !e.distilled && e.claim === seed.claim && sim(seed.key, e.key) >= config.MERGE_SIM)
       if (group.length < 2) continue
       const key = commonKey(group.map((g) => g.key))
       if (Object.keys(key.features).length === 0) continue // a rule about everything says nothing

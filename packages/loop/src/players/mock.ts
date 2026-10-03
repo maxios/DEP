@@ -22,6 +22,8 @@ export interface PlayerView {
   /** The cell each open direction leads to. */
   next: Record<string, string>
   from: string
+  /** What the player's instincts would do here, if they say anything. */
+  instinct?: string | null
 }
 
 export interface Player {
@@ -51,8 +53,18 @@ export class MockPlayer implements Player {
     const fresh = applicable.filter((d) => !this.visits.has(view.next[d]!))
     const roll = rng()
     let action: string
+    const instinct = view.instinct && view.open.includes(view.instinct) && !this.visits.has(view.next[view.instinct]!) ? view.instinct : null
+    // Exploring means setting the advice aside, not setting the player aside:
+    // it falls back on what it would do unadvised — its instincts, then
+    // wandering. That is also what makes "unadvised" the right counterfactual
+    // for a claim. Measured against random wandering instead, a claim that is
+    // worse than the instincts keeps its strength, and because context comes
+    // first, it overrides them — the player with instincts alone scored about
+    // 0.4 while the player with claims on top scored 0.1–0.25.
     if (fresh.length > 0 && roll >= this.explore) {
       action = fresh[0]!
+    } else if (instinct) {
+      action = instinct
     } else {
       action = this.wander(view, rng)
     }

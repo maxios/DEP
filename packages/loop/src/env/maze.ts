@@ -11,6 +11,7 @@ import { score } from '../scorer'
 import type { Store } from '../store'
 import type { EpisodeResult, ReadTrace, Rng } from '../types'
 import type { Maze, MazeCore } from '../vendor/core'
+import { instinctFor, type Adapter } from '../adapter'
 
 export interface EpisodeOptions {
   core: MazeCore
@@ -24,6 +25,10 @@ export interface EpisodeOptions {
   episodeId: string
   useStore: boolean
   keying: MazeKeying
+  /** The player's instincts, consulted after the claims in context. */
+  instincts?: Adapter
+  /** Entries treated as already gone from context — how a night previews its own effect. */
+  hidden?: ReadonlySet<string>
 }
 
 export function playEpisode(o: EpisodeOptions): EpisodeResult {
@@ -46,9 +51,10 @@ export function playEpisode(o: EpisodeOptions): EpisodeResult {
     const next: Record<string, string> = {}
     for (const d of open) next[d] = cell(x + core.DELTA[d]![0], y + core.DELTA[d]![1])
 
-    const shown = o.useStore ? read(o.store, key, o.rng, o.config, o.sim) : { claims: [], entries: [] }
+    const shown = o.useStore ? read(o.store, key, o.rng, o.config, o.sim, o.hidden) : { claims: [], entries: [] }
+    const instinct = o.instincts ? instinctFor(o.instincts, key) : null
     // only the direction is taken from what the player returns
-    const action = String(o.player.act({ key, open, cell: cell(x, y), next, from }, shown.claims, o.rng).action)
+    const action = String(o.player.act({ key, open, cell: cell(x, y), next, from, instinct }, shown.claims, o.rng).action)
     traces.push({ step: moves, situation: key, entries: shown.entries.map((e) => ({ id: e.id, share: e.share })), action })
     moves++
 

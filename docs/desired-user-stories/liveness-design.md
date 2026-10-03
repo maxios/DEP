@@ -297,7 +297,66 @@ with `--from 7`, `--from 13`, `--from 19`. Late-day pain rate (days 4–7):
 two different keys are at most 0.8 alike. That is a mechanical default, not a
 measured optimum.
 
+### Measured in Phase A — sleep (M3)
+
+Reproduce with `bun packages/loop/scripts/sleep.ts --from 1` (and `--from 7`,
+`--from 13`): twelve days of fresh mazes, with and without a night after each.
+
+```
+                          late-day reward (days 8–11)    claims per step, day 11
+                          1–6    7–12   13–18   mean     1–6    7–12   13–18
+ no nights               0.175  0.200  0.243   0.206    0.80   0.54   0.53
+ nights                  0.223  0.105  0.280   0.203    0.18   0.10   0.27
+```
+
+By day 11, context with nights is 49–81% below context without them, while
+reward holds level on average — the spec's "grooves move from context into
+weights", measured. It does not hold on every group: seeds 7–12 do worse with
+nights. And the curve does not first rise,
+because the maze saturates the store on day 0. Seven findings got it there:
+
+- **The spec's gate is inverted on this data.** Healthy days have reward
+  variance 0.22–0.40 (fresh mazes differ), so a 0.25 limit shut most of them;
+  a player failing every maze has flat, steady rewards and passed. The gate now
+  asks what maze-core's gate asks — competent (late pain ≤ 0.7) and not
+  deteriorating (late pain − early pain ≤ 0.2) — with variance at 0.5.
+- **The selection ratio was unreachable.** Credit is per episode, so a claim's
+  gain ratio is capped near the day's success rate; strong claims measured
+  0.39–0.65 against the spec's 0.7. It is now gains over the times the claim
+  was acted on, against a bar of 0.5.
+- **A mock trainer must learn from the examples, not the claims.** Keyed to a
+  claim's own key, an instinct covers a fraction of the situations the claim
+  steered (it advised wherever its situation was similar enough), and held-out
+  reward fell 0.172 → −0.235 when the claims left.
+- **Absorbing the best claim promotes the second-best.** Claims come before
+  instincts, so when one leaves context the next claim down — often worse — is
+  followed and the instinct never gets a say. A claim is now absorbed only if
+  the instincts carry its decisions *and* the player does as well without it.
+  When this was added, undone nights on seeds 1–6 went from 16 to none.
+- **A defect in the instincts hides behind the claims.** The forgetting check
+  now also judges the new version with nothing in context. Limitation: a
+  version judged as a whole can still carry one bad habit among good ones.
+- **An absorbed claim must still be able to lose strength.** Frozen at its
+  peak while it slowly faded, it stayed visible for about ten days and context
+  with nights ended *above* context without them.
+- **Claims were being measured against the wrong fallback.** The instincts
+  alone scored about 0.4 on held-out mazes; the player with claims on top
+  scored 0.1–0.25. Exploring wandered at random, so a claim only had to beat
+  random wandering to keep its strength — and then overrode better instincts.
+  Exploring now falls back on instinct before wandering.
+
+Every safeguard has a scenario that fails when it is switched off: the two gate
+questions, instincts agreeing with what they were taught, instincts alone no
+worse, a claim carried, a claim spared, and examples that never show a claim.
+
 ## Open tensions
+
+- **Exploring is both the counterfactual and the search.** Falling back on
+  instinct makes "unadvised" an honest comparison, but explores less: on seeds
+  7–12 a player whose instincts settle on something mediocre stops finding
+  better moves, and late reward with nights fell to 0.105 against 0.200.
+  Splitting exploration between instinct and wandering is the obvious next
+  measurement.
 
 - **Should a key say what a rule may forget?** A single `MERGE_SIM` over a
   weighted similarity decides which features a rule may drop only indirectly.
