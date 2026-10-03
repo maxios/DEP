@@ -419,6 +419,36 @@ it took:
   or steps discards every earlier verdict. Without the promise every judging
   runs the scenarios: in a real codebase, writes interact.
 
+### Phase C — what it learned, written out
+
+`writeLearned` turns the part of the store that has proved itself into a DEP
+reference: one sentence per claim, advice apart from habits, and beside each
+how often it was acted on and how often that passed. Those are the judge's
+facts. The strength a claim is held at is never written, because the document
+is ordinary documentation and can be served as context. A document whose body
+no longer matches the hash it was written with is left alone, and the person
+is told, so a hand edit is the start of Phase F rather than something the next
+night erases. `bun packages/loop/scripts/learned.ts` prints one.
+
+Ten days on seed 1 wrote 29 pieces of advice and 12 habits. Reading it showed
+three things the pass rates did not:
+
+- **Every sentence names the area,** which has nothing to do with the right
+  answer. The hidden rule is four sentences; the memory is 41. This is novelty
+  pre-empting folding (Phase B) made visible: no rule ever forms, so nothing
+  is said in general. Legibility needs rules, and rules need novelty to look
+  past features a key may drop — the open tension below now has a reader.
+- **The evidence is wider than the sentence.** "When … the tier is new: choose
+  refuse. Acted on 42 times; 24 passed" cannot all be that one situation:
+  a claim is followed wherever the situation is near enough. The line now says
+  "here or somewhere like it". Accuracy would need evidence counted per
+  situation, which the store does not keep.
+- **`convert` is the agent's safe answer, even for USD.** The arena scores
+  convert on a USD request as accepted, so the agent learned to convert
+  almost everything. Correct by the judge, and exactly the kind of thing a
+  person reading the document would want to argue with. That argument is what
+  Phase F has to turn into evidence.
+
 ## Open tensions
 
 - **Exploring is both the counterfactual and the search.** Falling back on
