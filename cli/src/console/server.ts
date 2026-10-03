@@ -72,12 +72,14 @@ export async function startConsole(root: string, options: ConsoleOptions = {}): 
     return set
   }
 
+  // known only once a port of 0 has been resolved to a real one
+  let boundPort = 0
   const listen = (on: number): Server => Bun.serve({
     port: on,
     hostname: HOSTNAME,
     reusePort: false,
     development: false,
-    fetch: (request: Request) => answer(request, current, projectRoot),
+    fetch: (request: Request) => answer(request, current, projectRoot, boundPort),
   }) as unknown as Server
 
   let server: Server
@@ -92,6 +94,8 @@ export async function startConsole(root: string, options: ConsoleOptions = {}): 
     }
     server = listen(0)
   }
+
+  boundPort = server.port
 
   return {
     url: `http://${HOSTNAME}:${server.port}`,
@@ -115,17 +119,52 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
+/** Codes that mean the caller asked for something it should not have. */
+const CALLER_ERRORS = new Set(['INVALID_OPTION', 'INVALID_BUDGET', 'INVALID_DEPTH', 'INVALID_FRESHNESS', 'INVALID_TYPE', 'UNKNOWN_AUDIENCE', 'OUTSIDE_SET', 'UNKNOWN_BUNDLE', 'UNKNOWN_PASSAGE'])
+
 function failure(err: unknown): Response {
   if (err instanceof DepError) {
-    const status = err.code === 'DOCUMENT_NOT_FOUND' ? 404 : err.code === 'OUTSIDE_SET' ? 400 : 500
+    const status = err.code === 'DOCUMENT_NOT_FOUND' ? 404 : CALLER_ERRORS.has(err.code) ? 400 : 500
     return json({ error: err.message, code: err.code }, status)
   }
   return json({ error: err instanceof Error ? err.message : String(err) }, 500)
 }
 
-async function answer(request: Request, current: () => DocumentationSet, root: string): Promise<Response> {
+/**
+ * A console that can change the project is worth attacking from a page the
+ * person happens to have open, or through a name that resolves to their own
+ * machine. Both carry headers that give them away.
+ */
+function notForUs(request: Request, port: number): string | null {
+  const host = (request.headers.get('host') ?? '').split(':')[0]!.replace(/^\[|\]$/g, '')
+  if (host && host !== '127.0.0.1' && host !== 'localhost' && host !== '::1') {
+    return `this console answers only to this machine, not to ${host}`
+  }
+  const origin = request.headers.get('origin')
+  if (origin && origin !== `http://127.0.0.1:${port}` && origin !== `http://localhost:${port}`) {
+    return `a page served from ${origin} may not change this project`
+  }
+  return null
+}
+
+async function answer(request: Request, current: () => DocumentationSet, root: string, port: number): Promise<Response> {
   const url = new URL(request.url)
   try {
+    if (url.pathname === '/api/amend') {
+      if (request.method !== 'POST') return json({ error: 'changing a document is a POST' }, 405)
+      const refused = notForUs(request, port)
+      if (refused) return json({ error: refused, code: 'NOT_FOR_US' }, 403)
+      let body: { document?: string } & Record<string, unknown>
+      try {
+        body = await request.json() as typeof body
+      } catch {
+        return json({ error: 'the amendment is not JSON' }, 400)
+      }
+      const document = typeof body.document === 'string' ? body.document : ''
+      if (!document) return json({ error: 'no document was named' }, 400)
+      const { document: _named, ...amendment } = body
+      return json(current().amend(document, amendment))
+    }
     switch (url.pathname) {
       case '/':
       case '/index.html':

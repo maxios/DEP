@@ -129,6 +129,25 @@ const PAGE = `<!doctype html>
          width: 74px; flex: 0 0 74px; text-align: right; }
   .link-row b { font-weight: 450; color: var(--ink); word-break: break-all; }
   .empty { color: var(--dimmer); font-size: 12px; padding: 20px 0; text-align: center; }
+  .act { appearance: none; border: 1px solid var(--line); background: rgba(255,255,255,0.07); color: var(--ink);
+         font: inherit; font-size: 11px; padding: 3px 10px; border-radius: 7px; cursor: pointer; }
+  .act:hover { background: rgba(255,255,255,0.14); }
+  .act.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .act:disabled { opacity: .45; cursor: default; }
+  .seg { display: inline-flex; gap: 3px; }
+  .tag { display: inline-flex; align-items: center; gap: 5px; }
+  .tag x { cursor: pointer; color: var(--dimmer); font-style: normal; }
+  .tag x:hover { color: var(--stale); }
+  .field { display: flex; gap: 6px; margin-top: 8px; }
+  .field input, .field select {
+    flex: 1; min-width: 0; background: rgba(255,255,255,0.06); border: 1px solid var(--line);
+    color: var(--ink); font: inherit; font-size: 11.5px; padding: 3px 8px; border-radius: 7px;
+  }
+  .field select { flex: 0 0 96px; }
+  .said { font-size: 11px; margin-top: 9px; padding: 6px 9px; border-radius: 7px; }
+  .said.good { background: rgba(48,209,88,0.14); color: #5de08a; }
+  .said.bad { background: rgba(255,69,58,0.14); color: #ff8178; }
+  .writes { font-size: 10px; color: var(--dimmer); margin-top: 9px; }
 
   /* ── lists & tables ───────────────────────────────── */
   .split { display: flex; width: 100%; min-height: 0; }
@@ -484,8 +503,9 @@ const PAGE = `<!doctype html>
     if (hit.node !== hover) { hover = hit.node; canvas.style.cursor = hover ? 'pointer' : 'grab'; }
   });
   window.addEventListener('mouseup', function (ev) {
-    if (dragNode && Math.hypot(ev.clientX - last.x, ev.clientY - last.y) < 4) select(dragNode.path);
-    else if (panning && Math.hypot(ev.clientX - last.x, ev.clientY - last.y) < 4) {
+    // a press that barely moved is a click, not a drag — allow for a shaky hand
+    if (dragNode && Math.hypot(ev.clientX - last.x, ev.clientY - last.y) < 9) select(dragNode.path);
+    else if (panning && Math.hypot(ev.clientX - last.x, ev.clientY - last.y) < 9) {
       var hit = at(ev);
       if (!hit.node) select(null);
     }
@@ -575,6 +595,34 @@ const PAGE = `<!doctype html>
     }));
   }
 
+  function amend(path, change) {
+    var body = { document: path };
+    Object.keys(change).forEach(function (k) { body[k] = change[k]; });
+    fetch('/api/amend', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+    }).then(function (answer) {
+      if (!answer.ok) {
+        said(answer.data.error || 'the change was refused', false);
+        return;
+      }
+      said(answer.data.changes.map(function (c) { return c.field; }).join(', ') + ' updated', true);
+      refresh(false).then(function () { select(path); }).catch(function () { select(path); });
+    }).catch(function (err) {
+      said(String(err.message || err), false);
+    });
+  }
+
+  function said(message, good) {
+    var box = byId('inspector');
+    var note = el('div', 'said ' + (good ? 'good' : 'bad'), message);
+    box.appendChild(note);
+    setTimeout(function () { if (note.parentNode) note.parentNode.removeChild(note); }, 4000);
+  }
+
   function select(path) {
     state.selected = path;
     if (!path) { clear(byId('inspector')).appendChild(el('div', 'empty', 'Select a document in the graph.')); return; }
@@ -604,9 +652,29 @@ const PAGE = `<!doctype html>
       meta.appendChild(r);
     }
     kv('Owner', doc.owner || '-');
-    kv('Confidence', doc.confidence || '-');
+
+    var confRow = el('div', 'kv');
+    confRow.appendChild(el('span', null, 'Confidence'));
+    var seg = el('div', 'seg');
+    ['low', 'medium', 'high'].forEach(function (level) {
+      var b = el('button', 'act' + (doc.confidence === level ? ' on' : ''), level);
+      b.onclick = function () { amend(doc.path, { set: { confidence: level } }); };
+      seg.appendChild(b);
+    });
+    confRow.appendChild(seg);
+    meta.appendChild(confRow);
+
     var age = days(doc.freshness && doc.freshness.lastVerified);
-    kv('Last verified', age === null ? '-' : age + 'd ago');
+    var verifiedRow = el('div', 'kv');
+    verifiedRow.appendChild(el('span', null, 'Last verified'));
+    var right = el('div');
+    right.style.cssText = 'display:flex;gap:8px;align-items:center';
+    right.appendChild(el('b', null, age === null ? '-' : age + 'd ago'));
+    var bump = el('button', 'act', 'Bump');
+    bump.onclick = function () { amend(doc.path, { bump: true }); };
+    right.appendChild(bump);
+    verifiedRow.appendChild(right);
+    meta.appendChild(verifiedRow);
     if (doc.freshness && doc.freshness.cadenceDays) {
       var r = el('div', 'kv');
       r.appendChild(el('span', null, 'Review cadence'));
@@ -630,14 +698,32 @@ const PAGE = `<!doctype html>
     }
     box.appendChild(meta);
 
-    if (doc.tags && doc.tags.length) {
-      var tg = el('div', 'group');
-      tg.appendChild(el('h3', null, 'Tags'));
-      var holder2 = el('div', 'badges');
-      doc.tags.forEach(function (t) { holder2.appendChild(el('span', 'badge', t)); });
-      tg.appendChild(holder2);
-      box.appendChild(tg);
-    }
+    var tg = el('div', 'group');
+    tg.appendChild(el('h3', null, 'Tags'));
+    var holder2 = el('div', 'badges');
+    (doc.tags || []).forEach(function (name) {
+      var chip = el('span', 'badge tag');
+      chip.appendChild(el('span', null, name));
+      var x = el('x', null, '\u00d7');
+      x.onclick = function () { amend(doc.path, { tags: { remove: [name] } }); };
+      chip.appendChild(x);
+      holder2.appendChild(chip);
+    });
+    tg.appendChild(holder2);
+    var tagField = el('div', 'field');
+    var tagInput = el('input');
+    tagInput.placeholder = 'add a tag';
+    var tagAdd = el('button', 'act', 'Add');
+    var sendTag = function () {
+      var name = tagInput.value.trim();
+      if (name) amend(doc.path, { tags: { add: [name] } });
+    };
+    tagAdd.onclick = sendTag;
+    tagInput.onkeydown = function (ev) { if (ev.key === 'Enter') sendTag(); };
+    tagField.appendChild(tagInput);
+    tagField.appendChild(tagAdd);
+    tg.appendChild(tagField);
+    box.appendChild(tg);
 
     function links(title, list, key) {
       var g = el('div', 'group');
@@ -657,6 +743,36 @@ const PAGE = `<!doctype html>
       box.appendChild(g);
     }
     links('Outgoing (' + doc.forwardLinks.length + ')', doc.forwardLinks, 'target');
+
+    var lg = box.lastChild;
+    var linkField = el('div', 'field');
+    var relPick = el('select');
+    ['TEACHES', 'USES', 'EXPLAINS', 'DECIDES', 'REQUIRES', 'NEXT'].forEach(function (r) {
+      var o = el('option', null, r);
+      o.value = r;
+      relPick.appendChild(o);
+    });
+    var targetPick = el('select');
+    targetPick.style.flex = '1';
+    var blank = el('option', null, 'link to a document...');
+    blank.value = '';
+    targetPick.appendChild(blank);
+    (state.graph ? state.graph.nodes : []).forEach(function (n) {
+      if (n.path === doc.path) return;
+      var o = el('option', null, n.path);
+      o.value = n.path;
+      targetPick.appendChild(o);
+    });
+    var linkAdd = el('button', 'act', 'Link');
+    linkAdd.onclick = function () {
+      if (targetPick.value) amend(doc.path, { link: { target: targetPick.value, rel: relPick.value } });
+    };
+    linkField.appendChild(relPick);
+    linkField.appendChild(targetPick);
+    linkField.appendChild(linkAdd);
+    lg.appendChild(linkField);
+    lg.appendChild(el('div', 'writes', 'Changes are written to the document.'));
+
     links('Incoming (' + doc.backlinks.length + ')', doc.backlinks, 'source');
 
     var used = (state.trace ? state.trace.entries : []).filter(function (e) {

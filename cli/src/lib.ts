@@ -20,6 +20,7 @@ export { ProcedureSession } from './context/procedure'
 export type { ProcedureStep, ProcedureStepOptions, SupportPassage, ProcedureSessionState } from './context/procedure'
 export type { UsageReceipt, UsageReport } from './context/usage'
 export type { TraceEntry, TraceKind, TraceOffered, TraceReceipt, TraceReport } from './context/trace'
+export type { Amendment, AmendChange, AmendResult } from './context/amend'
 export type { EmbeddingProvider } from './embeddings/provider'
 export { HashEmbeddingProvider } from './embeddings/hash'
 

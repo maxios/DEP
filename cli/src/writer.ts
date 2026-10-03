@@ -74,7 +74,10 @@ export function generateTimestamp(): string {
   const hours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0')
   const minutes = String(Math.abs(offset) % 60).padStart(2, '0')
   const tz = `${sign}${hours}:${minutes}`
-  return now.toISOString().replace('Z', '') + tz
+  // the components must be the local wall clock, not UTC's, or the offset is
+  // stamped onto a time that never had it and the instant moves
+  const local = new Date(now.getTime() + offset * 60_000)
+  return local.toISOString().replace('Z', '') + tz
 }
 
 export function validateField(

@@ -12,6 +12,7 @@ import { DepError } from './errors'
 import { normalizeOptions } from './options'
 import { retrieve, type RetrievalContext, type RetrievalInternals } from './retrieve'
 import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
+import { amendDocument, type Amendment, type AmendResult } from './amend'
 import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
 import { ProcedureSession, stepParts, treeIdFromRef, type ProcedureStep, type ProcedureStepOptions, type SupportPassage } from './procedure'
 import { buildDapGraph } from '../dap/tree-builder'
@@ -25,7 +26,7 @@ import { runValidation, type ValidationReport } from '../commands/validate'
 import type {
   Bundle, CandidateChunk, ContextOptions, DocumentMetadata, IndexOptions, IndexReport, OpenOptions, SearchOptions, SearchResults,
 } from './types'
-import { relative, resolve } from 'path'
+import { relative, resolve, isAbsolute } from 'path'
 import { posix } from '../paths'
 
 const METADATA_SECTION = '[metadata]'
@@ -446,6 +447,21 @@ export class DocumentationSet {
     }
     this.traceAnswer('validate', '', { passages: [] })
     return report
+  }
+
+  /**
+   * Change a document's metadata, in its own frontmatter. Returns what changed;
+   * throws when the amendment is not one the schema allows, having written
+   * nothing.
+   */
+  amend(document: string, amendment: Amendment): AmendResult {
+    this.ensureLoaded()
+    if (isAbsolute(document) || posix(relative(this.root, resolve(this.root, document))).startsWith('..')) {
+      throw new DepError('OUTSIDE_SET', `${document} is outside the documentation set`, { document })
+    }
+    const result = amendDocument(this.root, this._config, document, amendment)
+    this.refresh()
+    return result
   }
 
   /** A document's declared metadata, with its computed freshness. */
