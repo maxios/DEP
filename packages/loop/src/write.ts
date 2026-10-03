@@ -38,10 +38,10 @@ const KINDS: EntryKind[] = ['episode', 'rule', 'warning']
 /** The baseline every situation falls back on before it has samples of its own. */
 export const ALL = '*'
 
-/** The action a claim recommends, if it is one this engine understands. */
+/** The action a claim recommends: a direction in the maze, a choice in a game of scenarios. */
 export function claimAction(claim: string): string | null {
-  const m = /^go ([NESW])$/.exec(claim)
-  return m ? m[1]! : null
+  const m = /^(?:go ([NESW])|choose ([a-z][a-z0-9-]*))$/.exec(claim)
+  return m ? (m[1] ?? m[2]!) : null
 }
 
 function cleanKey(key: unknown): SituationKey | null {

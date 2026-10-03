@@ -349,6 +349,41 @@ Every safeguard has a scenario that fails when it is switched off: the two gate
 questions, instincts agreeing with what they were taught, instincts alone no
 worse, a claim carried, a claim spared, and examples that never show a claim.
 
+### Measured in Phase B — a game of scenarios
+
+The store, write path and day clock that learned the maze, unchanged, playing
+`packages/loop/arenas/requests`: 125 Gherkin levels whose right answer follows
+a hidden rule over size, currency and tier. Each level sits in one of five
+product areas that have nothing to do with the rule. Cucumber is the only
+judge, reading back its own message stream. Reproduce with
+`bun packages/loop/scripts/suite.ts` (seeds 1–4, eight days of forty levels).
+
+```
+ pass rate          day 0    1     2     3     4     5     6     7
+ no store             0.31  0.26  0.29  0.33  0.29  0.28  0.31  0.31
+ store                0.31  0.41  0.62  0.65  0.76  0.71  0.73  0.70
+```
+
+- **Here learning accrues over days.** On the maze it arrived within a few
+  episodes and went flat; here a large, sparse situation space means more to
+  learn, and the pass rate climbs for four days before settling around 0.7.
+- **As specified, folding can never fire.** A proposed claim is not created if
+  a claim with the same advice is already similar enough (`NOVEL`, 0.7); two
+  claims differing in one feature are 0.8 alike, so the near-duplicates folding
+  merges are never both created. The spec's own defaults have the same
+  contradiction — novelty blocks anything within 0.7, merging needs 0.85.
+  Letting novelty block only exact duplicates and folding at 0.8 works: thirty
+  rules by day 7 and a store 40% smaller than leaving the claims specific
+  (58 against 96), with no accuracy difference four seeds can show. The default
+  stays as it is. The case for folding is legibility: "choose convert when the
+  currency is EUR and the customer is gold", the area dropped, is a sentence a
+  person can read and correct — which is what Phase C turns grooves into.
+- **An answer that reaches the judge counts for nothing.** Writes are checked
+  before they land, and the judge's features and steps are fingerprinted
+  across the day, so a player that edits the steps, writes outside its paths,
+  or changes a scenario behind the engine's back voids its answers rather than
+  passing them.
+
 ## Open tensions
 
 - **Exploring is both the counterfactual and the search.** Falling back on

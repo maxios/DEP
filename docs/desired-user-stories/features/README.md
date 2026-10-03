@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-24 flows, 209 scenarios.
+26 flows, 217 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -33,3 +33,5 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-45 Keep the store small and general between days](flow-45-keep-the-store-small-and-general-between-days.feature) | As someone whose agent learns a little from every episode, I want the end of each day to fade what went unused, put away what has long stopped helping, and fold claims that say the same thing about similar situations into one rule, so that the store stays small enough to read and general enough to carry to new situations. | 6 | @flow-45 @developer @loop @should |
 | [FLOW-46 Sleep on what the day proved](flow-46-sleep-on-what-the-day-proved.feature) | As someone whose agent's context fills with claims that keep proving right, I want a night that moves those claims out of context and into the agent's instincts, only after a day that was going well and only when the move does not make it worse, so that context holds what is still being learned rather than what is already known. | 10 | @flow-46 @developer @loop @should |
 | [FLOW-47 Describe a game in a document](flow-47-describe-a-game-in-a-document.feature) | As someone setting an agent a task it should get better at, I want to write the rules of the game in a documentation file — which scenarios are the levels, what makes two situations the same, where the player may write, and who keeps score — so that the game is reviewed and kept current like any other documentation, and so the player can never be given a way to judge itself. | 7 | @flow-47 @developer @loop @should |
+| [FLOW-48 Play a game of scenarios with a store of claims](flow-48-play-a-game-of-scenarios-with-a-store-of-claims.feature) | As someone building an agent that should get better at a task judged by scenarios, I want the same store that learned the maze to learn a game whose levels are Gherkin scenarios and whose only judge is running them, so that what the agent remembers is shaped by what passes, not by what it believes. | 5 | @flow-48 @developer @loop @should |
+| [FLOW-49 An answer that reaches the judge does not count](flow-49-an-answer-that-reaches-the-judge-does-not-count.feature) | As someone whose agent is scored by scenarios, I want any answer that writes outside where the player may write, or onto the scenarios and steps that judge it, to count for nothing, so that the agent cannot get better by changing the test instead of the work. | 3 | @flow-49 @developer @loop @security @should |

@@ -18,3 +18,5 @@ export { loadCore, readPin, CorePinError, DEFAULT_CORE_PATH, type MazeCore } fro
 export { canonical, fingerprint, deriveSeed } from './canonical'
 export type * from './types'
 export { loadGame, GameError, type Game, type Level, type LoadedGame, type Scoring, type GameErrorCode } from './game/game'
+export { judge, type Verdict } from './game/suite'
+export { playSuiteDay, ChoosingPlayer, choicePath, refusal, type SuitePlayer, type SuiteView, type SuiteDayResult, type SuiteDayOptions, type SuiteEpisode, type Write } from './game/play'
