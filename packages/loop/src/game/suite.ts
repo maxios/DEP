@@ -36,8 +36,11 @@ export interface JudgeOptions {
   answers?: ReadonlyMap<string, string>
   cache?: VerdictCache
   /** Counts the times the scenarios were actually run. */
-  stats?: { runs: number }
+  stats?: { runs: number; stalls?: number }
 }
+
+/** Far longer than any judging takes (a day's sample runs in about two seconds). */
+const JUDGE_TIMEOUT_MS = 120_000
 
 const CUCUMBER = resolve(import.meta.dir, '..', '..', 'node_modules', '@cucumber', 'cucumber', 'bin', 'cucumber.js')
 
@@ -73,11 +76,20 @@ export function judge(root: string, game: Game, all: Level[], options: JudgeOpti
   const messages = join(out, 'messages.ndjson')
   try {
     const targets = [...new Set(levels.map((l) => `${l.file}:${l.line}`))]
-    const run = spawnSync('bun', ['--bun', CUCUMBER,
+    const once = () => spawnSync('bun', ['--bun', CUCUMBER,
       '--import', `${relativeArena(root, game)}/steps/**/*.ts`,
       '--format', `message:${messages}`,
       ...targets,
-    ], { cwd: root, encoding: 'utf-8', env: { ...process.env, FORCE_COLOR: '0' } })
+    ], { cwd: root, encoding: 'utf-8', env: { ...process.env, FORCE_COLOR: '0' }, timeout: JUDGE_TIMEOUT_MS, killSignal: 'SIGKILL' })
+    // Cucumber has been seen to stall while loading, before running anything;
+    // a stalled run is killed and tried once more rather than waited on forever
+    let run = once()
+    if (run.error) {
+      if (options.stats) options.stats.stalls = (options.stats.stalls ?? 0) + 1
+      rmSync(messages, { force: true })
+      run = once()
+    }
+    if (run.error) throw new Error(`the scenarios stalled twice and were stopped after ${JUDGE_TIMEOUT_MS / 1000}s each`)
     if (!existsSync(messages)) {
       throw new Error(`the scenarios could not be run: ${run.stderr || run.stdout}`.slice(0, 2000))
     }
