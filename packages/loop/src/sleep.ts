@@ -20,7 +20,7 @@
  * Nothing here judges itself. The verdict on the night comes from the same
  * Scorer as every day, on mazes played fresh for the purpose.
  */
-import { instinctFor, Instincts, type Adapter, type Instinct, type SftExample } from './adapter'
+import { instinctFor, Instincts, type Adapter, type Instinct, type Reach, type SftExample } from './adapter'
 import { deriveSeed } from './canonical'
 import { configWith, type Config } from './config'
 import type { DayResult } from './day'
@@ -89,6 +89,27 @@ export class MockTrainer implements Trainer {
   }
 }
 
+/**
+ * How a night tries its work out: playing levels the day never saw. With
+ * `alone`, the player is shown no claims and the instincts are judged by
+ * themselves; `hidden` claims are treated as already gone from context.
+ */
+export interface HeldOut {
+  /** How far instincts reach in this environment — the night must judge with the same reach. */
+  reach?: Reach
+  play(o: { instincts: Adapter; hidden: ReadonlySet<string>; alone?: boolean }): {
+    reward: number
+    followed: Array<{ id: string; situation: SituationKey; action: string }>
+  }
+}
+
+/** A day as a night sees it — whatever the game was. */
+export interface PlayedDay {
+  day: number
+  episodes: Array<{ pain: boolean; reward: number }>
+  record: DayResult['record']
+}
+
 export interface GateVerdict {
   open: boolean
   reason: string
@@ -101,7 +122,7 @@ const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.l
 const pct = (x: number) => `${Math.round(x * 100)}%`
 
 /** Was the day one worth learning from? Competent, and not getting worse. */
-export function gate(day: DayResult, config: Config): GateVerdict {
+export function gate(day: Pick<PlayedDay, 'episodes'>, config: Config): GateVerdict {
   const k = Math.max(1, Math.min(config.K, Math.floor(day.episodes.length / 2)))
   const early = day.episodes.slice(0, k)
   const late = day.episodes.slice(-k)
@@ -132,7 +153,7 @@ export function select(store: Store, config: Config): MemoryEntry[] {
     .sort((a, b) => a.id.localeCompare(b.id))
 }
 
-function buildDataset(day: DayResult, selected: MemoryEntry[], registry: Instincts, store: Store, night: number, seed: number, config: Config, core: MazeCore): { dataset: Dataset; taught: MemoryEntry[]; provenance: Map<string, string> } {
+function buildDataset(day: PlayedDay, selected: MemoryEntry[], registry: Instincts, store: Store, night: number, seed: number, config: Config, core: MazeCore): { dataset: Dataset; taught: MemoryEntry[]; provenance: Map<string, string> } {
   const chosen = new Set(selected.map((e) => e.id))
   const sft: SftExample[] = []
   const supported = new Set<string>()
@@ -174,13 +195,12 @@ function buildDataset(day: DayResult, selected: MemoryEntry[], registry: Instinc
   return { dataset: { night, sft, pairs, replay }, taught: selected.filter((e) => supported.has(e.id)), provenance }
 }
 
-/**
- * Mean reward over the held-out mazes, and which claim the player followed
- * where. With `alone`, the player is shown no claims at all — the instincts are
- * judged on their own, which is the only way to see a defect the claims would
- * otherwise mask.
- */
-function regression(o: {
+/** The maze's held-out play: a fixed set of mazes the day never generates. */
+export function mazeHeldOut(m: { store: Store; core: MazeCore; seed: number; config: Config; sim: Similarity; keying: MazeKeying }): HeldOut {
+  return { play: (run) => mazeRegression({ ...m, ...run }) }
+}
+
+function mazeRegression(o: {
   store: Store; core: MazeCore; seed: number; config: Config; sim: Similarity; keying: MazeKeying
   instincts: Adapter; hidden: ReadonlySet<string>; alone?: boolean
 }): { reward: number; followed: Array<{ id: string; situation: SituationKey; action: string }> } {
@@ -221,7 +241,11 @@ export interface NightReport {
 export interface NightOptions {
   store: Store
   instincts: Instincts
-  day: DayResult
+  day: PlayedDay
+  /** Where the night tries its work out. Default: the maze's held-out mazes. */
+  heldOut?: HeldOut
+  /** How far instincts reach. Default: whatever the held-out play reaches, else exact. */
+  reach?: Reach
   seed: number
   config?: Partial<Config>
   trainer?: Trainer
@@ -236,6 +260,7 @@ export function sleepNight(o: NightOptions): NightReport {
   const keying = o.keying ?? 'situation'
   const sim = o.sim ?? (keying === 'situation+bearing' ? mazeBearingSimilarity : mazeSimilarity)
   const trainer = o.trainer ?? new MockTrainer()
+  const proving = o.heldOut ?? mazeHeldOut({ store: o.store, core, seed: o.seed, config, sim, keying })
   const before = o.instincts.current()
   const night = o.day.day
 
@@ -268,8 +293,8 @@ export function sleepNight(o: NightOptions): NightReport {
   // the new version, judged with nothing in context, must not be worse than the
   // old one judged the same way. With claims in context, a defect in the
   // instincts hides behind them until the claims fade — and then surfaces.
-  const aloneBefore = regression({ store: o.store, core, seed: o.seed, config, sim, keying, instincts: before, hidden: new Set(), alone: true })
-  const aloneAfter = regression({ store: o.store, core, seed: o.seed, config, sim, keying, instincts: next, hidden: new Set(), alone: true })
+  const aloneBefore = proving.play({ instincts: before, hidden: new Set(), alone: true })
+  const aloneAfter = proving.play({ instincts: next, hidden: new Set(), alone: true })
   if (aloneAfter.reward < aloneBefore.reward - config.FORGET_DELTA) {
     return finish({
       ...report, undone: true, absorbed: [],
@@ -289,20 +314,20 @@ export function sleepNight(o: NightOptions): NightReport {
   // the next claim down for that situation — often a worse one — is followed
   // instead, and the instinct never gets a say. Checking only the first let
   // nights through that cost 0.15–0.55 in held-out reward.
-  const base = regression({ store: o.store, core, seed: o.seed, config, sim, keying, instincts: before, hidden: new Set() })
+  const base = proving.play({ instincts: before, hidden: new Set() })
   const carried = taught.filter((e) => {
     const decisions = base.followed.filter((f) => f.id === e.id)
     if (decisions.length === 0) return false
-    const reproduced = decisions.filter((f) => instinctFor(next, f.situation) === f.action).length / decisions.length
+    const reproduced = decisions.filter((f) => instinctFor(next, f.situation, o.reach ?? proving.reach) === f.action).length / decisions.length
     return reproduced >= 1 - config.DELTA
   })
   const absorbed = carried.filter((e) => {
-    const without = regression({ store: o.store, core, seed: o.seed, config, sim, keying, instincts: next, hidden: new Set([e.id]) })
+    const without = proving.play({ instincts: next, hidden: new Set([e.id]) })
     return without.reward >= base.reward - config.DELTA
   })
 
   // and the player, with those claims gone from its context, must not do worse
-  const after = regression({ store: o.store, core, seed: o.seed, config, sim, keying, instincts: next, hidden: new Set(absorbed.map((e) => e.id)) })
+  const after = proving.play({ instincts: next, hidden: new Set(absorbed.map((e) => e.id)) })
   if (after.reward < base.reward - config.FORGET_DELTA) {
     return finish({
       ...report, undone: true, absorbed: [],

@@ -13,6 +13,7 @@ game:
   id: game.requests
   arena: arena
   levels: "@play and not @wip"
+  levels_independent: true
   situation:
     area: "tag:area-.+"
     kind: "tag:happy-path|edge-case|validation"

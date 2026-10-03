@@ -384,6 +384,41 @@ judge, reading back its own message stream. Reproduce with
   or changes a scenario behind the engine's back voids its answers rather than
   passing them.
 
+### Measured in Phase B — sleep on the game
+
+Every sixth level is kept back: no day plays it, and the nights judge on it.
+Reproduce with `bun packages/loop/scripts/suite-sleep.ts` (`--from 5`,
+`--from 9` for the other groups).
+
+```
+ held-out reward, days 5–9     seeds 1–4    5–8    9–12
+ no nights                       0.62      0.74   0.73
+ with nights                     0.78      0.87   0.72
+```
+
+On levels the player never saw by day, nights add 0.15 and 0.14 on two groups
+and hold level on the third, absorbing 12–13 claims a seed by day 9. Context
+does not shrink within ten days — about six claims shown per level either way —
+because absorbed claims fade slowly while new ones keep arriving. Three things
+it took:
+
+- **Instincts have to reach.** Matching only the exact situation they were
+  learned in, instincts never covered a held-out level, so no claim was ever
+  absorbed (0 in 28 kept nights) and nights changed nothing. On the maze that
+  was enough, because situations recur; in a sparse game it is not. Instincts
+  now reach the nearest situation within the similarity claims use — a choice
+  the environment passes in, so the maze's measured behaviour is unchanged.
+- **The gate's variance check is off.** In a pass/fail game the variance of
+  rewards is fixed by the pass rate — 4p(1−p), 0.91 at 65% — so it shut every
+  good day. It never caught a bad day on the maze either; competence and
+  deterioration each have a scenario that fails without them.
+- **A verdict is reused only on the game document's promise.** Nights rerun
+  the held-out levels several times. Where the document says each level reads
+  only its own answer, a verdict is reused for the same answer to the same
+  level, keyed by the judge's own fingerprint so any change to the scenarios
+  or steps discards every earlier verdict. Without the promise every judging
+  runs the scenarios: in a real codebase, writes interact.
+
 ## Open tensions
 
 - **Exploring is both the counterfactual and the search.** Falling back on

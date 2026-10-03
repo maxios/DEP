@@ -25,8 +25,13 @@ export const DEFAULTS = {
   // healthy days (fresh mazes make rewards vary 0.22–0.40) and opened on
   // disasters (failing every maze is perfectly steady). The gate below asks
   // what maze-core's gate asks: is the player competent, and not deteriorating.
+  //
+  // Variance is off. It measures the environment, not the player: on the maze
+  // how different the mazes were, in a pass/fail game the pass rate itself
+  // (4p(1−p) — 0.91 at 65%). It never caught a bad day in either, and shut
+  // every good day in the second. A game with continuous rewards may set it.
   // Measured in liveness-design.md.
-  GATE_VAR: 0.5,
+  GATE_VAR: Number.POSITIVE_INFINITY,
   /** Late-day pain rate above this shuts the gate. */
   GATE_PAIN: 0.7,
   /** Late-day pain rate exceeding early-day pain rate by more than this shuts it. */

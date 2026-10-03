@@ -10,7 +10,7 @@
  * is told in the moment overrides what it does by habit.
  */
 import { fingerprint } from './canonical'
-import { covers } from './key'
+import { covers, type Similarity } from './key'
 import type { SituationKey } from './types'
 
 export interface Instinct {
@@ -77,8 +77,21 @@ export class Instincts {
   }
 }
 
-/** The action an adapter takes in a situation: the most specific instinct that covers it. */
-export function instinctFor(adapter: Adapter, situation: SituationKey): string | null {
+/**
+ * How far an instinct reaches beyond the situation it was learned in. Without
+ * a reach, only situations it covers exactly — enough where situations recur,
+ * as on the maze. With one, also the most similar situation within it — what a
+ * sparse game needs, since there a situation the instincts must handle is
+ * usually one they never saw, and a claim, which reaches by similarity, would
+ * otherwise never be taken over by anything.
+ */
+export interface Reach {
+  sim: Similarity
+  min: number
+}
+
+/** The action an adapter takes in a situation: the most specific instinct that covers it, else the nearest within reach. */
+export function instinctFor(adapter: Adapter, situation: SituationKey, reach?: Reach): string | null {
   let best: { instinct: Instinct; specificity: number } | null = null
   for (const instinct of adapter.instincts) {
     if (!covers(instinct.key, situation)) continue
@@ -87,5 +100,12 @@ export function instinctFor(adapter: Adapter, situation: SituationKey): string |
       best = { instinct, specificity }
     }
   }
-  return best ? best.instinct.action : null
+  if (best || !reach) return best ? best.instinct.action : null
+  let nearest: { instinct: Instinct; sim: number } | null = null
+  for (const instinct of adapter.instincts) {
+    const s = reach.sim(situation, instinct.key)
+    if (s < reach.min) continue
+    if (!nearest || s > nearest.sim || (s === nearest.sim && instinct.from < nearest.instinct.from)) nearest = { instinct, sim: s }
+  }
+  return nearest ? nearest.instinct.action : null
 }

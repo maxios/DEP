@@ -10,10 +10,9 @@
  * from, and reported. The judge's ground is also fingerprinted before and
  * after the day, so a write that slipped round the check voids the whole day.
  */
-import { createHash } from 'crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs'
+import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { dirname, join, relative, resolve } from 'path'
-import type { Adapter } from '../adapter'
+import type { Adapter, Reach } from '../adapter'
 import { instinctFor } from '../adapter'
 import { deriveSeed } from '../canonical'
 import { endDay, type ClockOptions, type ClockReport } from '../clock'
@@ -25,7 +24,7 @@ import type { ReadTrace, Rng, Score, SituationKey } from '../types'
 import { loadCore } from '../vendor/core'
 import { write } from '../write'
 import type { Game, Level, LoadedGame } from './game'
-import { judge, type Verdict } from './suite'
+import { judge, groundPrint as judgePrint, type Verdict, type VerdictCache } from './suite'
 
 export interface Write {
   path: string
@@ -95,6 +94,9 @@ export interface SuiteDayOptions {
   /** Each level's last verdict, carried across days, so breaking a passing level can be told apart. */
   history?: Map<string, Verdict>
   sim?: Similarity
+  /** Verdicts to reuse where the game promises its levels stand alone. */
+  cache?: VerdictCache
+  stats?: { runs: number }
 }
 
 /** The arena's contract with a choosing player: one file per level, holding the choice. */
@@ -123,22 +125,17 @@ function globMatch(pattern: string, path: string): boolean {
   return new Bun.Glob(pattern).match(path)
 }
 
-/** Every file under a directory, fingerprinted — the judge's ground, before and after. */
-function groundPrint(dir: string): string {
-  const hash = createHash('sha256')
-  const walk = (d: string) => {
-    if (!existsSync(d)) return
-    for (const name of readdirSync(d).sort()) {
-      const full = join(d, name)
-      if (statSync(full).isDirectory()) walk(full)
-      else hash.update(full).update(readFileSync(full))
-    }
-  }
-  walk(dir)
-  return hash.digest('hex')
+/** In a game of scenarios, instincts reach as far as claims do. */
+export function gameReach(game: Game, config: Config): Reach {
+  return { sim: situationSimilarity(game), min: config.SIM_MIN }
 }
 
-function arenaRel(root: string, game: Game): string {
+/** Every situation feature weighs the same unless a game says otherwise. */
+export function situationSimilarity(game: Game): Similarity {
+  return featureSimilarity(Object.fromEntries(Object.keys(game.situation).map((f) => [f, 1])))
+}
+
+export function arenaRel(root: string, game: Game): string {
   return relative(root, game.arena).split('\\').join('/')
 }
 
@@ -162,7 +159,7 @@ export function playSuiteDay(o: SuiteDayOptions): SuiteDayResult {
   const core = loadCore()
   const { game, levels } = o.loaded
   const arena = arenaRel(o.root, game)
-  const sim = o.sim ?? featureSimilarity(Object.fromEntries(Object.keys(game.situation).map((f) => [f, 1])))
+  const sim = o.sim ?? situationSimilarity(game)
   const player = o.player ?? new ChoosingPlayer(arena, config.EPS)
   const useStore = o.useStore ?? true
   const history = o.history ?? new Map<string, Verdict>()
@@ -176,15 +173,15 @@ export function playSuiteDay(o: SuiteDayOptions): SuiteDayResult {
 
   // a fresh workspace each day: last day's answers do not carry over
   rmSync(join(o.root, arena, 'choices'), { recursive: true, force: true })
-  const groundBefore = groundPrint(join(game.arena, 'features')) + groundPrint(join(game.arena, 'steps'))
+  const groundBefore = judgePrint(game)
 
-  type Pending = { level: Level; view: SuiteView; trace: ReadTrace; choice: string; read: number }
+  type Pending = { level: Level; view: SuiteView; trace: ReadTrace; choice: string; read: number; answer: string }
   const pending: Pending[] = []
   const voided: SuiteDayResult['voided'] = []
   chosen.forEach((level, i) => {
     const rng = core.Rng(deriveSeed(o.seed, o.day, i, 'play'))
     const shown = useStore ? read(o.store, level.key, rng, config, sim) : { claims: [], entries: [] }
-    const view: SuiteView = { level, key: level.key, options: game.actions.options, instinct: o.instincts ? instinctFor(o.instincts, level.key) : null }
+    const view: SuiteView = { level, key: level.key, options: game.actions.options, instinct: o.instincts ? instinctFor(o.instincts, level.key, gameReach(game, config)) : null }
     const answer = player.act(view, shown.claims, rng)
     const writes = Array.isArray(answer.writes) ? answer.writes : []
     const refused = writes.map((w) => refusal(o.root, game, w)).find((r) => r !== null)
@@ -198,13 +195,15 @@ export function playSuiteDay(o: SuiteDayOptions): SuiteDayResult {
       writeFileSync(full, w.content)
     }
     const choice = String(answer.choice)
-    pending.push({ level, view, choice, read: shown.entries.length, trace: { step: 0, situation: level.key, entries: shown.entries.map((e) => ({ id: e.id, share: e.share })), action: choice } })
+    pending.push({ level, view, choice, answer: JSON.stringify(writes), read: shown.entries.length, trace: { step: 0, situation: level.key, entries: shown.entries.map((e) => ({ id: e.id, share: e.share })), action: choice } })
   })
 
-  const verdicts = judge(o.root, game, pending.map((p) => p.level))
+  const verdicts = judge(o.root, game, pending.map((p) => p.level), {
+    answers: new Map(pending.map((p) => [p.level.id, p.answer])), cache: o.cache, stats: o.stats,
+  })
 
   // anything that changed the judge's ground voids the day: no verdict from it can be trusted
-  const groundAfter = groundPrint(join(game.arena, 'features')) + groundPrint(join(game.arena, 'steps'))
+  const groundAfter = judgePrint(game)
   if (groundAfter !== groundBefore) {
     for (const p of pending) voided.push({ level: p.level.id, reason: "the judge's ground changed during the day" })
     pending.length = 0

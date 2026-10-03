@@ -50,6 +50,13 @@ export interface Game {
   situation: Record<string, string>
   actions: { mayWrite: string[]; neverWrite: string[]; options: string[] }
   scoring: Scoring
+  /**
+   * The document promises that each level reads only what was written for it,
+   * so the same answer to the same level always earns the same verdict — and a
+   * verdict may be reused until the judge changes. Never assumed: in a real
+   * codebase writes interact.
+   */
+  levelsIndependent: boolean
   /** The document the game was read from. */
   document: string
 }
@@ -224,6 +231,7 @@ export function loadGame(documentPath: string, root: string): LoadedGame {
         regression: number(scoringRaw.regression, -2),
         costPer1kTokens: number(scoringRaw.cost_per_1k_tokens, 0),
       },
+      levelsIndependent: block.levels_independent === true,
       document: documentPath,
     },
     levels,

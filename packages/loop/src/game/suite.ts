@@ -4,12 +4,40 @@
  * outside the arena — never from a file the arena or the player could write.
  */
 import { spawnSync } from 'child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs'
+import { createHash } from 'crypto'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 import type { Game, Level } from './game'
 
 export type Verdict = 'passed' | 'failed'
+
+/** Verdicts already earned, keyed by the judge, the level and the answer. */
+export type VerdictCache = Map<string, Verdict>
+
+/** Every file the judge is made of, fingerprinted. */
+export function groundPrint(game: Game): string {
+  const hash = createHash('sha256')
+  const walk = (d: string) => {
+    if (!existsSync(d)) return
+    for (const name of readdirSync(d).sort()) {
+      const full = join(d, name)
+      if (statSync(full).isDirectory()) walk(full)
+      else hash.update(full).update(readFileSync(full))
+    }
+  }
+  walk(join(game.arena, 'features'))
+  walk(join(game.arena, 'steps'))
+  return hash.digest('hex')
+}
+
+export interface JudgeOptions {
+  /** Each level's answer, as written — part of what a reused verdict is keyed by. */
+  answers?: ReadonlyMap<string, string>
+  cache?: VerdictCache
+  /** Counts the times the scenarios were actually run. */
+  stats?: { runs: number }
+}
 
 const CUCUMBER = resolve(import.meta.dir, '..', '..', 'node_modules', '@cucumber', 'cucumber', 'bin', 'cucumber.js')
 
@@ -21,10 +49,26 @@ interface Envelope {
   testStepFinished?: { testCaseStartedId: string; testStepResult: { status: string } }
 }
 
-/** Run the given levels; every level gets a verdict, a level Cucumber did not report fails. */
-export function judge(root: string, game: Game, levels: Level[]): Map<string, Verdict> {
-  const verdicts = new Map<string, Verdict>(levels.map((l) => [l.id, 'failed']))
+/**
+ * Run the given levels; every level gets a verdict, a level Cucumber did not
+ * report fails. Where the game promises its levels stand alone, a verdict is
+ * reused for the same answer to the same level — keyed by the judge's own
+ * fingerprint, so any change to the scenarios or steps makes every earlier
+ * verdict a stranger.
+ */
+export function judge(root: string, game: Game, all: Level[], options: JudgeOptions = {}): Map<string, Verdict> {
+  const verdicts = new Map<string, Verdict>(all.map((l) => [l.id, 'failed']))
+  const reuse = game.levelsIndependent && options.cache && options.answers
+  const ground = reuse ? groundPrint(game) : ''
+  const keyOf = (level: Level) => `${ground}|${level.id}|${options.answers?.get(level.id) ?? ''}`
+  const levels: Level[] = []
+  for (const level of all) {
+    const known = reuse ? options.cache!.get(keyOf(level)) : undefined
+    if (known) verdicts.set(level.id, known)
+    else levels.push(level)
+  }
   if (levels.length === 0) return verdicts
+  if (options.stats) options.stats.runs++
   const out = mkdtempSync(join(tmpdir(), 'loop-judge-'))
   const messages = join(out, 'messages.ndjson')
   try {
@@ -71,6 +115,7 @@ export function judge(root: string, game: Game, levels: Level[]): Map<string, Ve
       const level = pickleLevel.get(caseToPickle.get(startedToCase.get(started) ?? '') ?? '')
       if (level && verdicts.has(level)) verdicts.set(level, steps.every((s) => s === 'PASSED') ? 'passed' : 'failed')
     }
+    if (reuse) for (const level of levels) options.cache!.set(keyOf(level), verdicts.get(level.id)!)
     return verdicts
   } finally {
     rmSync(out, { recursive: true, force: true })
