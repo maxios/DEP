@@ -15,6 +15,7 @@ import { MockPlayer, type Player } from './players/mock'
 import type { Store } from './store'
 import { loadCore, type MazeCore } from './vendor/core'
 import { write } from './write'
+import { endDay, type ClockOptions, type ClockReport } from './clock'
 
 export interface DayOptions {
   seed: number
@@ -29,6 +30,8 @@ export interface DayOptions {
   episodes?: number
   /** What counts as the same situation. Default: walls and entry side, as the maze core keys its habits. */
   keying?: MazeKeying
+  /** The end-of-day clock: fade, put away, fold. `false` skips it entirely. */
+  clock?: false | ClockOptions
 }
 
 export interface EpisodeSummary {
@@ -53,6 +56,7 @@ export interface DayMetrics {
   /** Claims shown per step, averaged — the spec's "entries in context". */
   entriesPerStep: number
   activeEntries: number
+  rules: number
   created: number
 }
 
@@ -62,6 +66,7 @@ export interface DayResult {
   metrics: DayMetrics
   fingerprint: string
   head: string
+  clock: ClockReport | null
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
@@ -93,7 +98,12 @@ export function playDay(o: DayOptions): DayResult {
       created: written.created,
     })
   }
-  if (useStore) o.store.apply({ type: 'day-end', day: o.day })
+  let clock: ClockReport | null = null
+  if (useStore) {
+    clock = o.clock === false
+      ? endDay(o.store, o.day, config, sim, { fade: false, putAway: false, fold: false })
+      : endDay(o.store, o.day, config, sim, o.clock ?? {})
+  }
 
   const half = Math.floor(episodes.length / 2)
   const rate = (xs: EpisodeSummary[]) => mean(xs.map((e) => (e.pain ? 1 : 0)))
@@ -109,9 +119,11 @@ export function playDay(o: DayOptions): DayResult {
       meanStretch: mean(episodes.map((e) => e.moves / e.shortest)),
       entriesPerStep: mean(episodes.map((e) => e.read)),
       activeEntries: o.store.active().length,
+      rules: o.store.active().filter((e) => e.kind === 'rule').length,
       created: episodes.reduce((sum, e) => sum + e.created, 0),
     },
     fingerprint: o.store.fingerprint(),
     head: o.store.head,
+    clock,
   }
 }

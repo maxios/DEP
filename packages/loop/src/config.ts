@@ -16,7 +16,10 @@ export const DEFAULTS = {
   DECAY: 0.02,
   S_PRUNE: 0.03,
   PRUNE_AGE: 7,
-  MERGE_SIM: 0.85,
+  // The spec's 0.85 never fires in the maze: two different maze keys are at most
+  // 0.8 alike, and 0.7 when they differ only in the side the player came in by —
+  // the case a rule should absorb. Measured in liveness-design.md.
+  MERGE_SIM: 0.7,
   K: 20,
   GATE_VAR: 0.25,
   S_CONSOLIDATE: 0.6,

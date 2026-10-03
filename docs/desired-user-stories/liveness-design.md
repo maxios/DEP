@@ -264,7 +264,47 @@ explorer (stretch about 4), which is weaker than maze-core's own player with
 its riverbed and planner (about 2.5). The margin is real; the reference point
 is modest.
 
+### Measured in Phase A — the day clock (M2)
+
+Reproduce with `bun packages/loop/scripts/clock.ts` and check other seed groups
+with `--from 7`, `--from 13`, `--from 19`. Late-day pain rate (days 4–7):
+
+```
+                       seeds 1–6   7–12   13–18   19–24
+ bare, no clock           0.289   0.304   0.267   0.340
+ bare, fold @0.7          0.301   0.234   0.316   0.369
+ bearing, no clock        0.304   0.311   0.268   0.328
+ bearing, fold @0.8       0.245   0.319   0.265   0.373
+```
+
+- **Fading and putting away are inert on the maze, and correctly so.** At the
+  end of a day only 0–4 of the store's 30 claims had gone unread: there are
+  about 80 maze situations, and fifty fresh mazes visit nearly all of them. The
+  store saturates on day 0. Forgetting matters where the situation space is
+  large next to a day's experience — the Gherkin suite, not the maze.
+- **Folding into rules shows no reliable effect.** No variant beats the
+  unfolded store across seed groups; the spread between groups (about ±0.05)
+  is larger than anything folding does. The spec's M2 acceptance — merged
+  rules transfer better than raw claims — is not supported here, for the same
+  reason: thirty claims cover the space, so there is no scattered evidence to
+  pool. It is not evidence against folding; the maze cannot test it.
+- **One seed group misled.** On seeds 1–6 the bearing key folded at 0.8 looked
+  like the best result of any arm (0.245). Three more groups put it level with
+  or behind the unfolded store. Every claim about an effect now needs three
+  groups.
+
+`MERGE_SIM` defaults to 0.7 because the spec's 0.85 cannot fire on maze keys:
+two different keys are at most 0.8 alike. That is a mechanical default, not a
+measured optimum.
+
 ## Open tensions
+
+- **Should a key say what a rule may forget?** A single `MERGE_SIM` over a
+  weighted similarity decides which features a rule may drop only indirectly.
+  On one seed group, folding the bearing key across the entry side alone
+  (0.8) helped and folding across the bearing too (0.7) hurt — suggestive
+  that "droppable features" belongs in the key's definition beside its
+  weights. One group is not evidence; Phase B is where to test it.
 
 - **Who may rewrite a document?** Sleep proposing an amendment is safe. Sleep
   applying one without review makes the weights self-modifying, which is the

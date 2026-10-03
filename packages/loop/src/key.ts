@@ -7,17 +7,39 @@ import type { SituationKey } from './types'
 
 export type Similarity = (a: SituationKey, b: SituationKey) => number
 
-/** Weighted feature match: the share of weight on features that agree. */
+/**
+ * Weighted feature match: the share of weight on features that agree.
+ *
+ * `a` is the situation, `b` the stored key. A feature the stored key leaves out
+ * matches anything — that is what a rule is: a claim that kept only what its
+ * situations had in common, and so applies wherever those features hold.
+ */
 export function featureSimilarity(weights: Record<string, number>): Similarity {
   return (a, b) => {
     let total = 0
     let agree = 0
     for (const [feature, weight] of Object.entries(weights)) {
       total += weight
-      if (a.features[feature] === b.features[feature]) agree += weight
+      if (!(feature in b.features) || a.features[feature] === b.features[feature]) agree += weight
     }
     return total === 0 ? 0 : agree / total
   }
+}
+
+/** The features every key agrees on — a rule's key. */
+export function commonKey(keys: SituationKey[]): SituationKey {
+  const [first, ...rest] = keys
+  if (!first) return { features: {} }
+  const features: Record<string, string | number | boolean> = {}
+  for (const [feature, value] of Object.entries(first.features)) {
+    if (rest.every((k) => k.features[feature] === value)) features[feature] = value
+  }
+  return { features }
+}
+
+/** True when every feature of the general key holds in the specific one. */
+export function covers(general: SituationKey, specific: SituationKey): boolean {
+  return Object.entries(general.features).every(([feature, value]) => specific.features[feature] === value)
 }
 
 /**

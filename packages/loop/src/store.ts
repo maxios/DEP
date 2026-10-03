@@ -29,7 +29,7 @@ export interface BaselineSet {
 
 export type EventBody =
   | { type: 'episode'; episodeId: string; day: number; creates: MemoryEntry[]; sets: EntrySet[]; baselines: BaselineSet[] }
-  | { type: 'day-end'; day: number }
+  | { type: 'day-end'; day: number; sets: EntrySet[]; rules: MemoryEntry[]; archive: string[] }
 
 export interface StoreEvent {
   seq: number
@@ -97,11 +97,25 @@ export class Store {
   }
 
   private mutate(body: EventBody): void {
-    if (body.type !== 'episode') return
+    if (body.type === 'day-end') {
+      this.assign(body.sets)
+      for (const rule of body.rules) this.entries.set(rule.id, { ...rule, parents: [...rule.parents] })
+      for (const id of body.archive) {
+        const entry = this.entries.get(id)
+        if (!entry) throw new Error(`the record puts away ${id}, which the store never held`)
+        entry.archived = true
+      }
+      return
+    }
     for (const entry of body.creates) {
       if (!this.entries.has(entry.id)) this.entries.set(entry.id, { ...entry, parents: [...entry.parents] })
     }
-    for (const set of body.sets) {
+    this.assign(body.sets)
+    for (const b of body.baselines) this.baselines.set(b.key, { sum: b.sum, n: b.n })
+  }
+
+  private assign(sets: EntrySet[]): void {
+    for (const set of sets) {
       const entry = this.entries.get(set.id)
       if (!entry) throw new Error(`the record sets ${set.id}, which the store never held`)
       entry.strength = set.strength
@@ -110,6 +124,5 @@ export class Store {
       entry.pains = set.pains
       entry.lastReadDay = set.lastReadDay
     }
-    for (const b of body.baselines) this.baselines.set(b.key, { sum: b.sum, n: b.n })
   }
 }

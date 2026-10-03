@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-21 flows, 186 scenarios.
+22 flows, 192 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -30,3 +30,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-42 Report which passages earned their place](flow-42-report-which-passages-earned-their-place.feature) | As an agent that was handed more context than it ended up needing, I want to say which of it I actually used, from wherever I am connected, so that the set learns what earns its place instead of only what was offered. | 6 | @flow-42 @ai-agent @telemetry @should |
 | [FLOW-43 Fix a document from the console](flow-43-fix-a-document-from-the-console.feature) | As someone looking at a document the console has just told me is stale or mis-tagged, I want to correct its metadata where I am looking at it, so that acting on what the console shows does not mean finding the file and editing frontmatter by hand. | 9 | @flow-43 @human-author @console @should |
 | [FLOW-44 Learn a maze from a store of claims](flow-44-learn-a-maze-from-a-store-of-claims.feature) | As someone building an agent that should get better at a task with experience, I want a store of claims keyed by situation that only honest outcomes can strengthen, so that the agent's context improves with what happened, not with what it says about itself. | 8 | @flow-44 @developer @loop @should |
+| [FLOW-45 Keep the store small and general between days](flow-45-keep-the-store-small-and-general-between-days.feature) | As someone whose agent learns a little from every episode, I want the end of each day to fade what went unused, put away what has long stopped helping, and fold claims that say the same thing about similar situations into one rule, so that the store stays small enough to read and general enough to carry to new situations. | 6 | @flow-45 @developer @loop @should |
