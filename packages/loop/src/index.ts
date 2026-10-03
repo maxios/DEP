@@ -17,3 +17,4 @@ export { playDay, type DayResult, type DayMetrics, type DayOptions } from './day
 export { loadCore, readPin, CorePinError, DEFAULT_CORE_PATH, type MazeCore } from './vendor/core'
 export { canonical, fingerprint, deriveSeed } from './canonical'
 export type * from './types'
+export { loadGame, GameError, type Game, type Level, type LoadedGame, type Scoring, type GameErrorCode } from './game/game'
