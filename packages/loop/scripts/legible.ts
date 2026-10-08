@@ -30,7 +30,7 @@ const heldOutIds = new Set(heldOut.map((l) => l.id))
 // a verdict is keyed by the judge's fingerprint, the level and the answer, so every seed and arm can share them
 const cache: VerdictCache = new Map()
 
-const ARMS: Array<[string, Partial<Config>]> = [['novel 0.7', {}], ['covered', { NOVEL: 1 }]]
+const ARMS: Array<[string, Partial<Config>]> = [['novel 0.7', { NOVEL: 0.7 }], ['rules fold', {}], ['proven only', { FOLD_MIN_ACTED: 5 }]]
 console.log(`requests game with nights, seeds ${SEEDS[0]}–${SEEDS.at(-1)}, ${DAYS} days; values on the last day\n`)
 console.log(`${''.padEnd(12)}${['pass', 'held-out', 'lines', 'rules', 'general', 'no area'].map((h) => h.padStart(10)).join('')}`)
 for (const [name, overrides] of ARMS) {

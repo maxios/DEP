@@ -12,7 +12,12 @@ export const DEFAULTS = {
   S_INIT: 0.1,
   S_MAX: 1.0,
   SURPRISE: 0.5,
-  NOVEL: 0.7,
+  // The spec's 0.7 refused any claim within 0.7 of one already held, and
+  // folding needs claims at least MERGE_SIM alike: two claims alike enough to
+  // fold could never both be stored, so no rule ever formed. A claim is now
+  // refused only when one already held covers its situation exactly.
+  // Measured in liveness-design.md.
+  NOVEL: 1,
   DECAY: 0.02,
   S_PRUNE: 0.03,
   PRUNE_AGE: 7,
@@ -20,6 +25,10 @@ export const DEFAULTS = {
   // 0.8 alike, and 0.7 when they differ only in the side the player came in by —
   // the case a rule should absorb. Measured in liveness-design.md.
   MERGE_SIM: 0.7,
+  /** Acted on this often, and right as often as not, a claim is an exception no rule may fold over. */
+  FOLD_EXCEPTION_ACTED: 5,
+  /** Only claims acted on this often, and right as often as not, are folded into rules. */
+  FOLD_MIN_ACTED: 5,
   K: 20,
   // The spec's gate — pain slope ≤ 0 and reward variance < 0.25 — shut on
   // healthy days (fresh mazes make rewards vary 0.22–0.40) and opened on

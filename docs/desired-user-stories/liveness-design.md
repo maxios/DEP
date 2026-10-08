@@ -449,6 +449,45 @@ three things the pass rates did not:
   person reading the document would want to argue with. That argument is what
   Phase F has to turn into evidence.
 
+### Phase C — rules
+
+Two changes let what the agent learned be said once, as a rule:
+
+- **Novelty refuses only what is already covered.** At 0.7, a claim within
+  0.7 of one already held was never stored, and folding needs claims at
+  least 0.7 alike — so no rule ever formed on the game. Now a claim is refused
+  only when a held one covers its situation exactly (`NOVEL: 1`).
+- **Rules fold with rules, from evidence only, and never over an exception.**
+  A rule can absorb proven advice that differs in one more detail, so it grows
+  more general a day at a time. Only claims acted on at least five times and
+  right as often as not are folded (`FOLD_MIN_ACTED`), and a group stops
+  growing before its key would cover proven advice to do something else
+  (`FOLD_EXCEPTION_ACTED`).
+
+`bun packages/loop/scripts/legible.ts --from 1|5|9` (requests game, nights,
+ten days; last-day values, averaged per group):
+
+```
+                      lines in the document    held-out reward
+ seeds   before   after (rules)       before   after
+ 1–4      39.3      10.5               0.86     0.81
+ 5–8      38.0      10.8               0.79     0.83
+ 9–12     39.0       7.0               0.79     0.81
+```
+
+The document shrinks about fourfold at no consistent cost. Held-out reward on
+21 levels moves ±0.05 per group between runs of the same arm, so the −0.05 and
++0.04 are within it. Seed 1's document now reads "When the tier is gold:
+choose convert", with "When the size is large and the tier is new: choose
+refuse" written apart — the hidden rule's own exception, found from evidence.
+Some rules are still broader than the truth ("When the size is medium: choose
+convert", passing about 70%), and the evidence beside them says so.
+
+On the maze (`scripts/clock.ts --from 1|7|13`) the store still holds pain
+well below playing without one (late pain 0.17–0.33 against 0.45–0.47); it
+holds more claims (about 32 → 51) because alike claims are kept, and the
+bearing key improved on all three groups (0.30/0.31/0.27 → 0.25/0.23/0.17).
+
 ## Open tensions
 
 - **Exploring is both the counterfactual and the search.** Falling back on
@@ -458,12 +497,11 @@ three things the pass rates did not:
   Splitting exploration between instinct and wandering is the obvious next
   measurement.
 
-- **Should a key say what a rule may forget?** A single `MERGE_SIM` over a
-  weighted similarity decides which features a rule may drop only indirectly.
-  On one seed group, folding the bearing key across the entry side alone
-  (0.8) helped and folding across the bearing too (0.7) hurt — suggestive
-  that "droppable features" belongs in the key's definition beside its
-  weights. One group is not evidence; Phase B is where to test it.
+- **Should a key say what a rule may forget?** Rules now drop features by
+  evidence rather than declaration, and on the requests game they mostly drop
+  the right ones. The broad rules that remain ("size is medium: convert") are
+  wrong only where an exception has not yet been proven. Whether a game should
+  also declare features that may never be dropped is still open.
 
 - **Who may rewrite a document?** Sleep proposing an amendment is safe. Sleep
   applying one without review makes the weights self-modifying, which is the

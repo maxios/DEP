@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-28 flows, 230 scenarios.
+29 flows, 236 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -37,3 +37,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-49 An answer that reaches the judge does not count](flow-49-an-answer-that-reaches-the-judge-does-not-count.feature) | As someone whose agent is scored by scenarios, I want any answer that writes outside where the player may write, or onto the scenarios and steps that judge it, to count for nothing, so that the agent cannot get better by changing the test instead of the work. | 3 | @flow-49 @developer @loop @security @should |
 | [FLOW-50 Sleep on a game of scenarios](flow-50-sleep-on-a-game-of-scenarios.feature) | As someone whose agent plays a game judged by scenarios, I want its nights to work as they do on the maze — trying what they learned on levels no day played, and undoing anything that makes the player worse — and to rerun the scenarios only when the answer or the judge has changed, so that a night costs what it has to and no more, without trusting a stale verdict. | 6 | @flow-50 @developer @loop @should |
 | [FLOW-51 Read what the agent has learned](flow-51-read-what-the-agent-has-learned.feature) | As the person whose agent is learning, I want what it has learned written out as a document I can read — the advice it relies on, the habits it has formed, and the evidence behind each — so that its memory is something I can inspect and argue with, not a number inside it. | 7 | @flow-51 @human-author @loop @should |
+| [FLOW-52 What the agent learned reads as rules](flow-52-what-the-agent-learned-reads-as-rules.feature) | As the person whose agent is learning, I want what it learned in many alike situations said once, as a rule, without the details that never mattered, so that the document of what it learned is short enough to read and argue with. | 6 | @flow-52 @human-author @loop @should |

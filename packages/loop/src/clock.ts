@@ -17,6 +17,7 @@ import type { Config } from './config'
 import { commonKey, covers, type Similarity } from './key'
 import { entryId, type EntrySet, type Store } from './store'
 import type { MemoryEntry } from './types'
+import { claimAction } from './write'
 
 export interface ClockOptions {
   fade?: boolean
@@ -109,24 +110,41 @@ export function endDay(store: Store, day: number, config: Config, sim: Similarit
       }
     }
 
-    // the rest are grouped: same advice, situations alike enough
+    // the rest are grouped: same advice, situations alike enough. Rules group
+    // too, so a rule can keep growing more general a day at a time — but a
+    // group never grows past a known exception: a proven claim advising
+    // something else in a situation the new rule would cover.
+    const alike = (a: MemoryEntry, b: MemoryEntry) => Math.max(sim(a.key, b.key), sim(b.key, a.key))
+    const exceptions = (claim: string) => [...working.values()].filter((e) =>
+      e.claim !== claim && !e.distilled && claimAction(e.claim) !== null &&
+      e.gains + e.pains >= config.FOLD_EXCEPTION_ACTED && e.gains / (e.gains + e.pains) >= config.GAIN_RATIO)
+    const proved = (e: MemoryEntry) => e.gains + e.pains >= config.FOLD_MIN_ACTED && e.gains / Math.max(1, e.gains + e.pains) >= config.GAIN_RATIO
+    const foldable = () => [...working.values()].filter((e) => (e.kind === 'episode' || e.kind === 'rule') && !e.distilled && proved(e)).sort(byId)
     const taken = new Set<string>()
-    for (const seed of episodes()) {
-      if (taken.has(seed.id)) continue
-      if (seed.distilled) continue
-      const group = episodes().filter((e) => !taken.has(e.id) && !e.distilled && e.claim === seed.claim && sim(seed.key, e.key) >= config.MERGE_SIM)
+    for (const seed of foldable()) {
+      if (taken.has(seed.id) || !working.has(seed.id)) continue
+      const known = exceptions(seed.claim)
+      const group = [seed]
+      for (const e of foldable()) {
+        if (e.id === seed.id || taken.has(e.id) || e.claim !== seed.claim || alike(seed, e) < config.MERGE_SIM) continue
+        const key = commonKey([...group, e].map((g) => g.key))
+        if (known.some((x) => covers(key, x.key))) continue
+        group.push(e)
+      }
       if (group.length < 2) continue
       const key = commonKey(group.map((g) => g.key))
       if (Object.keys(key.features).length === 0) continue // a rule about everything says nothing
       const id = entryId('rule', key, seed.claim)
-      const next = ruleFrom(group, rules.get(id) ?? store.entries.get(id), key, seed.claim, day)
+      const members = group.filter((g) => g.id !== id)
+      const next = ruleFrom(members, rules.get(id) ?? working.get(id) ?? store.entries.get(id), key, seed.claim, day)
       rules.set(next.id, next)
-      for (const m of group) {
+      for (const m of members) {
         taken.add(m.id)
         archive.push(m.id)
         working.delete(m.id)
         folded++
       }
+      taken.add(next.id)
       working.set(next.id, next)
     }
   }

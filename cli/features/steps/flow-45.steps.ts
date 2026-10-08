@@ -4,6 +4,7 @@ import type { DepWorld } from '../support/world'
 import {
   Store, playDay, endDay, entryId, configWith, mazeKey, read, mazeSimilarity,
   type MemoryEntry, type SituationKey, type MazeCore,
+  type Similarity,
 } from '../../../packages/loop/src/index'
 
 const TODAY = 10
@@ -43,7 +44,9 @@ Given('the store holds a claim that was read today and one that was not', functi
 })
 
 When('the day ends', function (this: DepWorld) {
-  endDay(this.notes.get('store') as Store, TODAY, config, mazeSimilarity)
+  // a story about another kind of situation names its own similarity and day
+  const sim = (this.notes.get('similarity') as Similarity | undefined) ?? mazeSimilarity
+  endDay(this.notes.get('store') as Store, (this.notes.get('today') as number | undefined) ?? TODAY, config, sim)
 })
 
 Then('the claim nobody read is held a little less strongly than before', function (this: DepWorld) {
