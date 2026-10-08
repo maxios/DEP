@@ -36,6 +36,8 @@ export interface DocSpec {
   body?: string
   /** The document's heart: what it waits on, and when its owner should look again. */
   heart?: Record<string, unknown>
+  /** An owner's role, for documents that describe one. */
+  agent?: Record<string, unknown>
 }
 
 const DAYS = 24 * 60 * 60 * 1000
@@ -75,6 +77,8 @@ export class DepWorld extends World {
   cadence: Record<string, number> = { tutorial: 90, 'how-to': 60, reference: 30, explanation: 180, 'decision-record': 365 }
   fallbackOwner = '@dep-core'
   vectorization: Record<string, unknown> | null = { provider: 'hash' }
+  /** The heartbeat block of .docspec, when a scenario sets one. */
+  heartbeat: Record<string, unknown> | null = null
   docs = new Map<string, DocSpec>()
   trees = new Map<string, string>()
   dapspec = true
@@ -209,6 +213,7 @@ export class DepWorld extends World {
       },
       generation: { ai_provider: 'constrained', require_human_review: false },
       ...(this.vectorization ? { vectorization: this.vectorization } : {}),
+      ...(this.heartbeat ? { heartbeat: this.heartbeat } : {}),
     }
   }
 
@@ -224,6 +229,7 @@ export class DepWorld extends World {
       tags: spec.tags ?? [],
       links: spec.links ?? [],
       ...(spec.heart ? { heart: spec.heart } : {}),
+      ...(spec.agent ? { agent: spec.agent } : {}),
     }
     const title = spec.title ?? spec.path.split('/').pop()!.replace(/\.md$/, '')
     const body = spec.body ?? freshnessBody()

@@ -24,6 +24,37 @@ export interface Heart {
   next_beat?: string
 }
 
+/** An owner's role, declared in a document with an `agent:` block inside `dep:`. */
+export interface Role {
+  /** Whom this owner may ask: owner ids, or `user`. The person can always be brought a loop. */
+  can_ask?: string[]
+}
+
+export function roleProblems(role: unknown): string[] {
+  if (role === undefined) return []
+  if (!role || typeof role !== 'object' || Array.isArray(role)) return ['the role is not a block of fields']
+  const r = role as Record<string, unknown>
+  if (r.can_ask === undefined) return []
+  if (!Array.isArray(r.can_ask)) return [`can_ask "${String(r.can_ask)}" is not a list of owners`]
+  return r.can_ask.filter((x) => typeof x !== 'string' || !(/^@[\w.-]+$/.test(x) || x === 'user')).map((x) => `"${String(x)}" in can_ask is not an owner id like @qa, or user`)
+}
+
+/** Minutes of the day, from "HH:MM". */
+const clock = (s: string) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim()); return m ? Number(m[1]) * 60 + Number(m[2]) : null }
+
+/** If now falls in the quiet hours ("22:00-08:00"), when they end; otherwise null. */
+export function quietUntil(now: Date, hours: string | undefined, timeZone = 'UTC'): Date | null {
+  if (!hours) return null
+  const [from, to] = hours.split('-').map(clock)
+  if (from == null || to == null) return null
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now)
+  const minute = Number(parts.find((p) => p.type === 'hour')!.value) * 60 + Number(parts.find((p) => p.type === 'minute')!.value)
+  const inside = from <= to ? minute >= from && minute < to : minute >= from || minute < to
+  if (!inside) return null
+  const wait = (to - minute + 24 * 60) % (24 * 60)
+  return new Date(Math.floor(now.getTime() / 60_000) * 60_000 + wait * 60_000)
+}
+
 const UNIT: Record<string, number> = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }
 
 /** A duration in milliseconds, or null when it is not one. */

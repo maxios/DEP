@@ -578,6 +578,30 @@ message's file is named by its key, so it cannot be sent twice by
 construction; a document's heart keeps the keys the latest beat applied.
 `dep beat <owner> --act` acts by rule (`MockRunner`); a model comes with E.
 
+### Phase D — loops that go nowhere come to the person (heartbeat M3)
+
+Two guardrails turn a runaway into an escalation, decided by the engine, not
+by whatever runs the owner (FLOW-57). A follow-up asked of a loop that has
+already been followed up `max_follow_ups` times (3 by default) becomes an
+escalation to the person, and the document's heart says `escalated`, so it
+stops waking its owner. A reply that would make an exchange between owners
+reach `MAX_HOPS` messages (4) goes to the person instead; every message
+carries its thread and its hop count, and the person starts the count afresh.
+
+An owner's role is a DEP document with an `agent:` block — `can_ask: [@qa]`
+— so the registry is documentation, validated like the rest. Asking anyone
+else is refused with the reason; bringing a loop to the person is always
+allowed, which is why the follow-up limit is checked before the role.
+
+The person's quiet hours live in `.docspec` (`heartbeat: { quiet_hours:
+"22:00-08:00", timezone }`). What comes to them in those hours is written at
+once but delivered when they end; an escalation marked urgent is delivered
+straight away.
+
+With M1–M3 the heartbeat runs end to end by rule. What is left of the spec is
+M4 (a model as the runner, and the digest) and M5 (follow-up outcomes as
+context-game episodes) — Phase E and the bridge back to the loop.
+
 ## Open tensions
 
 - **Is a disowned claim gone for good?** Striking a line out puts the claim

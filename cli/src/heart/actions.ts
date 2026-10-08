@@ -26,9 +26,11 @@ export type Action =
   | { type: 'wait'; document: string; on: string; after: string }
   | { type: 'set_status'; document: string; status: HeartStatus }
   | { type: 'close_loop'; document: string; note: string }
+  /** Bring a document or a message to the person. */
+  | { type: 'escalate'; re: string; reason: string; urgent?: boolean }
   | { type: 'noop'; reason: string }
 
-export const ACTION_TYPES = ['reply', 'ask', 'wait', 'set_status', 'close_loop', 'noop'] as const
+export const ACTION_TYPES = ['reply', 'ask', 'wait', 'set_status', 'close_loop', 'escalate', 'noop'] as const
 
 /** What the runner is given when an owner is woken. */
 export interface Wake {
@@ -49,6 +51,8 @@ export interface ActionOutcome {
   key?: string
   outcome: 'done' | 'already done' | 'refused'
   reason?: string
+  /** A guardrail turned it into an escalation to the person. */
+  became?: 'escalate'
 }
 
 /** Rules, no model: answer what was asked, follow up what is due, take up open work. */
@@ -79,6 +83,14 @@ export interface ActContext {
   held: ReadonlySet<string>
   /** Stop, as a crash would, after this many files have been written. */
   stopAfter?: number
+  /** Messages between owners an exchange may have before it comes to the person. */
+  maxHops: number
+  /** Follow-ups a loop gets, unless its heart says otherwise, before it comes to the person. */
+  maxFollowUps: number
+  /** Whom this owner's role allows them to ask; null when no role says. */
+  canAsk: string[] | null
+  /** When the person's quiet hours end, if they are in them now. */
+  quietUntil: Date | null
 }
 
 const text = (v: unknown, max = 4000) => typeof v === 'string' && v.length > 0 && v.length <= max
@@ -94,6 +106,7 @@ function check(raw: unknown): Action | string {
     case 'wait': return text(a.document, 500) && text(a.on, 200) && duration(a.after) !== null ? (a as Action) : 'a wait names the document, on whom, and a duration'
     case 'set_status': return text(a.document, 500) && STATUSES.includes(a.status as HeartStatus) ? (a as Action) : `a status is one of ${STATUSES.join(', ')}`
     case 'close_loop': return text(a.document, 500) && text(a.note) ? (a as Action) : 'closing a loop names the document and says why'
+    case 'escalate': return text(a.re, 500) && text(a.reason) && (a.urgent === undefined || typeof a.urgent === 'boolean') ? (a as Action) : 'an escalation names what it is about and why'
     default: return text(a.reason) ? (a as Action) : 'a noop says why'
   }
 }
@@ -132,13 +145,24 @@ export function applyActions(ctx: ActContext, list: unknown[]): ActionOutcome[] 
       : !ctx.held.has(document) ? `another beat holds ${document}, or this beat never took it`
       : null
 
+  // the person can always be brought a loop; at night it waits until morning unless it is urgent
+  const toPerson = (re: string, body: string, key: string, urgent = false, thread?: string) =>
+    sendOnce({ from: ctx.agent, to: 'user', kind: 'escalation', re, body, dedupe: `${key}|escalate`, at: ctx.now, urgent, deliverAt: urgent ? null : ctx.quietUntil, thread })
+  const escalateDocument = (document: string, reason: string, key: string, urgent = false) => {
+    const { sent } = toPerson(document, reason, key, urgent)
+    const changed = changeHeart(ctx, document, key, (h) => { h.status = 'escalated'; h.escalated = reason }, writing)
+    return sent || changed === 'done' ? 'done' : 'already done'
+  }
+
   for (const raw of Array.isArray(list) ? list : []) {
     const a = check(raw)
     if (typeof a === 'string') { outcomes.push({ action: raw, outcome: 'refused', reason: a }); continue }
 
-    const target = a.type === 'reply' ? a.message : a.type === 'ask' ? `${a.to}|${a.re}` : a.type === 'noop' ? a.reason : a.document
+    const target = a.type === 'reply' ? a.message : a.type === 'ask' ? `${a.to}|${a.re}` : a.type === 'noop' ? a.reason : a.type === 'escalate' ? a.re : a.document
     const key = `${ctx.beatId}|${a.type}|${target}`
     let outcome: ActionOutcome['outcome']
+    let became: ActionOutcome['became']
+    let reason: string | undefined
 
     if (a.type === 'noop') {
       outcomes.push({ action: a, key, outcome: 'done' })
@@ -147,15 +171,35 @@ export function applyActions(ctx: ActContext, list: unknown[]): ActionOutcome[] 
     if (a.type === 'reply') {
       const original = mine.find((m) => m.id === a.message)
       if (!original) { outcomes.push({ action: a, key, outcome: 'refused', reason: `${a.message} is not in ${ctx.agent}'s inbox` }); continue }
-      const { sent } = sendOnce({ from: ctx.agent, to: original.from, kind: 'answer', re: original.id, body: a.body, dedupe: key, at: ctx.now })
+      // an exchange between owners that has gone on long enough comes to the person instead
+      const hops = original.from === 'user' ? 1 : (original.hops ?? 1) + 1
+      if (original.from !== 'user' && hops >= ctx.maxHops) {
+        reason = `the exchange between ${ctx.agent} and ${original.from} reached ${ctx.maxHops} messages without settling`
+        outcome = toPerson(original.id, reason, key, false, original.thread).sent ? 'done' : 'already done'
+        became = 'escalate'
+      } else {
+        const { sent } = sendOnce({ from: ctx.agent, to: original.from, kind: 'answer', re: original.id, body: a.body, dedupe: key, at: ctx.now, thread: original.thread ?? original.id, hops })
+        outcome = sent ? 'done' : 'already done'
+      }
       markRead(ctx.root, original)
-      outcome = sent ? 'done' : 'already done'
     } else if (a.type === 'ask') {
       // asking about one of my documents that waits on the same someone is a follow-up of it
       const followUp = ctx.owns(a.re)
       if (followUp) {
         const why = may(a.re)
         if (why) { outcomes.push({ action: a, key, outcome: 'refused', reason: why }); continue }
+        // a loop followed up enough comes to the person, whom any role may bring it to
+        const heart = (readDepFile(join(ctx.root, a.re)).dep.heart ?? {}) as Record<string, unknown>
+        const allowed = Number(heart.max_follow_ups ?? ctx.maxFollowUps)
+        if (heart.status === 'waiting' && heart.waiting_on === a.to && Number(heart.follow_ups ?? 0) >= allowed) {
+          reason = `${a.re} has waited on ${a.to} through ${allowed} follow-ups without an answer`
+          outcomes.push({ action: a, key, outcome: escalateDocument(a.re, reason, key), became: 'escalate', reason })
+          continue
+        }
+      }
+      if (a.to !== 'user' && ctx.canAsk && !ctx.canAsk.includes(a.to)) {
+        outcomes.push({ action: a, key, outcome: 'refused', reason: `${ctx.agent}'s role allows asking only ${ctx.canAsk.length ? ctx.canAsk.join(', ') : 'no one'}` })
+        continue
       }
       const { sent } = sendOnce({ from: ctx.agent, to: a.to, kind: 'question', re: a.re, body: a.body, dedupe: key, at: ctx.now })
       let changed: 'done' | 'already done' = 'already done'
@@ -167,6 +211,16 @@ export function applyActions(ctx: ActContext, list: unknown[]): ActionOutcome[] 
         }, writing)
       }
       outcome = sent || changed === 'done' ? 'done' : 'already done'
+    } else if (a.type === 'escalate') {
+      const message = mine.find((m) => m.id === a.re)
+      if (message) {
+        outcome = toPerson(message.id, a.reason, key, a.urgent === true, message.thread).sent ? 'done' : 'already done'
+        markRead(ctx.root, message)
+      } else {
+        const why = may(a.re)
+        if (why) { outcomes.push({ action: a, key, outcome: 'refused', reason: `${why}; an escalation is about one of your documents or a message to you` }); continue }
+        outcome = escalateDocument(a.re, a.reason, key, a.urgent === true)
+      }
     } else {
       const why = may(a.document)
       if (why) { outcomes.push({ action: a, key, outcome: 'refused', reason: why }); continue }
@@ -176,7 +230,7 @@ export function applyActions(ctx: ActContext, list: unknown[]): ActionOutcome[] 
         else { h.status = 'waiting'; h.waiting_on = a.on; h.asked_at = ctx.now.toISOString(); h.follow_up_after = a.after; h.follow_ups = 0 }
       }, writing)
     }
-    outcomes.push({ action: a, key, outcome })
+    outcomes.push({ action: a, key, outcome, ...(became ? { became, reason } : {}) })
   }
   return outcomes
 }

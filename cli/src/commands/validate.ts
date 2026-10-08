@@ -1,4 +1,4 @@
-import { heartProblems } from '../heart/heart'
+import { heartProblems, roleProblems } from '../heart/heart'
 import { buildGraph } from '../graph'
 import { loadDocspec } from '../config'
 import { existsSync } from 'fs'
@@ -130,6 +130,11 @@ function validateDocument(
   if (meta.heart !== undefined) {
     const problems = heartProblems(meta.heart, (p) => existsSync(join(root, p)))
     checks.push({ name: 'Heart valid', passed: problems.length === 0, message: problems.length > 0 ? problems.join('; ') : undefined })
+  }
+
+  if (meta.agent !== undefined) {
+    const problems = roleProblems(meta.agent)
+    checks.push({ name: 'Role valid', passed: problems.length === 0, message: problems.length > 0 ? problems.join('; ') : undefined })
   }
 
   // Confidence

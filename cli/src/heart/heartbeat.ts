@@ -19,7 +19,7 @@ import { createHash } from 'crypto'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import type { DepGraph } from '../types'
-import { duration, iso } from './heart'
+import { duration, iso, quietUntil } from './heart'
 import { applyActions, type ActionOutcome, type Runner } from './actions'
 import { inbox, send, type Message } from './inbox'
 import { take, release } from './lease'
@@ -70,6 +70,11 @@ export const HEARTBEAT_DEFAULTS = {
   INTERVAL_MAX_MS: 2 * 3_600_000,
   BACKOFF: 2,
   LEASE_TTL_MS: 10 * 60_000,
+  MAX_HOPS: 4,
+  MAX_FOLLOW_UPS: 3,
+  /** The person's quiet hours, "22:00-08:00"; none by default. */
+  QUIET_HOURS: '',
+  TIMEZONE: 'UTC',
 }
 
 export type HeartbeatConfig = typeof HEARTBEAT_DEFAULTS
@@ -189,9 +194,15 @@ export class Heartbeat {
     if (woke && this.runner) {
       const messages = inbox(this.root, agent).filter((m) => !m.read)
       const asked = this.runner.act({ agent, beatId, at: at.toISOString(), signals, messages })
-      const owned = new Set([...this.graph().nodes.values()].filter((n) => n.metadata.owner === agent).map((n) => n.path))
+      const nodes = [...this.graph().nodes.values()].filter((n) => n.metadata.owner === agent)
+      const owned = new Set(nodes.map((n) => n.path))
+      const role = nodes.find((n) => Array.isArray(n.metadata.agent?.can_ask))?.metadata.agent
       // a crash below leaves the leases to run out, so no other beat acts on a half-done document
-      actions = applyActions({ root: this.root, agent, beatId, now: at, owns: (d) => owned.has(d), held: taken, stopAfter: options.stopAfter }, asked)
+      actions = applyActions({
+        root: this.root, agent, beatId, now: at, owns: (d) => owned.has(d), held: taken, stopAfter: options.stopAfter,
+        maxHops: this.config.MAX_HOPS, maxFollowUps: this.config.MAX_FOLLOW_UPS, canAsk: role?.can_ask ?? null,
+        quietUntil: quietUntil(at, this.config.QUIET_HOURS, this.config.TIMEZONE),
+      }, asked)
     }
     for (const d of taken) release(this.root, d, beatId)
 

@@ -23,6 +23,13 @@ export interface Message {
   created_at: string
   read: boolean
   dedupe: string
+  /** The exchange it belongs to: the id of the message that started it. */
+  thread?: string
+  /** How many messages between owners the exchange has had, this one included. */
+  hops?: number
+  urgent?: boolean
+  /** Held until then: the person's quiet hours. */
+  deliver_at?: string
   body: string
   /** Where it is, relative to the project root. */
   path: string
@@ -40,16 +47,21 @@ function parse(root: string, path: string): Message | null {
   const meta = (m ? parseYaml(m[1]!) : null) as { message?: Omit<Message, 'body' | 'path'> } | null
   if (!meta?.message) return null
   const created = meta.message.created_at as unknown
-  return { ...meta.message, created_at: created instanceof Date ? created.toISOString() : String(created), body: text.slice(m![0].length).trim(), path }
+  const deliver = meta.message.deliver_at as unknown
+  return {
+    ...meta.message, created_at: created instanceof Date ? created.toISOString() : String(created),
+    ...(deliver ? { deliver_at: deliver instanceof Date ? deliver.toISOString() : String(deliver) } : {}),
+    body: text.slice(m![0].length).trim(), path }
 }
 
-/** Every message in an owner's inbox, oldest first. */
-export function inbox(root: string, owner: string): Message[] {
+/** Every message in an owner's inbox, oldest first. Given a time, only what has been delivered by then. */
+export function inbox(root: string, owner: string, options: { now?: Date } = {}): Message[] {
   const dir = join(root, INBOX, box(owner))
   if (!existsSync(dir)) return []
   return readdirSync(dir).filter((f) => f.endsWith('.md')).sort()
     .map((f) => parse(root, `${INBOX}/${box(owner)}/${f}`))
     .filter((m): m is Message => m !== null)
+    .filter((m) => !options.now || !m.deliver_at || new Date(m.deliver_at).getTime() <= options.now.getTime())
     .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id))
 }
 
@@ -57,12 +69,29 @@ export function inbox(root: string, owner: string): Message[] {
 export const messagePath = (to: string, dedupe: string) => `${INBOX}/${box(to)}/${idFor(dedupe)}.md`
 
 /** Send a message. Returns it, and whether it was new: the same dedupe key never sends twice. */
-export function send(root: string, m: { from: string; to: string; kind: MessageKind; re?: string; body: string; dedupe: string; at: Date }): { message: Message; sent: boolean } {
+export interface Outgoing {
+  from: string
+  to: string
+  kind: MessageKind
+  re?: string
+  body: string
+  dedupe: string
+  at: Date
+  thread?: string
+  hops?: number
+  urgent?: boolean
+  deliverAt?: Date | null
+}
+
+export function send(root: string, m: Outgoing): { message: Message; sent: boolean } {
   const id = idFor(m.dedupe)
   const path = `${INBOX}/${box(m.to)}/${id}.md`
   const full = join(root, path)
   if (existsSync(full)) return { message: parse(root, path)!, sent: false }
-  const meta = { id, from: m.from, to: m.to, kind: m.kind, ...(m.re ? { re: m.re } : {}), created_at: m.at.toISOString(), read: false, dedupe: m.dedupe }
+  const meta = {
+    id, from: m.from, to: m.to, kind: m.kind, ...(m.re ? { re: m.re } : {}), created_at: m.at.toISOString(), read: false, dedupe: m.dedupe,
+    thread: m.thread ?? id, hops: m.hops ?? 1, ...(m.urgent ? { urgent: true } : {}), ...(m.deliverAt ? { deliver_at: m.deliverAt.toISOString() } : {}),
+  }
   mkdirSync(join(root, INBOX, box(m.to)), { recursive: true })
   writeFileSync(full, `---\n${stringify({ message: meta })}---\n${m.body.trim()}\n`)
   return { message: { ...meta, body: m.body.trim(), path }, sent: true }

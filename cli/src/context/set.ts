@@ -477,7 +477,13 @@ export class DocumentationSet {
   /** The owners' heartbeat over this set, on the set's own clock. Each beat reads the project afresh. */
   heartbeat(options: Partial<HeartbeatConfig> & { runner?: Runner } = {}): Heartbeat {
     const { runner, ...config } = options
-    return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, config, runner)
+    const declared = this.config().heartbeat ?? {}
+    const fromDocspec: Partial<HeartbeatConfig> = {
+      ...(declared.quiet_hours ? { QUIET_HOURS: declared.quiet_hours } : {}),
+      ...(declared.timezone ? { TIMEZONE: declared.timezone } : {}),
+      ...(declared.max_hops ? { MAX_HOPS: declared.max_hops } : {}),
+    }
+    return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, { ...fromDocspec, ...config }, runner)
   }
 
   /** Everything waiting for review, each with the document as it is now. */

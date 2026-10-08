@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-33 flows, 275 scenarios.
+34 flows, 283 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -42,3 +42,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-54 Teach the agent by editing what it learned](flow-54-teach-the-agent-by-editing-what-it-learned.feature) | As the person whose agent is learning, I want my changes to the document of what it learned to change what it knows — advice I strike out is no longer given, advice I add is given and tested, and what I write in my own words is kept — so that its memory comes to match the way I work, not only what the scenarios reward. | 9 | @flow-54 @human-author @loop @should |
 | [FLOW-55 A document that is waiting wakes its owner](flow-55-a-document-that-is-waiting-wakes-its-owner.feature) | As the owner of documents that wait on someone or something, I want a cheap, regular check that wakes me only when one of them needs me — a follow-up that is due, a review that is overdue, something I watch that changed — so that open loops are followed up without anyone having to remember them, and nothing expensive runs when nothing needs doing. | 12 | @flow-55 @human-author @ai-agent @heartbeat @should |
 | [FLOW-56 A woken owner acts, and only once](flow-56-a-woken-owner-acts-and-only-once.feature) | As an owner woken by my heart, I want to act through a small set of typed actions — reply, ask, wait, take up, close — that change my documents and send messages in the project, never twice, and never on a document someone else is acting on, so that a beat that is retried or interrupted leaves the project as if it had run once. | 10 | @flow-56 @ai-agent @heartbeat @should |
+| [FLOW-57 Loops that go nowhere come to me](flow-57-loops-that-go-nowhere-come-to-me.feature) | As the person the owners work for, I want a loop that has been followed up enough, or an exchange between owners that is going round in circles, to stop and come to me — and not at night unless it is urgent — and each owner to ask only whom their role allows, so that the owners never nag, never talk among themselves forever, and never wake me for nothing. | 8 | @flow-57 @human-author @heartbeat @should |

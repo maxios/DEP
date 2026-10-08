@@ -17,6 +17,8 @@ export interface DepMetadata {
   review_trigger?: string
   participants?: string[]
   heart?: import('./heart/heart').Heart
+  /** This document describes an owner's role: see src/heart/heart.ts. */
+  agent?: import('./heart/heart').Role
 }
 
 export interface DepEdge {
@@ -78,6 +80,8 @@ export interface DocspecConfig {
   custom_types?: Array<{ id: string; extends: string; additional_required_patterns: string[] }>
   custom_relationships?: Array<{ id: string; meaning: string; inverse?: string }>
   vectorization?: VectorizationConfig
+  /** The heartbeat's limits and the person's quiet hours. */
+  heartbeat?: { quiet_hours?: string; timezone?: string; max_hops?: number }
 }
 
 // Vector types

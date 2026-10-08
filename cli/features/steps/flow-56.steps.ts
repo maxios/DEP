@@ -12,7 +12,7 @@ const SOMEONE = '@qa'
 const MINE = 'docs/reference/refund-flow.md'
 
 /** The heartbeat, acting through whatever runner the scenario set — the rules, unless it said otherwise. */
-async function acting(world: DepWorld): Promise<Heartbeat> {
+export async function acting(world: DepWorld): Promise<Heartbeat> {
   await world.materialise()
   const existing = world.notes.get('heartbeat') as Heartbeat | undefined
   if (existing) return existing
