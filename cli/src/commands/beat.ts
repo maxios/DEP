@@ -1,10 +1,12 @@
-import { openDocumentationSet } from '../lib'
+import { openDocumentationSet, MockRunner } from '../lib'
 
 export interface BeatFlags {
   json?: boolean
   record?: boolean
   stop?: boolean
   start?: boolean
+  /** Act on what the beat finds, with the rule runner (no model). */
+  act?: boolean
 }
 
 /**
@@ -16,7 +18,7 @@ export interface BeatFlags {
 export async function beatCommand(root: string, owner: string | undefined, flags: BeatFlags) {
   const set = openDocumentationSet(root, { caller: 'cli:beat', trace: { record: false } })
   try {
-    const heart = set.heartbeat()
+    const heart = set.heartbeat(flags.act ? { runner: new MockRunner() } : {})
     if (flags.stop || flags.start) {
       const { stopped } = heart.killSwitch(!!flags.stop)
       console.log(stopped ? 'Kill switch on: owners are pulsed but never woken.' : 'Kill switch off.')
@@ -42,6 +44,11 @@ export async function beatCommand(root: string, owner: string | undefined, flags
       console.log(result.woke ? `${owner} would be woken for:` : `${owner} is not woken (kill switch on), but would be for:`)
       for (const s of result.signals) console.log(`  ${s.kind.padEnd(15)} ${s.document} — ${s.why}`)
     }
+    for (const a of result.actions) {
+      const what = (a.action as { type?: string }).type ?? 'something'
+      console.log(`  ${a.outcome.padEnd(13)} ${what}${a.reason ? ` — ${a.reason}` : ''}`)
+    }
+    for (const s of result.held) console.log(`  left alone    ${s.document} — another beat holds it`)
     console.log(`Next beat ${result.nextBeat}.`)
   } finally {
     set.close()

@@ -20,11 +20,14 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileS
 import { join } from 'path'
 import type { DepGraph } from '../types'
 import { duration, iso } from './heart'
+import { applyActions, type ActionOutcome, type Runner } from './actions'
+import { inbox, send, type Message } from './inbox'
+import { take, release } from './lease'
 
-export type SignalKind = 'follow_up_due' | 'task' | 'watched_change' | 'due' | 'review_due'
+export type SignalKind = 'message' | 'follow_up_due' | 'task' | 'watched_change' | 'due' | 'review_due'
 
 /** What needs an owner most comes first. */
-const PRIORITY: SignalKind[] = ['follow_up_due', 'task', 'watched_change', 'due', 'review_due']
+const PRIORITY: SignalKind[] = ['message', 'follow_up_due', 'task', 'watched_change', 'due', 'review_due']
 
 export interface Signal {
   kind: SignalKind
@@ -35,6 +38,8 @@ export interface Signal {
   since?: string
   /** For a watched change: the watched document that changed. */
   changed?: string
+  /** For a message: who wrote it. */
+  from?: string
 }
 
 export interface BeatResult {
@@ -48,6 +53,10 @@ export interface BeatResult {
   /** How long the scheduler waits before the next beat, before any document asks for sooner. */
   interval: number
   nextBeat: string
+  /** Signals left alone because another beat holds their document. */
+  held: Signal[]
+  /** What the owner did, when woken with something to act. */
+  actions: ActionOutcome[]
 }
 
 export interface BeatRecord {
@@ -60,6 +69,7 @@ export const HEARTBEAT_DEFAULTS = {
   INTERVAL_MIN_MS: 60_000,
   INTERVAL_MAX_MS: 2 * 3_600_000,
   BACKOFF: 2,
+  LEASE_TTL_MS: 10 * 60_000,
 }
 
 export type HeartbeatConfig = typeof HEARTBEAT_DEFAULTS
@@ -82,6 +92,8 @@ export class Heartbeat {
     private readonly graph: () => DepGraph,
     private readonly now: () => Date,
     config: Partial<HeartbeatConfig> = {},
+    /** What acts for a woken owner. Without one, a beat only says what it would wake them for. */
+    private readonly runner?: Runner,
   ) {
     this.config = { ...HEARTBEAT_DEFAULTS, ...config }
   }
@@ -107,6 +119,9 @@ export class Heartbeat {
     const signals: Signal[] = []
     const seen: Record<string, string> = { ...state.seen }
     let soonest: number | null = null
+    for (const m of inbox(this.root, agent)) {
+      if (!m.read) signals.push({ kind: 'message', document: m.path, from: m.from, why: `${m.from} wrote: ${m.body.split('\n')[0]!.slice(0, 80)}` })
+    }
     const sooner = (t: number) => { if (t > now && (soonest === null || t < soonest)) soonest = t }
 
     for (const node of this.graph().nodes.values()) {
@@ -148,23 +163,58 @@ export class Heartbeat {
     return { signals, seen, soonest }
   }
 
-  /** One beat for one owner: pulse, decide whether to wake, schedule the next, record it. */
-  beat(agent: string): BeatResult {
+  /** One beat for one owner: pulse, take leases, wake and act if anything needs them, schedule the next, record it. */
+  beat(agent: string, options: { stopAfter?: number } = {}): BeatResult {
     const at = this.now()
+    const beatId = `${agent}:${at.toISOString()}`
     const state = this.load(agent)
-    const { signals, seen, soonest } = this.pulse(agent, state)
+    const pulsed = this.pulse(agent, state)
     const stopped = existsSync(join(this.dir, 'STOP'))
-    const found = signals.length > 0
-    const interval = found ? this.config.INTERVAL_MIN_MS : Math.min(this.config.INTERVAL_MAX_MS, state.interval * this.config.BACKOFF)
-    const next = Math.min(at.getTime() + interval, soonest ?? Infinity)
-    const result: BeatResult = {
-      beatId: `${agent}:${at.toISOString()}`, agent, at: at.toISOString(), signals,
-      woke: found && !stopped, stopped, interval, nextBeat: new Date(next).toISOString(),
+
+    // a document another beat is acting on is left to it
+    const signals: Signal[] = []
+    const held: Signal[] = []
+    const taken = new Set<string>()
+    for (const s of pulsed.signals) {
+      if (s.kind === 'message' || stopped) { signals.push(s); continue }
+      if (taken.has(s.document) || take(this.root, s.document, agent, beatId, at, this.config.LEASE_TTL_MS)) {
+        taken.add(s.document)
+        signals.push(s)
+      } else held.push(s)
     }
-    this.save(agent, { interval, nextBeat: result.nextBeat, seen })
+
+    const found = signals.length > 0
+    const woke = found && !stopped
+    let actions: ActionOutcome[] = []
+    if (woke && this.runner) {
+      const messages = inbox(this.root, agent).filter((m) => !m.read)
+      const asked = this.runner.act({ agent, beatId, at: at.toISOString(), signals, messages })
+      const owned = new Set([...this.graph().nodes.values()].filter((n) => n.metadata.owner === agent).map((n) => n.path))
+      // a crash below leaves the leases to run out, so no other beat acts on a half-done document
+      actions = applyActions({ root: this.root, agent, beatId, now: at, owns: (d) => owned.has(d), held: taken, stopAfter: options.stopAfter }, asked)
+    }
+    for (const d of taken) release(this.root, d, beatId)
+
+    const interval = found ? this.config.INTERVAL_MIN_MS : Math.min(this.config.INTERVAL_MAX_MS, state.interval * this.config.BACKOFF)
+    const next = Math.min(at.getTime() + interval, pulsed.soonest ?? Infinity)
+    const result: BeatResult = {
+      beatId, agent, at: at.toISOString(), signals, woke, stopped, interval, nextBeat: new Date(next).toISOString(), held, actions,
+    }
+    this.save(agent, { interval, nextBeat: result.nextBeat, seen: pulsed.seen })
     mkdirSync(this.dir, { recursive: true })
     appendFileSync(join(this.dir, 'beats.jsonl'), JSON.stringify(result) + '\n')
     return result
+  }
+
+  /** Hold a document for a beat, as that beat would — so other beats leave it alone until the hold runs out. */
+  hold(document: string, agent: string, beatId: string, ttlMs = this.config.LEASE_TTL_MS): boolean {
+    return take(this.root, document, agent, beatId, this.now(), ttlMs)
+  }
+
+  /** Write to an owner, as a person or another owner would. */
+  say(from: string, to: string, body: string, re?: string): Message {
+    const at = this.now()
+    return send(this.root, { from, to, kind: 'question', re, body, dedupe: `${from}|${to}|${at.toISOString()}|${body}`, at }).message
   }
 
   /** Something changed that concerns this owner: their next beat comes at the shortest interval. */

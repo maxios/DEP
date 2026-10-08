@@ -14,6 +14,7 @@ import { retrieve, type RetrievalContext, type RetrievalInternals } from './retr
 import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
 import { amendDocument, type Amendment, type AmendResult } from './amend'
 import { Heartbeat, type HeartbeatConfig } from '../heart/heartbeat'
+import type { Runner } from '../heart/actions'
 import { propose, listProposals, acceptProposal, rejectProposal, type Proposal } from './proposals'
 import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
 import { ProcedureSession, stepParts, treeIdFromRef, type ProcedureStep, type ProcedureStepOptions, type SupportPassage } from './procedure'
@@ -474,8 +475,9 @@ export class DocumentationSet {
   }
 
   /** The owners' heartbeat over this set, on the set's own clock. Each beat reads the project afresh. */
-  heartbeat(config: Partial<HeartbeatConfig> = {}): Heartbeat {
-    return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, config)
+  heartbeat(options: Partial<HeartbeatConfig> & { runner?: Runner } = {}): Heartbeat {
+    const { runner, ...config } = options
+    return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, config, runner)
   }
 
   /** Everything waiting for review, each with the document as it is now. */

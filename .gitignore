@@ -6,3 +6,4 @@
 # Orchestry state
 .orchestry
 .pulse/
+.leases/

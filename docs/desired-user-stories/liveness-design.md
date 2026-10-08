@@ -555,6 +555,29 @@ Not yet: an agent's own changes still wake it if it watches what it changed
 with actions in M2), and lifecycle is computed on the real clock rather than
 the set's.
 
+### Phase D — actions, leases, once only (heartbeat M2)
+
+A woken owner changes the project only through typed actions — reply, ask,
+wait, set a status, close a loop, or do nothing and say why. Whatever runs
+the owner returns a list; each item is checked before anything is written,
+and refused, with the reason recorded in the beat, when it is not one of
+those kinds, names a document the owner does not own or another beat holds,
+or answers a message that is not in the owner's inbox (FLOW-56).
+
+Messages are markdown files in `inbox/<owner>/`, outside the documentation,
+so they are versioned but never served as context. Asking about one of my own
+documents that waits on the same someone is a follow-up of it: the count goes
+up and the clock restarts.
+
+A beat takes a lease on every document it acts on; a document another beat
+holds is left alone and the beat says so; a lease that has run out (10 min)
+can be taken over. Every action has a key made of the beat, its kind and its
+target — not its place in the list — so a beat run again after stopping
+partway, or a runner that asks for the same thing twice, does it once. A
+message's file is named by its key, so it cannot be sent twice by
+construction; a document's heart keeps the keys the latest beat applied.
+`dep beat <owner> --act` acts by rule (`MockRunner`); a model comes with E.
+
 ## Open tensions
 
 - **Is a disowned claim gone for good?** Striking a line out puts the claim

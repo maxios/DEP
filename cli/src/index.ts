@@ -326,7 +326,7 @@ Usage:
                                         Assemble a budgeted, freshness-aware context bundle
   dep vectorize [--force] [--provider local|openai|hash] [--only <file>] [--install-hook] [--dry] [--json]
                                         Build/refresh the vector index (or install a post-commit hook that does)
-  dep beat <owner> [--json]             One heartbeat for an owner: what needs them now, and when they are checked next
+  dep beat <owner> [--act] [--json]     One heartbeat for an owner: what needs them now (--act: answer, follow up, take up work by rule)
   dep beat [<owner>] --record           Every beat so far and the wake ratio; --stop / --start toggle the kill switch
   dep console [--port N] [--json]       Serve a local console: the graph, health, procedures, and what agents asked for
   dep report <request-id> --used <ids>  Report which passages of an earlier answer were actually used
