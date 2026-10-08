@@ -640,6 +640,27 @@ closing it (apply, release, schedule, record); if the model cannot be
 reached, nothing is done, the beat records why, and the message that woke the
 owner wakes them again next time. `dep beat <owner> --act --model`.
 
+### The bridge — follow-up outcomes become episodes (heartbeat M5, first half)
+
+The heartbeat is now the Scorer's host the design said it should be (FLOW-60).
+When an owner asks or follows up, the ask is recorded as open; every later beat
+looks for an answer from the one asked, about the same document or message,
+sent after the ask. In time scores 1, late 0.5; a loop the engine had to bring
+to the person closes its open asks at −0.5. Each ask is scored once, into
+`.pulse/outcomes.jsonl`. Nothing the owner or its model says is read: a runner
+that claims "this went well, score it 1" changes nothing.
+
+The situation an ask is learned against is whom it went to, what they are
+(owner, person, test, date), how many follow-ups in, the time of day, and the
+document's type. `learnFromOutcomes` in the loop turns each scored ask into an
+episode — what worked is proposed as advice ("choose follow-up" for that
+situation), what did not only lowers the baseline — so the store learns when
+following up gets answered, from what was observed.
+
+Not yet: the advice is not shown back to the runner, so it is created but not
+yet read, followed and credited. Showing the store's advice for each loop in
+the wake, and tracing which advice the runner followed, closes the loop.
+
 ## Open tensions
 
 - **Is a disowned claim gone for good?** Striking a line out puts the claim

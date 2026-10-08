@@ -23,6 +23,9 @@ import { duration, iso, quietUntil } from './heart'
 import { applyActions, type ActionOutcome, type Runner, type Wake } from './actions'
 import { inbox, send, type Message } from './inbox'
 import { take, release } from './lease'
+import { askSituation, closeUnanswered, observeAnswers, outcomes, recordAsk, type Outcome } from './outcomes'
+import { messagePath } from './inbox'
+import { readDepFile } from '../writer'
 
 export type SignalKind = 'message' | 'follow_up_due' | 'task' | 'watched_change' | 'due' | 'review_due'
 
@@ -59,6 +62,8 @@ export interface BeatResult {
   actions: ActionOutcome[]
   /** Why nothing was done although the owner was woken: the runner could not be reached. */
   error?: string
+  /** What came of earlier asks, seen in this beat. */
+  scored: Outcome[]
 }
 
 export interface BeatRecord {
@@ -204,6 +209,8 @@ export class Heartbeat {
     const at = this.now()
     const beatId = `${agent}:${at.toISOString()}`
     const state = this.load(agent)
+    // what came of earlier asks is seen before anything else, whether or not anyone wakes
+    const scored = observeAnswers(this.root, agent)
     const pulsed = this.pulse(agent, state)
     const stopped = existsSync(join(this.dir, 'STOP'))
 
@@ -236,12 +243,13 @@ export class Heartbeat {
         documents: [...new Set(signals.filter((s) => s.kind !== 'message' && owned.has(s.document)).map((s) => s.document))].map((p) => ({ path: p, text: text(p) })),
       }
     }
-    return { agent, at, beatId, state, pulsed, stopped, signals, held, taken, owned, canAsk, wake }
+    return { agent, at, beatId, state, pulsed, stopped, signals, held, taken, owned, canAsk, wake, scored }
   }
 
   /** Apply what the runner asked for, release the leases, schedule the next beat, and record this one. */
   private close(open: ReturnType<Heartbeat['open']>, asked: unknown[], options: { stopAfter?: number }, error?: string): BeatResult {
     const { agent, at, beatId, state, pulsed, stopped, signals, held, taken, owned, canAsk } = open
+    const scored = [...open.scored]
     let actions: ActionOutcome[] = []
     if (open.wake && !error) {
       // a crash below leaves the leases to run out, so no other beat acts on a half-done document
@@ -250,6 +258,7 @@ export class Heartbeat {
         maxHops: this.config.MAX_HOPS, maxFollowUps: this.config.MAX_FOLLOW_UPS, canAsk,
         quietUntil: quietUntil(at, this.config.QUIET_HOURS, this.config.TIMEZONE),
       }, asked)
+      scored.push(...this.keepScore(agent, at, owned, actions))
     }
     for (const d of taken) release(this.root, d, beatId)
 
@@ -258,12 +267,41 @@ export class Heartbeat {
     const next = Math.min(at.getTime() + interval, pulsed.soonest ?? Infinity)
     const result: BeatResult = {
       beatId, agent, at: at.toISOString(), signals, woke: found && !stopped, stopped, interval, nextBeat: new Date(next).toISOString(), held, actions,
-      ...(error ? { error } : {}),
+      ...(error ? { error } : {}), scored,
     }
     this.save(agent, { interval, nextBeat: result.nextBeat, seen: pulsed.seen })
     mkdirSync(this.dir, { recursive: true })
     appendFileSync(join(this.dir, 'beats.jsonl'), JSON.stringify(result) + '\n')
     return result
+  }
+
+  /** Record the asks this beat made, and close the open asks of loops it had to bring to the person. */
+  private keepScore(agent: string, at: Date, owned: ReadonlySet<string>, actions: ActionOutcome[]): Outcome[] {
+    const scored: Outcome[] = []
+    for (const a of actions) {
+      const action = a.action as { type?: string; to?: string; re?: string }
+      if (a.became === 'escalate' && action.re && owned.has(action.re)) {
+        scored.push(...closeUnanswered(this.root, agent, action.re, at.toISOString()))
+        continue
+      }
+      if (action.type !== 'ask' || a.outcome !== 'done' || a.became || !action.to || !action.re || !a.key) continue
+      const heart = owned.has(action.re) ? (readDepFile(join(this.root, action.re)).dep as { type?: string; heart?: Record<string, unknown> }) : null
+      const followUps = Number(heart?.heart?.follow_ups ?? 0)
+      recordAsk(this.root, {
+        id: a.key, agent, to: action.to, re: action.re,
+        message: messagePath(action.to, a.key).split('/').pop()!.replace(/\.md$/, ''),
+        askedAt: at.toISOString(),
+        inTimeMs: duration(heart?.heart?.follow_up_after) ?? null,
+        action: followUps > 0 ? 'follow-up' : 'ask',
+        situation: askSituation({ to: action.to, type: heart?.type, followUps, at, timeZone: this.config.TIMEZONE }),
+      })
+    }
+    return scored
+  }
+
+  /** Every outcome scored so far, oldest first. */
+  outcomes(): Outcome[] {
+    return outcomes(this.root)
   }
 
   /** Hold a document for a beat, as that beat would — so other beats leave it alone until the hold runs out. */
