@@ -5,11 +5,14 @@
  * which has never been tried is not shut out by one that merely got there
  * first.
  *
+ * A rule is read only where its conditions hold; a claim about one situation
+ * also reaches situations like it.
+ *
  * The player is handed the claims, best first. It is never handed a strength:
  * a number it can see is a number it can argue with.
  */
 import type { Config } from './config'
-import type { Similarity } from './key'
+import { covers, type Similarity } from './key'
 import type { Store } from './store'
 import type { MemoryEntry, Rng, SituationKey } from './types'
 
@@ -26,6 +29,12 @@ export function read(store: Store, situation: SituationKey, rng: Rng, config: Co
   const candidates: Array<{ entry: MemoryEntry; sim: number; score: number }> = []
   for (const entry of store.active()) {
     if (hidden?.has(entry.id)) continue
+    // A claim about one situation reaches the situations near it. A rule names
+    // the conditions it holds under, and is not stretched past them: counting
+    // what it leaves out as agreement would offer "large and new: refuse" to a
+    // large request from a gold customer.
+    const general = Object.keys(entry.key.features).length < Object.keys(situation.features).length
+    if (general && !covers(entry.key, situation)) continue
     const s = sim(situation, entry.key)
     if (s >= config.SIM_MIN) candidates.push({ entry, sim: s, score: s * entry.strength })
   }

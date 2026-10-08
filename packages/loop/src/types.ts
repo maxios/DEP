@@ -29,6 +29,8 @@ export interface MemoryEntry {
   parents: string[]
   distilled: boolean
   archived: boolean
+  /** Told to the agent by a person, not learned from a proposal. */
+  taught?: boolean
 }
 
 /** One step's read: what the player was shown and what it then did. */

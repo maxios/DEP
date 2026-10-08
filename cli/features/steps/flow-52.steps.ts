@@ -2,7 +2,7 @@ import { Given, When, Then } from '@cucumber/cucumber'
 import assert from 'node:assert/strict'
 import type { DepWorld } from '../support/world'
 import {
-  Store, write, entryId, covers, featureSimilarity, configWith,
+  Store, write, read, loadCore, entryId, covers, featureSimilarity, configWith,
   type EntryKind, type MemoryEntry, type SituationKey,
 } from '../../../packages/loop/src/index'
 
@@ -124,4 +124,31 @@ Then('the rule has been acted on as often as all of them together', function (th
 Then('has passed as often as all of them together', function (this: DepWorld) {
   const members = this.notes.get('members') as MemoryEntry[]
   assert.equal(rules(this)[0]!.gains, members.reduce((s, m) => s + m.gains, 0))
+})
+
+// ── where a rule is given ───────────────────────────────────────────────
+
+Given('the agent holds a rule about large requests from new customers', function (this: DepWorld) {
+  this.notes.set('rule', hold(this, { size: 'large', tier: 'new' }, 'choose refuse', 12, 12, 'rule'))
+})
+
+When('it meets a large request from a gold customer', function (this: DepWorld) {
+  this.notes.set('situation', { ...BASE, size: 'large', tier: 'gold' })
+})
+
+function given(world: DepWorld, features: Features): boolean {
+  const rule = world.notes.get('rule') as MemoryEntry
+  const core = loadCore()
+  for (let seed = 1; seed <= 20; seed++) {
+    if (read(store(world), { features }, core.Rng(seed), config, sim).entries.some((e) => e.id === rule.id)) return true
+  }
+  return false
+}
+
+Then('the rule is not given', function (this: DepWorld) {
+  assert.equal(given(this, this.notes.get('situation') as Features), false, 'the rule was given where it does not hold')
+})
+
+Then('a large request from a new customer is given the rule', function (this: DepWorld) {
+  assert.equal(given(this, { ...BASE, size: 'large', tier: 'new' }), true)
 })

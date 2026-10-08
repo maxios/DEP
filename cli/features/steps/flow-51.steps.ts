@@ -16,7 +16,7 @@ const SEED = 1
 const DAYS = 6
 const config = configWith()
 
-interface Played { root: string; loaded: LoadedGame; store: Store }
+export interface Played { root: string; loaded: LoadedGame; store: Store; instincts: Instincts }
 
 /** Playing is slow and every scenario only reads the memory, so the days are played once. */
 let played: Played | undefined
@@ -47,7 +47,7 @@ export async function play(world: DepWorld): Promise<Played> {
     const r = playSuiteDay({ loaded, root, store, seed: SEED, day, history, heldOut: heldOutIds, instincts: instincts.current(), cache })
     sleepNight({ store, instincts, day: r, seed: SEED, heldOut: proving })
   }
-  played = { root, loaded, store }
+  played = { root, loaded, store, instincts }
   return played
 }
 

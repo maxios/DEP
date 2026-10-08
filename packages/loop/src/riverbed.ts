@@ -49,15 +49,18 @@ export interface LearnedReport {
 /** Acted on at least this many times before it is written down. */
 export const WRITE_MIN_ACTED = 5
 
-const hash = (text: string) => createHash('sha256').update(text).digest('hex')
+export const hash = (text: string) => createHash('sha256').update(text).digest('hex')
 
 /** Advice that has proved itself: acted on enough, more often right than wrong, and held above where it started. */
-export function proven(store: Store, config: Config): { advice: MemoryEntry[]; habits: MemoryEntry[] } {
-  const usable = store.active()
-    .filter((e) => claimAction(e.claim) !== null)
-    .filter((e) => e.gains + e.pains >= WRITE_MIN_ACTED && e.gains / (e.gains + e.pains) >= config.GAIN_RATIO)
+export function proven(store: Store, config: Config): { advice: MemoryEntry[]; habits: MemoryEntry[]; taught: MemoryEntry[] } {
   const order = (a: MemoryEntry, b: MemoryEntry) => a.claim.localeCompare(b.claim) || keyText(a.key).localeCompare(keyText(b.key))
+  // what a person told it is always shown, with its evidence, whether or not it has held up
+  const taught = store.active().filter((e) => e.taught).sort(order)
+  const usable = store.active()
+    .filter((e) => !e.taught && claimAction(e.claim) !== null)
+    .filter((e) => e.gains + e.pains >= WRITE_MIN_ACTED && e.gains / (e.gains + e.pains) >= config.GAIN_RATIO)
   return {
+    taught,
     advice: usable.filter((e) => !e.distilled && e.strength > config.S_INIT).sort(order),
     habits: usable.filter((e) => e.distilled).sort(order),
   }
@@ -71,7 +74,7 @@ function situation(entry: MemoryEntry, names: string[]): string {
   return `When ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0]}`
 }
 
-function line(entry: MemoryEntry, names: string[]): string {
+export function line(entry: MemoryEntry, names: string[]): string {
   const acted = entry.gains + entry.pains
   // a claim is followed wherever the situation is near enough, so its evidence is not only from the one it names
   return `- ${situation(entry, names)}: **${entry.claim}**. Acted on ${acted} ${acted === 1 ? 'time' : 'times'} here or somewhere like it; ${entry.gains} passed.`
@@ -79,7 +82,7 @@ function line(entry: MemoryEntry, names: string[]): string {
 
 /** The document's body: what it says, without the frontmatter. The same memory always gives the same body. */
 export function learnedBody(store: Store, loaded: LoadedGame, config: Config = configWith()): string {
-  const { advice, habits } = proven(store, config)
+  const { advice, habits, taught } = proven(store, config)
   const names = Object.keys(loaded.game.situation)
   const section = (entries: MemoryEntry[], none: string) => (entries.length ? entries.map((e) => line(e, names)).join('\n') : none)
   return [
@@ -100,10 +103,20 @@ export function learnedBody(store: Store, loaded: LoadedGame, config: Config = c
     '',
     section(habits, '_None yet._'),
     '',
+    '## What you told it',
+    '',
+    'Advice a person added to this document, tested like any other.',
+    '',
+    section(taught, '_Nothing yet._'),
+    '',
+    '## Notes from you',
+    '',
+    ...(store.notes.length ? store.notes : ['_None yet._']),
+    '',
   ].join('\n')
 }
 
-const FRONT = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
+export const FRONT = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 
 function stamp(d: Date): string {
   return d.toISOString().replace(/\.\d{3}Z$/, 'Z')
@@ -118,7 +131,7 @@ export function renderLearned(o: LearnedOptions): LearnedReport & { text: string
   const config = configWith(o.config)
   const full = resolve(o.root, o.path)
   const body = learnedBody(o.store, o.loaded, config)
-  const { advice, habits } = proven(o.store, config)
+  const { advice, habits, taught } = proven(o.store, config)
   const report = { path: o.path, advice: advice.length, habits: habits.length, written: false }
 
   let created: string | undefined
@@ -127,9 +140,11 @@ export function renderLearned(o: LearnedOptions): LearnedReport & { text: string
     const m = FRONT.exec(text)
     const fm = (m ? parseYaml(m[1]!) : null) as { dep?: { created?: string }; learned?: { body?: string } } | null
     const onDisk = m ? text.slice(m[0].length) : text
-    if (!fm?.learned?.body || fm.learned.body !== hash(onDisk)) return { ...report, changedByHand: true, text: null }
+    // a body whose changes the agent has already read is no longer only the person's
+    const judged = o.store.judged.has(hash(onDisk))
+    if (!judged && (!fm?.learned?.body || fm.learned.body !== hash(onDisk))) return { ...report, changedByHand: true, text: null }
     if (onDisk === body) return { ...report, changedByHand: false, text: null }
-    created = fm.dep?.created
+    created = fm?.dep?.created
   }
 
   const gameFm = parseYaml(FRONT.exec(readFileSync(o.loaded.game.document, 'utf-8'))![1]!) as { dep?: { owner?: string; audience?: string[] } }
@@ -146,7 +161,8 @@ export function renderLearned(o: LearnedOptions): LearnedReport & { text: string
       tags: ['learned', 'loop'],
       links: [{ target: relative(dirname(full), o.loaded.game.document).split('\\').join('/'), rel: 'USES' }],
     },
-    learned: { from: o.loaded.game.id, body: hash(body) },
+    // which claims each line came from, so a line struck out can be traced to its claim
+    learned: { from: o.loaded.game.id, body: hash(body), written: [...advice, ...habits, ...taught].map((e) => e.id).sort() },
   }
   return { ...report, changedByHand: false, text: `---\n${stringify(meta)}---\n${body}` }
 }

@@ -44,6 +44,13 @@ Feature: FLOW-52 What the agent learned reads as rules
     And the exception is still held
 
   @edge-case
+  Scenario: A rule is only given where its conditions hold
+    Given the agent holds a rule about large requests from new customers
+    When it meets a large request from a gold customer
+    Then the rule is not given
+    But a large request from a new customer is given the rule
+
+  @edge-case
   Scenario: Only advice that has proved itself becomes a rule
     Given the agent holds alike advice that has hardly been acted on
     When the day ends

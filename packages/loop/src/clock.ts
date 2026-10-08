@@ -84,7 +84,8 @@ export function endDay(store: Store, day: number, config: Config, sim: Similarit
   const archive: string[] = []
   if (putAway) {
     for (const entry of working.values()) {
-      if (entry.strength < config.S_PRUNE && day - entry.createdDay > config.PRUNE_AGE) {
+      // what a person told it stays where they can see it, however it fares
+      if (!entry.taught && entry.strength < config.S_PRUNE && day - entry.createdDay > config.PRUNE_AGE) {
         archive.push(entry.id)
         working.delete(entry.id)
       }
@@ -97,7 +98,8 @@ export function endDay(store: Store, day: number, config: Config, sim: Similarit
     const episodes = () => [...working.values()].filter((e) => e.kind === 'episode').sort(byId)
 
     // claims an existing rule already covers are folded into it
-    for (const rule of [...working.values()].filter((e) => e.kind === 'rule').sort(byId)) {
+    // what a person told it keeps its own words: it is never folded into, or folded away
+    for (const rule of [...working.values()].filter((e) => e.kind === 'rule' && !e.taught).sort(byId)) {
       const members = episodes().filter((e) => !e.distilled && e.claim === rule.claim && covers(rule.key, e.key))
       if (members.length === 0) continue
       const next = ruleFrom(members, rules.get(rule.id) ?? rule, rule.key, rule.claim, day)
@@ -119,7 +121,7 @@ export function endDay(store: Store, day: number, config: Config, sim: Similarit
       e.claim !== claim && !e.distilled && claimAction(e.claim) !== null &&
       e.gains + e.pains >= config.FOLD_EXCEPTION_ACTED && e.gains / (e.gains + e.pains) >= config.GAIN_RATIO)
     const proved = (e: MemoryEntry) => e.gains + e.pains >= config.FOLD_MIN_ACTED && e.gains / Math.max(1, e.gains + e.pains) >= config.GAIN_RATIO
-    const foldable = () => [...working.values()].filter((e) => (e.kind === 'episode' || e.kind === 'rule') && !e.distilled && proved(e)).sort(byId)
+    const foldable = () => [...working.values()].filter((e) => (e.kind === 'episode' || e.kind === 'rule') && !e.distilled && !e.taught && proved(e)).sort(byId)
     const taken = new Set<string>()
     for (const seed of foldable()) {
       if (taken.has(seed.id) || !working.has(seed.id)) continue
@@ -135,6 +137,7 @@ export function endDay(store: Store, day: number, config: Config, sim: Similarit
       const key = commonKey(group.map((g) => g.key))
       if (Object.keys(key.features).length === 0) continue // a rule about everything says nothing
       const id = entryId('rule', key, seed.claim)
+      if (working.get(id)?.taught) continue
       const members = group.filter((g) => g.id !== id)
       const next = ruleFrom(members, rules.get(id) ?? working.get(id) ?? store.entries.get(id), key, seed.claim, day)
       rules.set(next.id, next)

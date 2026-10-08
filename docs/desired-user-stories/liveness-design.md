@@ -488,7 +488,54 @@ well below playing without one (late pain 0.17–0.33 against 0.45–0.47); it
 holds more claims (about 32 → 51) because alike claims are kept, and the
 bearing key improved on all three groups (0.30/0.31/0.27 → 0.25/0.23/0.17).
 
+### Phase F — your edits are evidence
+
+The learned document is where a person argues with the agent, so their edits
+to it are read back as evidence the player could never produce (FLOW-54).
+Each document records which claim each line came from. A line struck out
+disowns that claim, and a habit struck out is dropped from the instincts and
+from what later nights may replay. A line added in the document's own form
+("When the X is Y: **choose Z**.") becomes advice the agent is given, listed
+under "What you told it" with its evidence, and never folded into a rule or
+put away. Anything else the person writes is kept word for word as their
+notes. A line that looks like advice but names a choice the game does not
+offer is kept as a note and reported as not understood: nothing is guessed.
+
+Measuring it found a read-path bug that predates Phase F. A rule's missing
+features counted as agreement, so "large and new: refuse" scored 0.8 against
+a large request from a gold customer and was offered there. Rules are now
+given only where their conditions hold; a claim about one situation still
+reaches situations like it. The agent's own rules were affected too, which is
+why they passed only 70–80%.
+
+`bun packages/loop/scripts/teach.ts --from 1|5|9`: five days with nights, an
+edit, five more. "Right" adds the arena's four hidden exceptions; "wrong"
+adds "When the tier is new: choose accept", which is never right.
+
+```
+                 pass on day 9            what you told it
+ seeds   no edit   right   wrong     right: acted/passed   wrong: acted/passed
+ 1–4      0.84     0.94    0.83          47 / 47              15 / 0
+ 5–8      0.81     0.96    0.81          46 / 46              15 / 0
+ 9–12     0.84     0.95    0.84          45 / 45              16 / 0
+```
+
+Teaching the right thing lifts the pass rate by 0.10–0.15 on every group.
+Teaching the wrong thing costs nothing measurable: the scenarios refute it
+within a day or two, it stops being followed, and the document says so
+beside the person's own line. The scenarios stay the judge; the person adds
+evidence, they do not overrule it.
+
+On the maze (`clock.ts --from 1|7|13`) the change only moves the arms that
+fold rules, by less than the noise between groups.
+
 ## Open tensions
+
+- **Is a disowned claim gone for good?** Striking a line out puts the claim
+  away, and the store never re-creates a claim it has held. The person's word
+  is final there, even if the scenarios would have kept proving it. Whether a
+  disowned claim should be allowed back, with its new evidence shown beside
+  "you removed this", is open.
 
 - **Exploring is both the counterfactual and the search.** Falling back on
   instinct makes "unadvised" an honest comparison, but explores less: on seeds

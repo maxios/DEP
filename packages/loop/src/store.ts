@@ -31,6 +31,8 @@ export type EventBody =
   | { type: 'episode'; episodeId: string; day: number; creates: MemoryEntry[]; sets: EntrySet[]; baselines: BaselineSet[] }
   | { type: 'day-end'; day: number; sets: EntrySet[]; rules: MemoryEntry[]; archive: string[] }
   | { type: 'sleep'; day: number; slept: boolean; undone: boolean; version: number; absorbed: string[]; reason: string }
+  /** A person's changes to the document of what was learned, read back into memory. */
+  | { type: 'judgement'; day: number; read: string; disowned: string[]; taught: MemoryEntry[]; retaught: EntrySet[]; notes: string[] }
 
 export interface StoreEvent {
   seq: number
@@ -53,6 +55,10 @@ export class Store {
   readonly entries = new Map<string, MemoryEntry>()
   readonly baselines = new Map<string, { sum: number; n: number }>()
   readonly log: StoreEvent[] = []
+  /** Fingerprints of every document body a person's judgement was read from. */
+  readonly judged = new Set<string>()
+  /** What the person last wrote in their own words. */
+  notes: string[] = []
 
   get head(): string {
     return this.log.length ? this.log[this.log.length - 1]!.hash : GENESIS
@@ -98,6 +104,19 @@ export class Store {
   }
 
   private mutate(body: EventBody): void {
+    if (body.type === 'judgement') {
+      for (const id of body.disowned) {
+        const entry = this.entries.get(id)
+        if (!entry) throw new Error(`the record disowns ${id}, which the store never held`)
+        entry.archived = true
+      }
+      for (const entry of body.taught) this.entries.set(entry.id, { ...entry, parents: [...entry.parents] })
+      this.assign(body.retaught)
+      for (const set of body.retaught) this.entries.get(set.id)!.taught = true
+      this.judged.add(body.read)
+      this.notes = [...body.notes]
+      return
+    }
     if (body.type === 'sleep') {
       for (const id of body.absorbed) {
         const entry = this.entries.get(id)
