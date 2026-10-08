@@ -180,7 +180,9 @@ Given("a game document in the project's documentation", async function (this: De
   this.set!.refresh()
 })
 
-When('the documentation set is validated', function (this: DepWorld) {
+When('the documentation set is validated', async function (this: DepWorld) {
+  // a story that opened its own set validates that one
+  if (!this.set) await this.materialise()
   this.result = this.set!.validate()
 })
 

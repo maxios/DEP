@@ -34,6 +34,8 @@ export interface DocSpec {
   links?: Array<{ target: string; rel: string }>
   title?: string
   body?: string
+  /** The document's heart: what it waits on, and when its owner should look again. */
+  heart?: Record<string, unknown>
 }
 
 const DAYS = 24 * 60 * 60 * 1000
@@ -221,6 +223,7 @@ export class DepWorld extends World {
       depends_on: [],
       tags: spec.tags ?? [],
       links: spec.links ?? [],
+      ...(spec.heart ? { heart: spec.heart } : {}),
     }
     const title = spec.title ?? spec.path.split('/').pop()!.replace(/\.md$/, '')
     const body = spec.body ?? freshnessBody()

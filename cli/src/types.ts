@@ -16,6 +16,7 @@ export interface DepMetadata {
   superseded_by?: string
   review_trigger?: string
   participants?: string[]
+  heart?: import('./heart/heart').Heart
 }
 
 export interface DepEdge {

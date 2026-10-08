@@ -5,7 +5,7 @@ import { join } from 'path'
 import { SCRATCH, type DepWorld } from '../support/world'
 import {
   Store, Instincts, loadGame, playSuiteDay, writeLearned, renderLearned, readJudgement, read, loadCore, configWith,
-  situationSimilarity, instinctFor, line, entryId, featureSimilarity,
+  situationSimilarity, line, entryId, featureSimilarity,
   type LoadedGame, type MemoryEntry, type JudgementReport, type VerdictCache,
 } from '../../../packages/loop/src/index'
 import { play, GAME_DOC } from './flow-51.steps'
@@ -120,7 +120,6 @@ Then('it no longer acts on that habit without being told', function (this: DepWo
   const struck = this.notes.get('struck') as MemoryEntry
   const current = mine(this).instincts.current()
   assert.ok(current.instincts.every((i) => i.from !== struck.id), 'the instinct is still there')
-  assert.notEqual(instinctFor(current, struck.key)?.from, struck.id)
 })
 
 // ── adding ──────────────────────────────────────────────────────────────

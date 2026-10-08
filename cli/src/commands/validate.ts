@@ -1,3 +1,4 @@
+import { heartProblems } from '../heart/heart'
 import { buildGraph } from '../graph'
 import { loadDocspec } from '../config'
 import { existsSync } from 'fs'
@@ -124,6 +125,11 @@ function validateDocument(
         message: isNaN(parsed.getTime()) ? `Invalid ISO 8601: "${value}"` : undefined,
       })
     }
+  }
+
+  if (meta.heart !== undefined) {
+    const problems = heartProblems(meta.heart, (p) => existsSync(join(root, p)))
+    checks.push({ name: 'Heart valid', passed: problems.length === 0, message: problems.length > 0 ? problems.join('; ') : undefined })
   }
 
   // Confidence

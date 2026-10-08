@@ -13,6 +13,7 @@ import { normalizeOptions } from './options'
 import { retrieve, type RetrievalContext, type RetrievalInternals } from './retrieve'
 import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
 import { amendDocument, type Amendment, type AmendResult } from './amend'
+import { Heartbeat, type HeartbeatConfig } from '../heart/heartbeat'
 import { propose, listProposals, acceptProposal, rejectProposal, type Proposal } from './proposals'
 import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
 import { ProcedureSession, stepParts, treeIdFromRef, type ProcedureStep, type ProcedureStepOptions, type SupportPassage } from './procedure'
@@ -470,6 +471,11 @@ export class DocumentationSet {
   propose(document: string, text: string, options: { from: string }): Proposal {
     this.insideProject(document)
     return propose(this.root, posix(relative(this.root, resolve(this.root, document))), text, options.from)
+  }
+
+  /** The owners' heartbeat over this set, on the set's own clock. Each beat reads the project afresh. */
+  heartbeat(config: Partial<HeartbeatConfig> = {}): Heartbeat {
+    return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, config)
   }
 
   /** Everything waiting for review, each with the document as it is now. */

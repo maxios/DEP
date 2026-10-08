@@ -529,6 +529,32 @@ evidence, they do not overrule it.
 On the maze (`clock.ts --from 1|7|13`) the change only moves the arms that
 fold rules, by less than the noise between groups.
 
+### Phase D — the pulse (heartbeat M1)
+
+A document's heart is an optional `heart:` block inside `dep:` — status,
+what it waits on and since when, when to follow up, what it watches, when it
+wants to be looked at. `dep validate` checks it like any other field. The
+owner is the document's own `owner`.
+
+`set.heartbeat().beat(owner)` pulses one owner's documents without calling
+any model and wakes them only on a signal, most pressing first: a follow-up
+past due, open work, a watched document that changed, a beat a document asked
+for, a review past due. STALE is the last of these — the review cadence DEP
+always had, finally acting. With nothing found the next beat backs off
+(1 min doubling to 2 h); a signal or an interrupt brings it back to the
+shortest interval, and a loop about to fall due sets the next beat no later
+than that. Every beat is recorded in `.pulse/beats.jsonl` with what it found,
+so the wake ratio is read off the record; `.pulse/STOP` pulses but never
+wakes. `dep beat <owner>` runs one beat (FLOW-55).
+
+Run on this repository, `@dep-core` would be woken for thirteen documents
+past their review date: the first time STALE made anything happen.
+
+Not yet: an agent's own changes still wake it if it watches what it changed
+(the spec's no-self-wake rule needs to know who wrote a change, which arrives
+with actions in M2), and lifecycle is computed on the real clock rather than
+the set's.
+
 ## Open tensions
 
 - **Is a disowned claim gone for good?** Striking a line out puts the claim
