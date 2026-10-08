@@ -1,6 +1,7 @@
 .dep-vectors.db
 .dep-usage.json
 .dep-trace.jsonl
+.dep-proposals/
 
 # Orchestry state
 .orchestry

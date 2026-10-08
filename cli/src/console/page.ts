@@ -150,6 +150,14 @@ const PAGE = `<!doctype html>
   .writes { font-size: 10px; color: var(--dimmer); margin-top: 9px; }
 
   /* ── lists & tables ───────────────────────────────── */
+  .diff { font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; margin-top: 16px;
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .diff div { padding: 1px 12px; white-space: pre-wrap; word-break: break-word; }
+  .diff .add { background: rgba(48,209,88,0.13); color: #7de39c; }
+  .diff .del { background: rgba(255,69,58,0.12); color: #ff9a92; text-decoration: line-through; text-decoration-color: rgba(255,69,58,0.5); }
+  .diff .same { color: var(--dim); }
+  .decide { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
+  #review-count:not(:empty) { margin-left: 4px; padding: 0 6px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 10px; }
   .split { display: flex; width: 100%; min-height: 0; }
   .rail { width: 300px; flex: 0 0 300px; border-right: 1px solid var(--line); overflow-y: auto; background: var(--panel-solid); }
   .rail-head { padding: 14px 16px 10px; display: flex; align-items: baseline; justify-content: space-between;
@@ -211,6 +219,7 @@ const PAGE = `<!doctype html>
     <button data-screen="traversal" aria-selected="false">Traversal</button>
     <button data-screen="decisions" aria-selected="false">Decisions</button>
     <button data-screen="health" aria-selected="false">Health</button>
+    <button data-screen="review" aria-selected="false">Review <span id="review-count"></span></button>
   </nav>
   <div class="live"><span class="dot" id="pulse"></span><span id="live-text">connecting</span></div>
 </header>
@@ -248,6 +257,16 @@ const PAGE = `<!doctype html>
   <section class="screen" id="screen-health">
     <div class="pane" id="health"></div>
   </section>
+
+  <section class="screen" id="screen-review">
+    <div class="split">
+      <div class="rail">
+        <div class="rail-head"><h3>Waiting for review</h3><span id="proposal-count"></span></div>
+        <div id="proposals"></div>
+      </div>
+      <div class="pane" id="proposal-detail"><div class="empty">Nothing selected.</div></div>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -262,7 +281,7 @@ const PAGE = `<!doctype html>
   var REL_ORDER = ['TEACHES', 'USES', 'EXPLAINS', 'DECIDES', 'REQUIRES', 'NEXT', 'INLINE'];
 
   var state = {
-    graph: null, validation: null, trace: null, procedures: null,
+    graph: null, validation: null, trace: null, procedures: null, proposals: [], selectedProposal: null,
     selected: null, selectedCall: null, selectedTree: null,
     hiddenTypes: {}, hiddenLife: {}, hiddenRels: {},
     nodes: [], edges: [], view: { x: 0, y: 0, k: 1 }, alpha: 1
@@ -1173,6 +1192,97 @@ const PAGE = `<!doctype html>
     pane.appendChild(table);
   }
 
+  // ── review ──────────────────────────────────────────────────────────
+
+  var NL = String.fromCharCode(10);
+
+  /** Lines of the old and new text, marked kept, removed or added (longest common subsequence). */
+  function lineDiff(before, after) {
+    var a = before ? before.split(NL) : [], b = after.split(NL);
+    var n = a.length, m = b.length, L = [], i, j;
+    for (i = 0; i <= n; i++) { L.push(new Array(m + 1).fill(0)); }
+    for (i = n - 1; i >= 0; i--) {
+      for (j = m - 1; j >= 0; j--) {
+        L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+      }
+    }
+    var out = [];
+    i = 0; j = 0;
+    while (i < n && j < m) {
+      if (a[i] === b[j]) { out.push(['same', a[i]]); i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) { out.push(['del', a[i]]); i++; }
+      else { out.push(['add', b[j]]); j++; }
+    }
+    while (i < n) { out.push(['del', a[i++]]); }
+    while (j < m) { out.push(['add', b[j++]]); }
+    return out;
+  }
+
+  function renderProposals() {
+    var list = clear(byId('proposals'));
+    var ps = state.proposals;
+    byId('proposal-count').textContent = ps.length + ' waiting';
+    byId('review-count').textContent = ps.length ? String(ps.length) : '';
+    if (!ps.length) {
+      list.appendChild(el('div', 'empty', 'Nothing is waiting for review.'));
+      clear(byId('proposal-detail')).appendChild(el('div', 'empty', 'Nothing selected.'));
+      return;
+    }
+    var chosen = ps.filter(function (p) { return p.document === state.selectedProposal; })[0];
+    if (!chosen) { chosen = ps[0]; state.selectedProposal = chosen.document; }
+    ps.forEach(function (p) {
+      var row = el('div', 'call' + (p.document === state.selectedProposal ? ' on' : ''));
+      row.appendChild(el('span', 'kind mono', basename(p.document)));
+      row.appendChild(el('div', 'q', p.current === null ? 'new document' : 'new version'));
+      row.appendChild(el('div', 'meta', p.from + ' · ' + when(p.at)));
+      row.onclick = function () { state.selectedProposal = p.document; renderProposals(); };
+      list.appendChild(row);
+    });
+    renderProposal(chosen);
+  }
+
+  function renderProposal(p) {
+    var pane = clear(byId('proposal-detail'));
+    pane.appendChild(el('h1', null, basename(p.document)));
+    pane.appendChild(el('div', 'muted mono', p.document));
+    pane.appendChild(el('div', 'muted', 'Proposed by ' + p.from + ' at ' + when(p.at) + '. Nothing in it is served as context until you accept it.'));
+    var rows = lineDiff(p.current, p.proposed);
+    var added = rows.filter(function (r) { return r[0] === 'add'; }).length;
+    var removed = rows.filter(function (r) { return r[0] === 'del'; }).length;
+    var bar = el('div', 'decide');
+    var yes = el('button', 'act on', 'Accept');
+    var no = el('button', 'act', 'Reject');
+    if (p.changedSince) {
+      yes.disabled = true;
+      bar.appendChild(yes); bar.appendChild(no);
+      bar.appendChild(el('span', 'said bad', 'The document changed after this was proposed; accepting it would overwrite that.'));
+    } else {
+      bar.appendChild(yes); bar.appendChild(no);
+      bar.appendChild(el('span', 'meta', '+' + added + ' · −' + removed + ' lines'));
+    }
+    yes.onclick = function () { decide(p.document, 'accept'); };
+    no.onclick = function () { decide(p.document, 'reject'); };
+    pane.appendChild(bar);
+    var box = el('div', 'diff');
+    rows.forEach(function (r) { box.appendChild(el('div', r[0], r[1] === '' ? ' ' : r[1])); });
+    pane.appendChild(box);
+  }
+
+  function decide(document, decision) {
+    fetch('/api/proposals', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ document: document, decision: decision })
+    }).then(function (r) {
+      return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+    }).then(function (answer) {
+      var pane = byId('proposal-detail');
+      if (!answer.ok) { pane.appendChild(el('div', 'said bad', answer.data.error || 'refused')); return; }
+      state.selectedProposal = null;
+      refresh(false).catch(function () {});
+    });
+  }
+
   // ── screens & loading ───────────────────────────────────────────────
 
   function showScreen(which) {
@@ -1194,19 +1304,23 @@ const PAGE = `<!doctype html>
       get('/api/graph'),
       get('/api/validate').catch(function () { return null; }),
       get('/api/trace').catch(function () { return { entries: [], dropped: 0 }; }),
-      get('/api/procedures').catch(function () { return { trees: [] }; })
+      get('/api/procedures').catch(function () { return { trees: [] }; }),
+      get('/api/proposals').catch(function () { return { proposals: [] }; })
     ]).then(function (all) {
       var sameShape = state.graph && state.graph.nodes.length === all[0].nodes.length;
       state.graph = all[0];
       state.validation = all[1];
       state.trace = all[2];
       state.procedures = all[3];
+      var before = JSON.stringify(state.proposals);
+      state.proposals = all[4].proposals;
       if (first || !sameShape) layout(state.graph);
       renderStats();
       renderLegend();
       renderCalls();
       renderTrees();
       renderHealth();
+      if (first || JSON.stringify(state.proposals) !== before) renderProposals();
       if (first && state.procedures.trees.length) {
         state.selectedTree = state.procedures.trees[0].id;
         renderTrees();

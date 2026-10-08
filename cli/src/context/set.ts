@@ -13,6 +13,7 @@ import { normalizeOptions } from './options'
 import { retrieve, type RetrievalContext, type RetrievalInternals } from './retrieve'
 import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
 import { amendDocument, type Amendment, type AmendResult } from './amend'
+import { propose, listProposals, acceptProposal, rejectProposal, type Proposal } from './proposals'
 import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
 import { ProcedureSession, stepParts, treeIdFromRef, type ProcedureStep, type ProcedureStepOptions, type SupportPassage } from './procedure'
 import { buildDapGraph } from '../dap/tree-builder'
@@ -456,12 +457,43 @@ export class DocumentationSet {
    */
   amend(document: string, amendment: Amendment): AmendResult {
     this.ensureLoaded()
-    if (isAbsolute(document) || posix(relative(this.root, resolve(this.root, document))).startsWith('..')) {
-      throw new DepError('OUTSIDE_SET', `${document} is outside the documentation set`, { document })
-    }
+    this.insideProject(document)
     const result = amendDocument(this.root, this._config, document, amendment)
     this.refresh()
     return result
+  }
+
+  /**
+   * Propose a new version of a document. It waits, outside the documentation,
+   * until someone accepts it; until then nothing in it is served.
+   */
+  propose(document: string, text: string, options: { from: string }): Proposal {
+    this.insideProject(document)
+    return propose(this.root, posix(relative(this.root, resolve(this.root, document))), text, options.from)
+  }
+
+  /** Everything waiting for review, each with the document as it is now. */
+  proposals(): Proposal[] {
+    return listProposals(this.root)
+  }
+
+  /** Land a proposal; refused when the document changed after it was proposed. */
+  acceptProposal(document: string): { document: string; accepted: true } {
+    this.insideProject(document)
+    const result = acceptProposal(this.root, posix(relative(this.root, resolve(this.root, document))))
+    this.refresh()
+    return result
+  }
+
+  rejectProposal(document: string): { document: string; rejected: true } {
+    this.insideProject(document)
+    return rejectProposal(this.root, posix(relative(this.root, resolve(this.root, document))))
+  }
+
+  private insideProject(document: string): void {
+    if (isAbsolute(document) || posix(relative(this.root, resolve(this.root, document))).startsWith('..')) {
+      throw new DepError('OUTSIDE_SET', `${document} is outside the documentation set`, { document })
+    }
   }
 
   /** A document's declared metadata, with its computed freshness. */

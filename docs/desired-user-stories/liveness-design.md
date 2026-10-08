@@ -503,10 +503,13 @@ bearing key improved on all three groups (0.30/0.31/0.27 → 0.25/0.23/0.17).
   wrong only where an exception has not yet been proven. Whether a game should
   also declare features that may never be dropped is still open.
 
-- **Who may rewrite a document?** Sleep proposing an amendment is safe. Sleep
-  applying one without review makes the weights self-modifying, which is the
-  thing rule 2 exists to prevent. The console's amend path makes the reviewed
-  version cheap; it should probably stay reviewed.
+- **Who may rewrite a document?** Settled for now: nothing the loop learns
+  lands on its own. It proposes; a proposal waits in `.dep-proposals/`,
+  outside the documentation, so none of it is served as context; the console's
+  Review screen shows the document as it is and as it would be, and a person
+  accepts or rejects it. A proposal whose document changed after it was made
+  cannot be accepted (FLOW-53). Whether some proposals — a fade, a bump —
+  could ever land unreviewed is open.
 - **The spec's distillation test has no DEP analogue yet.** "Is the entry
   absorbed?" becomes "does the question still need that passage?" — answerable
   by re-running the question against the rewritten doc with the passage

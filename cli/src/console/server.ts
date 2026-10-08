@@ -122,9 +122,11 @@ function json(body: unknown, status = 200): Response {
 /** Codes that mean the caller asked for something it should not have. */
 const CALLER_ERRORS = new Set(['INVALID_OPTION', 'INVALID_BUDGET', 'INVALID_DEPTH', 'INVALID_FRESHNESS', 'INVALID_TYPE', 'UNKNOWN_AUDIENCE', 'OUTSIDE_SET', 'UNKNOWN_BUNDLE', 'UNKNOWN_PASSAGE'])
 
+const STATUS: Record<string, number> = { DOCUMENT_NOT_FOUND: 404, UNKNOWN_PROPOSAL: 404, PROPOSAL_STALE: 409 }
+
 function failure(err: unknown): Response {
   if (err instanceof DepError) {
-    const status = err.code === 'DOCUMENT_NOT_FOUND' ? 404 : CALLER_ERRORS.has(err.code) ? 400 : 500
+    const status = STATUS[err.code] ?? (CALLER_ERRORS.has(err.code) ? 400 : 500)
     return json({ error: err.message, code: err.code }, status)
   }
   return json({ error: err instanceof Error ? err.message : String(err) }, 500)
@@ -165,7 +167,24 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
       const { document: _named, ...amendment } = body
       return json(current().amend(document, amendment))
     }
+    if (url.pathname === '/api/proposals' && request.method === 'POST') {
+      const refused = notForUs(request, port)
+      if (refused) return json({ error: refused, code: 'NOT_FOR_US' }, 403)
+      let body: { document?: unknown; decision?: unknown }
+      try {
+        body = await request.json() as typeof body
+      } catch {
+        return json({ error: 'the decision is not JSON' }, 400)
+      }
+      const document = typeof body.document === 'string' ? body.document : ''
+      if (!document) return json({ error: 'no document was named' }, 400)
+      if (body.decision === 'accept') return json(current().acceptProposal(document))
+      if (body.decision === 'reject') return json(current().rejectProposal(document))
+      return json({ error: 'the decision is accept or reject' }, 400)
+    }
     switch (url.pathname) {
+      case '/api/proposals':
+        return json({ proposals: current().proposals() })
       case '/':
       case '/index.html':
         return new Response(consolePage(current().config().project.name ?? 'documentation'), {

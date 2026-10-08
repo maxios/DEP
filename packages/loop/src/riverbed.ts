@@ -109,13 +109,17 @@ function stamp(d: Date): string {
   return d.toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
 
-/** Write the document, unless the copy on disk was changed by hand since it was written. */
-export function writeLearned(o: LearnedOptions): LearnedReport {
+/**
+ * The document as it would be written, without writing it — so it can be
+ * proposed for review instead. `text` is null when there is nothing to write:
+ * the copy on disk says the same, or was changed by hand.
+ */
+export function renderLearned(o: LearnedOptions): LearnedReport & { text: string | null } {
   const config = configWith(o.config)
   const full = resolve(o.root, o.path)
   const body = learnedBody(o.store, o.loaded, config)
   const { advice, habits } = proven(o.store, config)
-  const report = { path: o.path, advice: advice.length, habits: habits.length }
+  const report = { path: o.path, advice: advice.length, habits: habits.length, written: false }
 
   let created: string | undefined
   if (existsSync(full)) {
@@ -123,8 +127,8 @@ export function writeLearned(o: LearnedOptions): LearnedReport {
     const m = FRONT.exec(text)
     const fm = (m ? parseYaml(m[1]!) : null) as { dep?: { created?: string }; learned?: { body?: string } } | null
     const onDisk = m ? text.slice(m[0].length) : text
-    if (!fm?.learned?.body || fm.learned.body !== hash(onDisk)) return { ...report, written: false, changedByHand: true }
-    if (onDisk === body) return { ...report, written: false, changedByHand: false }
+    if (!fm?.learned?.body || fm.learned.body !== hash(onDisk)) return { ...report, changedByHand: true, text: null }
+    if (onDisk === body) return { ...report, changedByHand: false, text: null }
     created = fm.dep?.created
   }
 
@@ -144,7 +148,15 @@ export function writeLearned(o: LearnedOptions): LearnedReport {
     },
     learned: { from: o.loaded.game.id, body: hash(body) },
   }
+  return { ...report, changedByHand: false, text: `---\n${stringify(meta)}---\n${body}` }
+}
+
+/** Write the document, unless the copy on disk was changed by hand since it was written. */
+export function writeLearned(o: LearnedOptions): LearnedReport {
+  const { text, ...report } = renderLearned(o)
+  if (text === null) return report
+  const full = resolve(o.root, o.path)
   mkdirSync(dirname(full), { recursive: true })
-  writeFileSync(full, `---\n${stringify(meta)}---\n${body}`)
-  return { ...report, written: true, changedByHand: false }
+  writeFileSync(full, text)
+  return { ...report, written: true }
 }

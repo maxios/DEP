@@ -11,7 +11,7 @@ import {
 
 const LOOP = resolve(import.meta.dir, '..', '..', '..', 'packages', 'loop')
 const ARENA = join(LOOP, 'arenas', 'requests')
-const GAME_DOC = 'docs/reference/requests-game.md'
+export const GAME_DOC = 'docs/reference/requests-game.md'
 const SEED = 1
 const DAYS = 6
 const config = configWith()
@@ -23,7 +23,7 @@ let played: Played | undefined
 let numbered = 0
 
 /** A DEP project with the reference arena in it and its game document among the references. */
-async function play(world: DepWorld): Promise<Played> {
+export async function play(world: DepWorld): Promise<Played> {
   if (played) return played
   // the world clears its own project after each scenario; this one outlives it
   world.seedDefaultDocs()
