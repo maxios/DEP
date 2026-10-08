@@ -20,7 +20,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileS
 import { join } from 'path'
 import type { DepGraph } from '../types'
 import { duration, iso, quietUntil } from './heart'
-import { applyActions, type ActionOutcome, type Runner } from './actions'
+import { applyActions, type ActionOutcome, type Runner, type Wake } from './actions'
 import { inbox, send, type Message } from './inbox'
 import { take, release } from './lease'
 
@@ -57,6 +57,8 @@ export interface BeatResult {
   held: Signal[]
   /** What the owner did, when woken with something to act. */
   actions: ActionOutcome[]
+  /** Why nothing was done although the owner was woken: the runner could not be reached. */
+  error?: string
 }
 
 export interface BeatRecord {
@@ -170,6 +172,35 @@ export class Heartbeat {
 
   /** One beat for one owner: pulse, take leases, wake and act if anything needs them, schedule the next, record it. */
   beat(agent: string, options: { stopAfter?: number } = {}): BeatResult {
+    const open = this.open(agent)
+    if (!open.wake || !this.runner) return this.close(open, [], options)
+    const asked = this.runner.act(open.wake)
+    if (asked instanceof Promise) {
+      this.close(open, [], options, 'the runner answers asynchronously; beat it with beatAsync')
+      throw new Error('this runner answers asynchronously: use beatAsync')
+    }
+    return this.close(open, asked, options)
+  }
+
+  /**
+   * A beat for a runner that thinks slowly, such as a model. If it cannot be
+   * reached, nothing is done, the beat is recorded with why, and whatever woke
+   * the owner wakes them again next beat.
+   */
+  async beatAsync(agent: string, options: { stopAfter?: number } = {}): Promise<BeatResult> {
+    const open = this.open(agent)
+    if (!open.wake || !this.runner) return this.close(open, [], options)
+    let asked: unknown[]
+    try {
+      asked = await this.runner.act(open.wake)
+    } catch (err) {
+      return this.close(open, [], options, `the runner could not be reached: ${err instanceof Error ? err.message : String(err)}`)
+    }
+    return this.close(open, asked, options)
+  }
+
+  /** Pulse, take leases, and say what the runner would be woken with. */
+  private open(agent: string) {
     const at = this.now()
     const beatId = `${agent}:${at.toISOString()}`
     const state = this.load(agent)
@@ -188,28 +219,46 @@ export class Heartbeat {
       } else held.push(s)
     }
 
-    const found = signals.length > 0
-    const woke = found && !stopped
-    let actions: ActionOutcome[] = []
+    const nodes = [...this.graph().nodes.values()].filter((n) => n.metadata.owner === agent)
+    const owned = new Set(nodes.map((n) => n.path))
+    const roleNode = nodes.find((n) => Array.isArray(n.metadata.agent?.can_ask))
+    const canAsk = roleNode?.metadata.agent?.can_ask ?? null
+    const woke = signals.length > 0 && !stopped
+    let wake: Wake | null = null
     if (woke && this.runner) {
-      const messages = inbox(this.root, agent).filter((m) => !m.read)
-      const asked = this.runner.act({ agent, beatId, at: at.toISOString(), signals, messages })
-      const nodes = [...this.graph().nodes.values()].filter((n) => n.metadata.owner === agent)
-      const owned = new Set(nodes.map((n) => n.path))
-      const role = nodes.find((n) => Array.isArray(n.metadata.agent?.can_ask))?.metadata.agent
+      // only what is the owner's: their unread messages, their role, their documents the signals name
+      const text = (p: string) => readFileSync(join(this.root, p), 'utf-8').slice(0, 8000)
+      wake = {
+        agent, beatId, at: at.toISOString(), signals,
+        messages: inbox(this.root, agent).filter((m) => !m.read),
+        ...(roleNode ? { role: text(roleNode.path) } : {}),
+        canAsk,
+        documents: [...new Set(signals.filter((s) => s.kind !== 'message' && owned.has(s.document)).map((s) => s.document))].map((p) => ({ path: p, text: text(p) })),
+      }
+    }
+    return { agent, at, beatId, state, pulsed, stopped, signals, held, taken, owned, canAsk, wake }
+  }
+
+  /** Apply what the runner asked for, release the leases, schedule the next beat, and record this one. */
+  private close(open: ReturnType<Heartbeat['open']>, asked: unknown[], options: { stopAfter?: number }, error?: string): BeatResult {
+    const { agent, at, beatId, state, pulsed, stopped, signals, held, taken, owned, canAsk } = open
+    let actions: ActionOutcome[] = []
+    if (open.wake && !error) {
       // a crash below leaves the leases to run out, so no other beat acts on a half-done document
       actions = applyActions({
         root: this.root, agent, beatId, now: at, owns: (d) => owned.has(d), held: taken, stopAfter: options.stopAfter,
-        maxHops: this.config.MAX_HOPS, maxFollowUps: this.config.MAX_FOLLOW_UPS, canAsk: role?.can_ask ?? null,
+        maxHops: this.config.MAX_HOPS, maxFollowUps: this.config.MAX_FOLLOW_UPS, canAsk,
         quietUntil: quietUntil(at, this.config.QUIET_HOURS, this.config.TIMEZONE),
       }, asked)
     }
     for (const d of taken) release(this.root, d, beatId)
 
+    const found = signals.length > 0
     const interval = found ? this.config.INTERVAL_MIN_MS : Math.min(this.config.INTERVAL_MAX_MS, state.interval * this.config.BACKOFF)
     const next = Math.min(at.getTime() + interval, pulsed.soonest ?? Infinity)
     const result: BeatResult = {
-      beatId, agent, at: at.toISOString(), signals, woke, stopped, interval, nextBeat: new Date(next).toISOString(), held, actions,
+      beatId, agent, at: at.toISOString(), signals, woke: found && !stopped, stopped, interval, nextBeat: new Date(next).toISOString(), held, actions,
+      ...(error ? { error } : {}),
     }
     this.save(agent, { interval, nextBeat: result.nextBeat, seen: pulsed.seen })
     mkdirSync(this.dir, { recursive: true })

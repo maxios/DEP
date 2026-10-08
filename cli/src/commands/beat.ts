@@ -1,4 +1,4 @@
-import { openDocumentationSet, MockRunner } from '../lib'
+import { openDocumentationSet, MockRunner, ClaudeRunner } from '../lib'
 
 export interface BeatFlags {
   json?: boolean
@@ -7,6 +7,8 @@ export interface BeatFlags {
   start?: boolean
   /** Act on what the beat finds, with the rule runner (no model). */
   act?: boolean
+  /** With --act: decide with Claude instead of the rules (a model id, or true for the default). */
+  model?: string | boolean
 }
 
 /**
@@ -18,7 +20,10 @@ export interface BeatFlags {
 export async function beatCommand(root: string, owner: string | undefined, flags: BeatFlags) {
   const set = openDocumentationSet(root, { caller: 'cli:beat', trace: { record: false } })
   try {
-    const heart = set.heartbeat(flags.act ? { runner: new MockRunner() } : {})
+    const runner = !flags.act ? undefined
+      : flags.model ? new ClaudeRunner(typeof flags.model === 'string' ? { model: flags.model } : {})
+      : new MockRunner()
+    const heart = set.heartbeat(runner ? { runner } : {})
     if (flags.stop || flags.start) {
       const { stopped } = heart.killSwitch(!!flags.stop)
       console.log(stopped ? 'Kill switch on: owners are pulsed but never woken.' : 'Kill switch off.')
@@ -37,7 +42,7 @@ export async function beatCommand(root: string, owner: string | undefined, flags
       console.error('Usage: dep beat <owner> [--json] | dep beat [<owner>] --record | dep beat --stop | --start')
       process.exit(1)
     }
-    const result = heart.beat(owner)
+    const result = await heart.beatAsync(owner)
     if (flags.json) return console.log(JSON.stringify(result, null, 2))
     if (result.signals.length === 0) console.log(`Nothing needs ${owner}.`)
     else {
@@ -49,6 +54,7 @@ export async function beatCommand(root: string, owner: string | undefined, flags
       console.log(`  ${a.outcome.padEnd(13)} ${what}${a.reason ? ` — ${a.reason}` : ''}`)
     }
     for (const s of result.held) console.log(`  left alone    ${s.document} — another beat holds it`)
+    if (result.error) console.log(`  nothing done  ${result.error}`)
     console.log(`Next beat ${result.nextBeat}.`)
   } finally {
     set.close()

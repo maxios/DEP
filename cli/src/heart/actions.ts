@@ -40,10 +40,17 @@ export interface Wake {
   signals: Signal[]
   /** Unread messages in the owner's inbox. */
   messages: Message[]
+  /** The body of the owner's role document, if they have one. */
+  role?: string
+  /** Whom the owner's role allows them to ask; null when no role says. */
+  canAsk?: string[] | null
+  /** The owner's documents the signals are about, as they stand. */
+  documents?: Array<{ path: string; text: string }>
 }
 
 export interface Runner {
-  act(wake: Wake): unknown[]
+  /** The actions to take. A runner that thinks slowly, such as a model, returns a promise; beat it with `beatAsync`. */
+  act(wake: Wake): unknown[] | Promise<unknown[]>
 }
 
 export interface ActionOutcome {

@@ -627,6 +627,19 @@ built it. At low effort a day of 40 levels is 40 small requests; the system
 prompt is shorter than the minimum cacheable prefix, so caching it is a no-op
 until it grows.
 
+### Phase E — a model acts for a woken owner
+
+`ClaudeRunner` decides what a woken owner does (FLOW-59). It is shown the wake
+and nothing more — what woke the owner, their unread messages in full, their
+role document, the documents the signals name, the kinds of action and whom
+they may ask — and answers with a list of actions as structured output. Every
+action then goes through the same checks a rule's would: a model persuaded by
+a message to close someone else's loop is refused exactly where anything else
+would be. `beatAsync` awaits it between opening the beat (pulse, leases) and
+closing it (apply, release, schedule, record); if the model cannot be
+reached, nothing is done, the beat records why, and the message that woke the
+owner wakes them again next time. `dep beat <owner> --act --model`.
+
 ## Open tensions
 
 - **Is a disowned claim gone for good?** Striking a line out puts the claim
