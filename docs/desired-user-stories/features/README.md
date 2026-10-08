@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-34 flows, 283 scenarios.
+35 flows, 290 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -43,3 +43,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-55 A document that is waiting wakes its owner](flow-55-a-document-that-is-waiting-wakes-its-owner.feature) | As the owner of documents that wait on someone or something, I want a cheap, regular check that wakes me only when one of them needs me — a follow-up that is due, a review that is overdue, something I watch that changed — so that open loops are followed up without anyone having to remember them, and nothing expensive runs when nothing needs doing. | 12 | @flow-55 @human-author @ai-agent @heartbeat @should |
 | [FLOW-56 A woken owner acts, and only once](flow-56-a-woken-owner-acts-and-only-once.feature) | As an owner woken by my heart, I want to act through a small set of typed actions — reply, ask, wait, take up, close — that change my documents and send messages in the project, never twice, and never on a document someone else is acting on, so that a beat that is retried or interrupted leaves the project as if it had run once. | 10 | @flow-56 @ai-agent @heartbeat @should |
 | [FLOW-57 Loops that go nowhere come to me](flow-57-loops-that-go-nowhere-come-to-me.feature) | As the person the owners work for, I want a loop that has been followed up enough, or an exchange between owners that is going round in circles, to stop and come to me — and not at night unless it is urgent — and each owner to ask only whom their role allows, so that the owners never nag, never talk among themselves forever, and never wake me for nothing. | 8 | @flow-57 @human-author @heartbeat @should |
+| [FLOW-58 A model plays the game](flow-58-a-model-plays-the-game.feature) | As the person whose agent is learning, I want a real model to answer the game's levels — shown the situation, the options, and what the agent has learned, and nothing about how it will be judged — so that the store and the documents it writes are learned from a real agent's play, under the same judge and the same guards as before. | 7 | @flow-58 @ai-agent @loop @should |

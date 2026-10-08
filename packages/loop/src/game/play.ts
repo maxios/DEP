@@ -43,6 +43,18 @@ export interface SuitePlayer {
   act(view: SuiteView, claims: string[], rng: Rng): { writes: Write[]; choice: string; [extra: string]: unknown }
   /** Claims to suggest once the level is judged. Text only. */
   propose(view: SuiteView, passed: boolean, choice: string): unknown[]
+  /**
+   * Given every level of the day up front — what the player will see for each,
+   * never how it will be judged — gather answers before `act` is asked for them.
+   * For players that answer slowly, such as a model. Only `playSuiteDayAsync` calls it.
+   */
+  prepare?(day: PlannedLevel[]): Promise<void>
+}
+
+/** One level of a day, as the player will be shown it. */
+export interface PlannedLevel {
+  view: SuiteView
+  claims: string[]
 }
 
 export interface SuiteEpisode {
@@ -154,15 +166,24 @@ export function refusal(root: string, game: Game, w: Write): string | null {
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
 
-export function playSuiteDay(o: SuiteDayOptions): SuiteDayResult {
+interface DayPlan {
+  config: Config
+  arena: string
+  sim: Similarity
+  player: SuitePlayer
+  useStore: boolean
+  history: Map<string, Verdict>
+  levels: Array<{ level: Level; rng: Rng; shown: { claims: string[]; entries: Array<{ id: string; share: number }> }; view: SuiteView }>
+}
+
+/** Sample the day's levels and read the store for each. Reading changes nothing, so it can all happen before anyone answers. */
+function planDay(o: SuiteDayOptions): DayPlan {
   const config = configWith(o.config)
   const core = loadCore()
   const { game, levels } = o.loaded
   const arena = arenaRel(o.root, game)
   const sim = o.sim ?? situationSimilarity(game)
-  const player = o.player ?? new ChoosingPlayer(arena, config.EPS)
   const useStore = o.useStore ?? true
-  const history = o.history ?? new Map<string, Verdict>()
 
   // the day's levels: a seeded sample of those not held out
   const pool = levels.filter((l) => !o.heldOut?.has(l.id)).sort((a, b) => a.id.localeCompare(b.id))
@@ -171,6 +192,39 @@ export function playSuiteDay(o: SuiteDayOptions): SuiteDayResult {
   const remaining = [...pool]
   while (chosen.length < Math.min(o.count ?? 40, pool.length)) chosen.push(remaining.splice(pick.int(remaining.length), 1)[0]!)
 
+  return {
+    config, arena, sim, useStore,
+    player: o.player ?? new ChoosingPlayer(arena, config.EPS),
+    history: o.history ?? new Map<string, Verdict>(),
+    levels: chosen.map((level, i) => {
+      const rng = core.Rng(deriveSeed(o.seed, o.day, i, 'play'))
+      const shown = useStore ? read(o.store, level.key, rng, config, sim) : { claims: [], entries: [] }
+      const view: SuiteView = { level, key: level.key, options: game.actions.options, instinct: o.instincts ? instinctFor(o.instincts, level.key, gameReach(game, config)) : null }
+      return { level, rng, shown, view }
+    }),
+  }
+}
+
+export function playSuiteDay(o: SuiteDayOptions): SuiteDayResult {
+  return finishDay(o, planDay(o))
+}
+
+/**
+ * A day for a player that answers asynchronously: the whole day is planned,
+ * the player is given every level at once to prepare its answers, and only then
+ * is the day played and judged. If preparing fails, nothing is played and the
+ * store is untouched.
+ */
+export async function playSuiteDayAsync(o: SuiteDayOptions): Promise<SuiteDayResult> {
+  const plan = planDay(o)
+  await plan.player.prepare?.(plan.levels.map((l) => ({ view: l.view, claims: l.shown.claims })))
+  return finishDay(o, plan)
+}
+
+function finishDay(o: SuiteDayOptions, plan: DayPlan): SuiteDayResult {
+  const { config, arena, sim, player, useStore, history } = plan
+  const { game } = o.loaded
+
   // a fresh workspace each day: last day's answers do not carry over
   rmSync(join(o.root, arena, 'choices'), { recursive: true, force: true })
   const groundBefore = judgePrint(game)
@@ -178,25 +232,27 @@ export function playSuiteDay(o: SuiteDayOptions): SuiteDayResult {
   type Pending = { level: Level; view: SuiteView; trace: ReadTrace; choice: string; read: number; answer: string }
   const pending: Pending[] = []
   const voided: SuiteDayResult['voided'] = []
-  chosen.forEach((level, i) => {
-    const rng = core.Rng(deriveSeed(o.seed, o.day, i, 'play'))
-    const shown = useStore ? read(o.store, level.key, rng, config, sim) : { claims: [], entries: [] }
-    const view: SuiteView = { level, key: level.key, options: game.actions.options, instinct: o.instincts ? instinctFor(o.instincts, level.key, gameReach(game, config)) : null }
+  for (const { level, rng, shown, view } of plan.levels) {
     const answer = player.act(view, shown.claims, rng)
+    const choice = String(answer.choice)
+    // an answer the game cannot mean is not played, and nothing is learned from it
+    if (!game.actions.options.includes(choice)) {
+      voided.push({ level: level.id, reason: `"${choice}" is not one of the game's options (${game.actions.options.join(', ')})` })
+      continue
+    }
     const writes = Array.isArray(answer.writes) ? answer.writes : []
     const refused = writes.map((w) => refusal(o.root, game, w)).find((r) => r !== null)
     if (refused) {
       voided.push({ level: level.id, reason: refused })
-      return
+      continue
     }
     for (const w of writes) {
       const full = resolve(o.root, w.path)
       mkdirSync(dirname(full), { recursive: true })
       writeFileSync(full, w.content)
     }
-    const choice = String(answer.choice)
     pending.push({ level, view, choice, answer: JSON.stringify(writes), read: shown.entries.length, trace: { step: 0, situation: level.key, entries: shown.entries.map((e) => ({ id: e.id, share: e.share })), action: choice } })
-  })
+  }
 
   const verdicts = judge(o.root, game, pending.map((p) => p.level), {
     answers: new Map(pending.map((p) => [p.level.id, p.answer])), cache: o.cache, stats: o.stats,

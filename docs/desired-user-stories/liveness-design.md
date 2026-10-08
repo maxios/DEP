@@ -602,6 +602,31 @@ With M1–M3 the heartbeat runs end to end by rule. What is left of the spec is
 M4 (a model as the runner, and the digest) and M5 (follow-up outcomes as
 context-game episodes) — Phase E and the bridge back to the loop.
 
+### Phase E — a model plays the game
+
+`ClaudePlayer` answers each level through the Anthropic API (`claude-opus-5-5`,
+low effort by default) with structured output: one of the game's options and a
+one-sentence reason (FLOW-58). It is shown the situation's features, the
+options, the claims the store handed over — text only, best first — and the
+instinct if there is one. It is never shown the scenario, whose steps name the
+outcome the judge expects: a `Level` carries no steps and the read path passes
+no strengths, so both are kept from it by construction, and the story checks
+every prompt against the scenario's own steps and expected outcome.
+
+A model answers asynchronously and the day did not, so a day is now planned
+(levels sampled, the store read) and then finished (answered, judged,
+learned). Reading changes nothing, so the split is exact — every earlier game
+story passes unchanged. `playSuiteDayAsync` gathers the whole day's answers in
+between, a few requests at a time; if any request fails the day is not played
+and the store is untouched. An answer that is not one of the game's options is
+void, for any player, and nothing is learned from it.
+
+`bun packages/loop/scripts/claude-days.ts` plays live days and prints what was
+learned. Not yet measured: no credentials were available in the session that
+built it. At low effort a day of 40 levels is 40 small requests; the system
+prompt is shorter than the minimum cacheable prefix, so caching it is a no-op
+until it grows.
+
 ## Open tensions
 
 - **Is a disowned claim gone for good?** Striking a line out puts the claim
