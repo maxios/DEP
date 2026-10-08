@@ -38,6 +38,8 @@ export interface OpenAsk {
   inTimeMs: number | null
   action: 'ask' | 'follow-up'
   situation: AskSituation
+  /** The learned advice that was in front of the owner when it asked, and each one's share of it. */
+  read?: Array<{ id: string; share: number }>
 }
 
 export interface Outcome {
@@ -51,6 +53,7 @@ export interface Outcome {
   reward: number
   askedAt: string
   at: string
+  read?: Array<{ id: string; share: number }>
 }
 
 const asksFile = (root: string) => join(root, '.pulse', 'asks.json')
@@ -66,7 +69,7 @@ function saveAsks(root: string, asks: Record<string, OpenAsk>): void {
 }
 
 function score(root: string, ask: OpenAsk, kind: OutcomeKind, at: string): Outcome {
-  const outcome: Outcome = { id: ask.id, agent: ask.agent, to: ask.to, re: ask.re, action: ask.action, situation: ask.situation, kind, reward: REWARDS[kind], askedAt: ask.askedAt, at }
+  const outcome: Outcome = { id: ask.id, agent: ask.agent, to: ask.to, re: ask.re, action: ask.action, situation: ask.situation, kind, reward: REWARDS[kind], askedAt: ask.askedAt, at, ...(ask.read?.length ? { read: ask.read } : {}) }
   mkdirSync(join(root, '.pulse'), { recursive: true })
   appendFileSync(outcomesFile(root), JSON.stringify(outcome) + '\n')
   return outcome

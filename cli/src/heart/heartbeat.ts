@@ -23,7 +23,7 @@ import { duration, iso, quietUntil } from './heart'
 import { applyActions, type ActionOutcome, type Runner, type Wake } from './actions'
 import { inbox, send, type Message } from './inbox'
 import { take, release } from './lease'
-import { askSituation, closeUnanswered, observeAnswers, outcomes, recordAsk, type Outcome } from './outcomes'
+import { askSituation, closeUnanswered, observeAnswers, outcomes, recordAsk, type AskSituation, type Outcome } from './outcomes'
 import { messagePath } from './inbox'
 import { readDepFile } from '../writer'
 
@@ -86,6 +86,15 @@ export const HEARTBEAT_DEFAULTS = {
 
 export type HeartbeatConfig = typeof HEARTBEAT_DEFAULTS
 
+/**
+ * What has been learned about following up, asked for each loop that has
+ * fallen due. Supplied by whatever learns from the outcomes; claim text and
+ * shares only — never a strength.
+ */
+export interface Advisor {
+  advise(loops: Array<{ document: string; situation: AskSituation }>): Array<{ document: string; advice: Array<{ id: string; claim: string; share: number }> }>
+}
+
 interface PulseState {
   interval: number
   nextBeat: string | null
@@ -106,6 +115,8 @@ export class Heartbeat {
     config: Partial<HeartbeatConfig> = {},
     /** What acts for a woken owner. Without one, a beat only says what it would wake them for. */
     private readonly runner?: Runner,
+    /** What has been learned about following up; without one, owners are told nothing learned. */
+    private readonly advisor?: Advisor,
   ) {
     this.config = { ...HEARTBEAT_DEFAULTS, ...config }
   }
@@ -231,6 +242,26 @@ export class Heartbeat {
     const roleNode = nodes.find((n) => Array.isArray(n.metadata.agent?.can_ask))
     const canAsk = roleNode?.metadata.agent?.can_ask ?? null
     const woke = signals.length > 0 && !stopped
+
+    // each loop that has fallen due, in the situation it is in now — before anything changes it —
+    // so the advice looked up and the outcome later scored are about the same situation
+    const loops = new Map<string, { situation: AskSituation; read: Array<{ id: string; share: number }>; claims: string[] }>()
+    for (const s of signals) {
+      if (s.kind !== 'follow_up_due' || !s.waitingOn || !owned.has(s.document)) continue
+      const node = this.graph().nodes.get(s.document)
+      loops.set(s.document, {
+        situation: askSituation({ to: s.waitingOn, type: node?.metadata.type, followUps: Number(node?.metadata.heart?.follow_ups ?? 0), at, timeZone: this.config.TIMEZONE }),
+        read: [], claims: [],
+      })
+    }
+    if (woke && this.advisor && loops.size) {
+      for (const a of this.advisor.advise([...loops].map(([document, l]) => ({ document, situation: l.situation })))) {
+        const loop = loops.get(a.document)
+        if (!loop) continue
+        loop.read = a.advice.map((x) => ({ id: x.id, share: x.share }))
+        loop.claims = a.advice.map((x) => x.claim)
+      }
+    }
     let wake: Wake | null = null
     if (woke && this.runner) {
       // only what is the owner's: their unread messages, their role, their documents the signals name
@@ -241,9 +272,10 @@ export class Heartbeat {
         ...(roleNode ? { role: text(roleNode.path) } : {}),
         canAsk,
         documents: [...new Set(signals.filter((s) => s.kind !== 'message' && owned.has(s.document)).map((s) => s.document))].map((p) => ({ path: p, text: text(p) })),
+        advice: [...loops].filter(([, l]) => l.claims.length).map(([document, l]) => ({ document, claims: l.claims })),
       }
     }
-    return { agent, at, beatId, state, pulsed, stopped, signals, held, taken, owned, canAsk, wake, scored }
+    return { agent, at, beatId, state, pulsed, stopped, signals, held, taken, owned, canAsk, wake, scored, loops }
   }
 
   /** Apply what the runner asked for, release the leases, schedule the next beat, and record this one. */
@@ -258,7 +290,7 @@ export class Heartbeat {
         maxHops: this.config.MAX_HOPS, maxFollowUps: this.config.MAX_FOLLOW_UPS, canAsk,
         quietUntil: quietUntil(at, this.config.QUIET_HOURS, this.config.TIMEZONE),
       }, asked)
-      scored.push(...this.keepScore(agent, at, owned, actions))
+      scored.push(...this.keepScore(agent, at, owned, actions, open.loops))
     }
     for (const d of taken) release(this.root, d, beatId)
 
@@ -276,7 +308,7 @@ export class Heartbeat {
   }
 
   /** Record the asks this beat made, and close the open asks of loops it had to bring to the person. */
-  private keepScore(agent: string, at: Date, owned: ReadonlySet<string>, actions: ActionOutcome[]): Outcome[] {
+  private keepScore(agent: string, at: Date, owned: ReadonlySet<string>, actions: ActionOutcome[], loops: ReadonlyMap<string, { situation: AskSituation; read: Array<{ id: string; share: number }> }>): Outcome[] {
     const scored: Outcome[] = []
     for (const a of actions) {
       const action = a.action as { type?: string; to?: string; re?: string }
@@ -287,13 +319,15 @@ export class Heartbeat {
       if (action.type !== 'ask' || a.outcome !== 'done' || a.became || !action.to || !action.re || !a.key) continue
       const heart = owned.has(action.re) ? (readDepFile(join(this.root, action.re)).dep as { type?: string; heart?: Record<string, unknown> }) : null
       const followUps = Number(heart?.heart?.follow_ups ?? 0)
+      const loop = loops.get(action.re)
       recordAsk(this.root, {
         id: a.key, agent, to: action.to, re: action.re,
         message: messagePath(action.to, a.key).split('/').pop()!.replace(/\.md$/, ''),
         askedAt: at.toISOString(),
         inTimeMs: duration(heart?.heart?.follow_up_after) ?? null,
         action: followUps > 0 ? 'follow-up' : 'ask',
-        situation: askSituation({ to: action.to, type: heart?.type, followUps, at, timeZone: this.config.TIMEZONE }),
+        situation: loop?.situation ?? askSituation({ to: action.to, type: heart?.type, followUps, at, timeZone: this.config.TIMEZONE }),
+        ...(loop?.read.length ? { read: loop.read } : {}),
       })
     }
     return scored

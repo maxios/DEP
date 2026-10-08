@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readdirSync, existsSync } from 'fs'
 import { join } from 'path'
 import { DepWorld, freshnessBody } from '../support/world'
-import { MockRunner, inbox, type BeatResult, type Heartbeat, type Message, type Runner, type Wake } from '../../src/lib'
+import { MockRunner, inbox, type Advisor, type BeatResult, type Heartbeat, type Message, type Runner, type Wake } from '../../src/lib'
 import { readDepFile } from '../../src/writer'
 
 const ME = '@backend'
@@ -23,7 +23,7 @@ export async function acting(world: DepWorld): Promise<Heartbeat> {
       return ((world.notes.get('runner') as Runner | undefined) ?? new MockRunner()).act(wake)
     },
   }
-  const hb = world.set!.heartbeat({ runner })
+  const hb = world.set!.heartbeat({ runner, advisor: world.notes.get('advisor') as Advisor | undefined })
   world.notes.set('heartbeat', hb)
   return hb
 }

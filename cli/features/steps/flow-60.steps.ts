@@ -108,9 +108,11 @@ Given('asks that were answered in time and asks that went unanswered', function 
   this.notes.set('scored', scored)
 })
 
-When('the agent learns from what was scored', function (this: DepWorld) {
-  const store = new Store()
-  learnFromOutcomes(store, this.notes.get('scored') as ScoredAsk[])
+When('the agent learns from what was scored', async function (this: DepWorld) {
+  // a scenario whose owners have been beating learns from what their heartbeat scored, into the store that advised them
+  const live = this.notes.get('followStore') as Store | undefined
+  const store = live ?? new Store()
+  learnFromOutcomes(store, live ? (await acting(this)).outcomes() : this.notes.get('scored') as ScoredAsk[])
   this.notes.set('learned', store)
 })
 

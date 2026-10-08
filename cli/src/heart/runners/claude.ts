@@ -50,6 +50,9 @@ export function wakePrompt(wake: Wake): WakePrompt {
     parts.push(`Unread messages:\n${wake.messages.map((m) => `--- message ${m.id} from ${m.from}${m.re ? ` about ${m.re}` : ''} (${m.kind})\n${m.body}`).join('\n')}`)
   }
   for (const d of wake.documents ?? []) parts.push(`--- document ${d.path}\n${d.text}`)
+  for (const a of wake.advice ?? []) {
+    if (a.claims.length) parts.push(`Learned from earlier follow-ups like ${a.document}:\n${a.claims.map((c, i) => `${i + 1}. ${c}`).join('\n')}`)
+  }
   return { system: SYSTEM, user: parts.join('\n\n') }
 }
 

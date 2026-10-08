@@ -24,4 +24,4 @@ export { playSuiteDay, playSuiteDayAsync, ChoosingPlayer, choicePath, refusal, s
 export { writeLearned, renderLearned, learnedBody, line, proven, WRITE_MIN_ACTED, type LearnedOptions, type LearnedReport } from './riverbed'
 export { readJudgement, type JudgementOptions, type JudgementReport } from './judgement'
 export { ClaudePlayer, promptFor, anthropicAsk, type Ask, type Answer, type Prompt, type ClaudePlayerOptions } from './players/claude'
-export { learnFromOutcomes, followUpSimilarity, type ScoredAsk } from './follow-ups'
+export { learnFromOutcomes, followUpSimilarity, followUpAdvisor, type ScoredAsk } from './follow-ups'

@@ -46,6 +46,8 @@ export interface Wake {
   canAsk?: string[] | null
   /** The owner's documents the signals are about, as they stand. */
   documents?: Array<{ path: string; text: string }>
+  /** What the agent has learned about each loop that has fallen due: claim text only, best first. */
+  advice?: Array<{ document: string; claims: string[] }>
 }
 
 export interface Runner {

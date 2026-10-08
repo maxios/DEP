@@ -657,9 +657,23 @@ episode — what worked is proposed as advice ("choose follow-up" for that
 situation), what did not only lowers the baseline — so the store learns when
 following up gets answered, from what was observed.
 
-Not yet: the advice is not shown back to the runner, so it is created but not
-yet read, followed and credited. Showing the store's advice for each loop in
-the wake, and tracing which advice the runner followed, closes the loop.
+The loop is closed by FLOW-61. When a loop falls due, the heartbeat captures
+its situation before anything changes it and asks an `Advisor` — supplied by
+the loop as `followUpAdvisor(store)`, so the CLI never depends on the learning
+engine — what has been learned there. The claims go into the wake (text only,
+best first), and the ask records which of them were in front of the owner.
+When the ask is scored, those claims are the episode's read trace, so advice
+that was followed and answered is held more strongly, and advice followed into
+silence less — the same write path a judged level uses.
+
+Whom an ask goes to now outweighs everything else in the follow-up situation
+(weight 5 of 9): with every feature equal, advice about following up with
+legal scored 0.8 against a loop waiting on the testers and was offered there.
+
+Not yet measured: the spec's acceptance — over simulated weeks, fewer noise
+marks and time-to-reply holding — needs owners with more than one thing they
+could do about a due loop, and a person whose marks are scored. Today the only
+scored action is the follow-up itself.
 
 ## Open tensions
 

@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-37 flows, 303 scenarios.
+38 flows, 308 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -46,3 +46,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-58 A model plays the game](flow-58-a-model-plays-the-game.feature) | As the person whose agent is learning, I want a real model to answer the game's levels — shown the situation, the options, and what the agent has learned, and nothing about how it will be judged — so that the store and the documents it writes are learned from a real agent's play, under the same judge and the same guards as before. | 7 | @flow-58 @ai-agent @loop @should |
 | [FLOW-59 A model acts for a woken owner](flow-59-a-model-acts-for-a-woken-owner.feature) | As the person the owners work for, I want a model to decide what a woken owner does — shown what woke them, their role, and the documents concerned, and nothing that is not theirs — while every guard that held for the rules holds for the model, so that owners answer and follow up in their own words without being able to overreach. | 6 | @flow-59 @ai-agent @heartbeat @should |
 | [FLOW-60 What happens after a follow-up is scored](flow-60-what-happens-after-a-follow-up-is-scored.feature) | As the person whose owners follow things up, I want what came of each ask — answered in time, answered late, or never answered — observed by the heartbeat and scored, and those scores to become what the agent learns from, never anything an owner says about itself, so that the agent learns when and whom to follow up from what actually happened. | 7 | @flow-60 @ai-agent @heartbeat @loop @should |
+| [FLOW-61 What the agent learned about following up is used, and judged](flow-61-what-the-agent-learned-about-following-up-is-used-and-judged.feature) | As the person whose owners follow things up, I want what the agent has learned about following up to be put in front of the owner when a loop falls due, and that advice to grow stronger when following it was answered and weaker when it was not, so that the owners' habits of following up are shaped by what actually worked. | 5 | @flow-61 @ai-agent @heartbeat @loop @should |

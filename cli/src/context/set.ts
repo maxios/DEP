@@ -13,7 +13,7 @@ import { normalizeOptions } from './options'
 import { retrieve, type RetrievalContext, type RetrievalInternals } from './retrieve'
 import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
 import { amendDocument, type Amendment, type AmendResult } from './amend'
-import { Heartbeat, type HeartbeatConfig } from '../heart/heartbeat'
+import { Heartbeat, type HeartbeatConfig, type Advisor } from '../heart/heartbeat'
 import type { Runner } from '../heart/actions'
 import { propose, listProposals, acceptProposal, rejectProposal, type Proposal } from './proposals'
 import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
@@ -475,15 +475,15 @@ export class DocumentationSet {
   }
 
   /** The owners' heartbeat over this set, on the set's own clock. Each beat reads the project afresh. */
-  heartbeat(options: Partial<HeartbeatConfig> & { runner?: Runner } = {}): Heartbeat {
-    const { runner, ...config } = options
+  heartbeat(options: Partial<HeartbeatConfig> & { runner?: Runner; advisor?: Advisor } = {}): Heartbeat {
+    const { runner, advisor, ...config } = options
     const declared = this.config().heartbeat ?? {}
     const fromDocspec: Partial<HeartbeatConfig> = {
       ...(declared.quiet_hours ? { QUIET_HOURS: declared.quiet_hours } : {}),
       ...(declared.timezone ? { TIMEZONE: declared.timezone } : {}),
       ...(declared.max_hops ? { MAX_HOPS: declared.max_hops } : {}),
     }
-    return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, { ...fromDocspec, ...config }, runner)
+    return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, { ...fromDocspec, ...config }, runner, advisor)
   }
 
   /** Everything waiting for review, each with the document as it is now. */
