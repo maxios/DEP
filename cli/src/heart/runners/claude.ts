@@ -94,6 +94,7 @@ const compact = (a: unknown) =>
   a && typeof a === 'object' ? Object.fromEntries(Object.entries(a as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined)) : a
 
 export class ClaudeRunner implements Runner {
+  readonly kind = 'model' as const
   /** Every prompt the model was shown, in order. */
   readonly shown: WakePrompt[] = []
   private readonly ask: AskActions

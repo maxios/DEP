@@ -60,8 +60,10 @@ export interface BeatResult {
   held: Signal[]
   /** What the owner did, when woken with something to act. */
   actions: ActionOutcome[]
-  /** Why nothing was done although the owner was woken: the runner could not be reached. */
+  /** Why nothing was done although the owner was woken: the runner could not be reached, or was not allowed to act. */
   error?: string
+  /** What was asked to act, when something was. */
+  asked?: 'rules' | 'model'
   /** What came of earlier asks, seen in this beat. */
   scored: Outcome[]
 }
@@ -82,6 +84,12 @@ export const HEARTBEAT_DEFAULTS = {
   /** The person's quiet hours, "22:00-08:00"; none by default. */
   QUIET_HOURS: '',
   TIMEZONE: 'UTC',
+  /** How woken owners may act: not at all, by rule, or by rule or model. */
+  ACT: 'rules' as 'off' | 'rules' | 'model',
+  /** Whether a model may ever be asked. */
+  MODELS: true,
+  /** Beats across the project that may ask a model in one day (UTC). */
+  MODEL_REQUESTS_PER_DAY: Number.POSITIVE_INFINITY,
 }
 
 export type HeartbeatConfig = typeof HEARTBEAT_DEFAULTS
@@ -190,6 +198,8 @@ export class Heartbeat {
   beat(agent: string, options: { stopAfter?: number } = {}): BeatResult {
     const open = this.open(agent)
     if (!open.wake || !this.runner) return this.close(open, [], options)
+    const refused = this.mayNotAct()
+    if (refused) return this.close(open, [], options, refused)
     const asked = this.runner.act(open.wake)
     if (asked instanceof Promise) {
       this.close(open, [], options, 'the runner answers asynchronously; beat it with beatAsync')
@@ -206,6 +216,8 @@ export class Heartbeat {
   async beatAsync(agent: string, options: { stopAfter?: number } = {}): Promise<BeatResult> {
     const open = this.open(agent)
     if (!open.wake || !this.runner) return this.close(open, [], options)
+    const refused = this.mayNotAct()
+    if (refused) return this.close(open, [], options, refused)
     let asked: unknown[]
     try {
       asked = await this.runner.act(open.wake)
@@ -213,6 +225,20 @@ export class Heartbeat {
       return this.close(open, [], options, `the runner could not be reached: ${err instanceof Error ? err.message : String(err)}`)
     }
     return this.close(open, asked, options)
+  }
+
+  /** Why the runner may not be asked to act in this project, or null when it may. */
+  private mayNotAct(): string | null {
+    const kind = this.runner?.kind ?? 'rules'
+    if (this.config.ACT === 'off') return 'owners do not act in this project (loop.heartbeat.act is off)'
+    if (kind === 'model' && this.config.ACT !== 'model') return 'owners act by rule here, not by model (loop.heartbeat.act is rules)'
+    if (kind === 'model' && !this.config.MODELS) return 'no model may be asked in this project (loop.models.enabled is not true)'
+    if (kind === 'model') {
+      const day = this.now().toISOString().slice(0, 10)
+      const used = this.record().beats.filter((b) => b.asked === 'model' && b.at.startsWith(day)).length
+      if (used >= this.config.MODEL_REQUESTS_PER_DAY) return `the day's model budget is used (${used} of loop.models.max_requests_per_day: ${this.config.MODEL_REQUESTS_PER_DAY})`
+    }
+    return null
   }
 
   /** Pulse, take leases, and say what the runner would be woken with. */
@@ -300,6 +326,7 @@ export class Heartbeat {
     const result: BeatResult = {
       beatId, agent, at: at.toISOString(), signals, woke: found && !stopped, stopped, interval, nextBeat: new Date(next).toISOString(), held, actions,
       ...(error ? { error } : {}), scored,
+      ...(open.wake && this.runner && !(error && this.mayNotAct()) ? { asked: this.runner.kind ?? 'rules' } : {}),
     }
     this.save(agent, { interval, nextBeat: result.nextBeat, seen: pulsed.seen })
     mkdirSync(this.dir, { recursive: true })

@@ -16,7 +16,9 @@ dep:
     - docspec
     - configuration
     - schema
-  links: []
+  links:
+    - target: loop-configuration.md
+      rel: USES
 ---
 
 # .docspec Schema Reference

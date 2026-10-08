@@ -14,6 +14,7 @@ import { retrieve, type RetrievalContext, type RetrievalInternals } from './retr
 import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
 import { amendDocument, type Amendment, type AmendResult } from './amend'
 import { Heartbeat, type HeartbeatConfig, type Advisor } from '../heart/heartbeat'
+import { resolveLoop, loopOff, type LoopSettings } from '../loop-config'
 import type { Runner } from '../heart/actions'
 import { propose, listProposals, acceptProposal, rejectProposal, type Proposal } from './proposals'
 import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
@@ -46,6 +47,8 @@ function requestId(): string {
 
 export class DocumentationSet {
   readonly root: string
+  /** Which of the loop's parts run in this project. */
+  readonly loop: LoopSettings
   readonly stats = { loads: 0 }
 
   private readonly options: OpenOptions
@@ -73,8 +76,10 @@ export class DocumentationSet {
     this.options = options
     this.now = options.now ?? (() => new Date())
     this._config = loadDocspec(root)
-    this._usage = options.usage === false ? null : new UsageStore(join(root, '.dep-usage.json'))
-    this._trace = options.trace === false
+    // what the project turned on; a caller may switch a part off for this set, never on
+    this.loop = resolveLoop(this._config, options.env ?? process.env)
+    this._usage = options.usage === false || !this.loop.usage ? null : new UsageStore(join(root, '.dep-usage.json'))
+    this._trace = options.trace === false || !this.loop.trace
       ? null
       : new TraceStore(join(root, '.dep-trace.jsonl'), typeof options.trace === 'object' ? options.trace : {})
     this._caller = options.caller ?? 'library'
@@ -171,7 +176,7 @@ export class DocumentationSet {
 
   /** Report which passages of a bundle were actually used. */
   recordUsage(bundleId: string, used: string[]): UsageReceipt {
-    if (!this._usage) return { recorded: false, reason: 'this set keeps no usage record' }
+    if (!this._usage) return { recorded: false, reason: this.loop.usage ? 'this set keeps no usage record' : loopOff('a usage report', 'loop.usage', this.loop).message }
     const bundle = this._usage.knows(bundleId) ?? this.offeredEarlier(bundleId)
     if (!bundle) {
       throw new DepError('UNKNOWN_BUNDLE', `bundle "${bundleId}" cannot be matched to a bundle this set produced`, { bundleId })
@@ -470,29 +475,35 @@ export class DocumentationSet {
    * until someone accepts it; until then nothing in it is served.
    */
   propose(document: string, text: string, options: { from: string }): Proposal {
+    this.proposalsOn()
     this.insideProject(document)
     return propose(this.root, posix(relative(this.root, resolve(this.root, document))), text, options.from)
   }
 
   /** The owners' heartbeat over this set, on the set's own clock. Each beat reads the project afresh. */
   heartbeat(options: Partial<HeartbeatConfig> & { runner?: Runner; advisor?: Advisor } = {}): Heartbeat {
+    if (!this.loop.heartbeat.enabled) throw loopOff('the heartbeat', 'loop.heartbeat.enabled', this.loop)
     const { runner, advisor, ...config } = options
-    const declared = this.config().heartbeat ?? {}
+    const h = this.loop.heartbeat
     const fromDocspec: Partial<HeartbeatConfig> = {
-      ...(declared.quiet_hours ? { QUIET_HOURS: declared.quiet_hours } : {}),
-      ...(declared.timezone ? { TIMEZONE: declared.timezone } : {}),
-      ...(declared.max_hops ? { MAX_HOPS: declared.max_hops } : {}),
+      ...(h.quiet_hours ? { QUIET_HOURS: h.quiet_hours } : {}),
+      TIMEZONE: h.timezone, MAX_HOPS: h.max_hops, MAX_FOLLOW_UPS: h.max_follow_ups,
+      ACT: h.act,
+      MODELS: this.loop.models.enabled,
+      MODEL_REQUESTS_PER_DAY: this.loop.models.max_requests_per_day,
     }
     return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, { ...fromDocspec, ...config }, runner, advisor)
   }
 
   /** Everything waiting for review, each with the document as it is now. */
   proposals(): Proposal[] {
+    if (this.loop.proposals === 'off') return []
     return listProposals(this.root)
   }
 
   /** Land a proposal; refused when the document changed after it was proposed. */
   acceptProposal(document: string): { document: string; accepted: true } {
+    this.proposalsOn()
     this.insideProject(document)
     const result = acceptProposal(this.root, posix(relative(this.root, resolve(this.root, document))))
     this.refresh()
@@ -500,8 +511,13 @@ export class DocumentationSet {
   }
 
   rejectProposal(document: string): { document: string; rejected: true } {
+    this.proposalsOn()
     this.insideProject(document)
     return rejectProposal(this.root, posix(relative(this.root, resolve(this.root, document))))
+  }
+
+  private proposalsOn(): void {
+    if (this.loop.proposals === 'off') throw loopOff('proposals', 'loop.proposals', this.loop)
   }
 
   private insideProject(document: string): void {

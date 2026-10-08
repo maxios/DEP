@@ -122,7 +122,7 @@ function json(body: unknown, status = 200): Response {
 /** Codes that mean the caller asked for something it should not have. */
 const CALLER_ERRORS = new Set(['INVALID_OPTION', 'INVALID_BUDGET', 'INVALID_DEPTH', 'INVALID_FRESHNESS', 'INVALID_TYPE', 'UNKNOWN_AUDIENCE', 'OUTSIDE_SET', 'UNKNOWN_BUNDLE', 'UNKNOWN_PASSAGE'])
 
-const STATUS: Record<string, number> = { DOCUMENT_NOT_FOUND: 404, UNKNOWN_PROPOSAL: 404, PROPOSAL_STALE: 409 }
+const STATUS: Record<string, number> = { DOCUMENT_NOT_FOUND: 404, UNKNOWN_PROPOSAL: 404, PROPOSAL_STALE: 409, LOOP_OFF: 403 }
 
 function failure(err: unknown): Response {
   if (err instanceof DepError) {
@@ -183,7 +183,11 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
       return json({ error: 'the decision is accept or reject' }, 400)
     }
     switch (url.pathname) {
+      case '/api/loop':
+        return json(current().loop)
       case '/api/proposals':
+        // a project that takes no proposals has nothing to review
+        if (current().loop.proposals === 'off') break
         return json({ proposals: current().proposals() })
       case '/':
       case '/index.html':
@@ -203,8 +207,9 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
       case '/api/procedures':
         return json(procedurePayload(root))
       default:
-        return json({ error: `${url.pathname} is not something the console serves` }, 404)
+        break
     }
+    return json({ error: `${url.pathname} is not something the console serves` }, 404)
   } catch (err) {
     return failure(err)
   }

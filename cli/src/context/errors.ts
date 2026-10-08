@@ -20,6 +20,7 @@ export type DepErrorCode =
   | 'PORT_TAKEN'
   | 'UNKNOWN_PROPOSAL'
   | 'PROPOSAL_STALE'
+  | 'LOOP_OFF'
 
 /**
  * The one error type the library raises. Carries a stable code a program can

@@ -3,6 +3,8 @@ import { join, resolve } from 'path'
 import { openDocumentationSet, DepError } from '../lib'
 import type { DocumentationSet, ContextOptions } from '../lib'
 import { buildDapGraph, getNodeTargets } from '../dap/tree-builder'
+import { resolveLoop } from '../loop-config'
+import { loadDocspec } from '../config'
 import { resolveTrees } from '../dap/commands/resolve'
 import { formatTrace } from '../dap/output'
 import { treeIdFromRef } from '../context/procedure'
@@ -48,7 +50,7 @@ export function depTools(defaultRoot: string, options: ToolOptions = {}): ToolDe
   }
   const text = (v: unknown) => (typeof v === 'string' && v ? v : undefined)
 
-  return [
+  const tools: ToolDefinition[] = [
     {
       name: 'dep_context',
       description: "Assemble a context bundle for a question: passages packed to a token budget, ranked by meaning and wording, expanded along typed relationships, with stale knowledge withheld and provenance on every passage. Prefer this over reading whole documents.",
@@ -198,6 +200,14 @@ export function depTools(defaultRoot: string, options: ToolOptions = {}): ToolDe
       handler: () => ({ version: VERSION }),
     },
   ]
+  // a project that does not take usage reports does not offer them
+  let usage = false
+  try {
+    usage = resolveLoop(loadDocspec(resolve(defaultRoot))).usage
+  } catch {
+    // no configuration at the default root: nothing to report usage to
+  }
+  return usage ? tools : tools.filter((t) => t.name !== 'dep_report_usage')
 }
 
 function pick(args: Record<string, unknown>, keys: string[]): Record<string, unknown> {

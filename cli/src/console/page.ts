@@ -281,7 +281,7 @@ const PAGE = `<!doctype html>
   var REL_ORDER = ['TEACHES', 'USES', 'EXPLAINS', 'DECIDES', 'REQUIRES', 'NEXT', 'INLINE'];
 
   var state = {
-    graph: null, validation: null, trace: null, procedures: null, proposals: [], selectedProposal: null,
+    graph: null, validation: null, trace: null, procedures: null, proposals: [], selectedProposal: null, loop: null,
     selected: null, selectedCall: null, selectedTree: null,
     hiddenTypes: {}, hiddenLife: {}, hiddenRels: {},
     nodes: [], edges: [], view: { x: 0, y: 0, k: 1 }, alpha: 1
@@ -830,7 +830,9 @@ const PAGE = `<!doctype html>
     var list = clear(byId('calls'));
     byId('call-count').textContent = record.entries.length + (record.dropped ? ' (+' + record.dropped + ' dropped)' : '');
     if (!record.entries.length) {
-      list.appendChild(el('div', 'empty', 'Nothing has asked this set for anything yet. Point an agent at it, or run dep context.'));
+      list.appendChild(el('div', 'empty', state.loop && !state.loop.trace
+        ? 'Requests are not recorded in this project: the loop is off, or loop.trace is false in .docspec.'
+        : 'Nothing has asked this set for anything yet. Point an agent at it, or run dep context.'));
       return;
     }
     record.entries.slice().reverse().forEach(function (entry) {
@@ -1305,7 +1307,8 @@ const PAGE = `<!doctype html>
       get('/api/validate').catch(function () { return null; }),
       get('/api/trace').catch(function () { return { entries: [], dropped: 0 }; }),
       get('/api/procedures').catch(function () { return { trees: [] }; }),
-      get('/api/proposals').catch(function () { return { proposals: [] }; })
+      get('/api/proposals').catch(function () { return { proposals: [] }; }),
+      get('/api/loop').catch(function () { return null; })
     ]).then(function (all) {
       var sameShape = state.graph && state.graph.nodes.length === all[0].nodes.length;
       state.graph = all[0];
@@ -1314,6 +1317,10 @@ const PAGE = `<!doctype html>
       state.procedures = all[3];
       var before = JSON.stringify(state.proposals);
       state.proposals = all[4].proposals;
+      state.loop = all[5];
+      // what the project has switched off is not shown at all
+      var review = document.querySelector('nav button[data-screen="review"]');
+      if (review) review.style.display = state.loop && state.loop.proposals === 'off' ? 'none' : '';
       if (first || !sameShape) layout(state.graph);
       renderStats();
       renderLegend();

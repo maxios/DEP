@@ -138,15 +138,17 @@ export interface OpenOptions {
   now?: () => Date
   /** Where the project's decision procedures live. Default: <root>/dap */
   dapRoot?: string
-  /** Keep a local record of which passages consumers report using. Default: true */
+  /** Keep a local record of which passages consumers report using. Only when .docspec turns on loop.usage; false turns it off for this set. */
   usage?: boolean
   /**
-   * Keep an ordered record of the requests this set answers. Default: true.
+   * Keep an ordered record of the requests this set answers. Only when .docspec turns on loop.trace; false turns it off for this set.
    * `{ keep }` bounds how many requests the record holds.
    */
   trace?: boolean | { keep?: number; record?: boolean }
   /** How this consumer identifies itself in that record. Default: "library". */
   caller?: string
+  /** The environment the loop's settings are read against (DEP_LOOP). Default: process.env. */
+  env?: Record<string, string | undefined>
 }
 
 export interface CandidateChunk {

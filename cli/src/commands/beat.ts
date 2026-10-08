@@ -1,4 +1,4 @@
-import { openDocumentationSet, MockRunner, ClaudeRunner } from '../lib'
+import { openDocumentationSet, MockRunner, ClaudeRunner, DepError } from '../lib'
 
 export interface BeatFlags {
   json?: boolean
@@ -21,9 +21,18 @@ export async function beatCommand(root: string, owner: string | undefined, flags
   const set = openDocumentationSet(root, { caller: 'cli:beat', trace: { record: false } })
   try {
     const runner = !flags.act ? undefined
-      : flags.model ? new ClaudeRunner(typeof flags.model === 'string' ? { model: flags.model } : {})
+      : flags.model ? new ClaudeRunner({ model: typeof flags.model === 'string' ? flags.model : set.loop.models.model, effort: set.loop.models.effort })
       : new MockRunner()
-    const heart = set.heartbeat(runner ? { runner } : {})
+    let heart
+    try {
+      heart = set.heartbeat(runner ? { runner } : {})
+    } catch (err) {
+      if (err instanceof DepError && err.code === 'LOOP_OFF') {
+        console.error(err.message)
+        process.exit(1)
+      }
+      throw err
+    }
     if (flags.stop || flags.start) {
       const { stopped } = heart.killSwitch(!!flags.stop)
       console.log(stopped ? 'Kill switch on: owners are pulsed but never woken.' : 'Kill switch off.')

@@ -79,6 +79,13 @@ export class DepWorld extends World {
   vectorization: Record<string, unknown> | null = { provider: 'hash' }
   /** The heartbeat block of .docspec, when a scenario sets one. */
   heartbeat: Record<string, unknown> | null = null
+  /**
+   * The loop block of .docspec. The stories written for the loop run with it on,
+   * every part allowed; a scenario about DEP as pure documentation sets it to null.
+   */
+  loop: Record<string, unknown> | null = { enabled: true, heartbeat: { act: 'model' }, models: { enabled: true } }
+  /** The environment sets are opened against (DEP_LOOP). */
+  env: Record<string, string | undefined> = {}
   docs = new Map<string, DocSpec>()
   trees = new Map<string, string>()
   dapspec = true
@@ -214,6 +221,7 @@ export class DepWorld extends World {
       generation: { ai_provider: 'constrained', require_human_review: false },
       ...(this.vectorization ? { vectorization: this.vectorization } : {}),
       ...(this.heartbeat ? { heartbeat: this.heartbeat } : {}),
+      ...(this.loop ? { loop: this.loop } : {}),
     }
   }
 
@@ -286,6 +294,7 @@ export class DepWorld extends World {
       ...(this.provider ? { embeddings: this.provider } : {}),
       ...(this.trace === undefined ? {} : { trace: this.trace }),
       ...(this.caller ? { caller: this.caller } : {}),
+      env: this.env,
     })
     this.opened = true
     return this.set
@@ -336,7 +345,7 @@ export class DepWorld extends World {
     other.addDoc({ path: 'docs/how-to/install.md', type: 'how-to', title: 'Install the binary', audience: ['reviewer'], body: unrelatedBody('installing the binary on a fresh machine') })
     other.addDoc({ path: 'docs/how-to/upgrade.md', type: 'how-to', title: 'Upgrade the binary', audience: ['reviewer'], body: unrelatedBody('upgrading an installed binary to the latest release') })
     other.writeProject()
-    const set = openDocumentationSet(root, { now: () => this.now })
+    const set = openDocumentationSet(root, { now: () => this.now, env: this.env })
     this.extraSets.push(set)
     this.notes.set('secondRoot', root)
     return { root, set, docs: [...other.docs.keys()] }
@@ -359,7 +368,7 @@ export class DepWorld extends World {
     try {
       await this.materialise()
       if (!this.configured || !this.set) {
-        this.set = openDocumentationSet(this.root, { now: () => this.now })
+        this.set = openDocumentationSet(this.root, { now: () => this.now, env: this.env })
       }
       this.bundle = await this.watchingNetwork(() => this.set!.context(question, options))
     } catch (err) {

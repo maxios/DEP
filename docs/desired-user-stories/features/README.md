@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-38 flows, 308 scenarios.
+40 flows, 322 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -47,3 +47,5 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-59 A model acts for a woken owner](flow-59-a-model-acts-for-a-woken-owner.feature) | As the person the owners work for, I want a model to decide what a woken owner does — shown what woke them, their role, and the documents concerned, and nothing that is not theirs — while every guard that held for the rules holds for the model, so that owners answer and follow up in their own words without being able to overreach. | 6 | @flow-59 @ai-agent @heartbeat @should |
 | [FLOW-60 What happens after a follow-up is scored](flow-60-what-happens-after-a-follow-up-is-scored.feature) | As the person whose owners follow things up, I want what came of each ask — answered in time, answered late, or never answered — observed by the heartbeat and scored, and those scores to become what the agent learns from, never anything an owner says about itself, so that the agent learns when and whom to follow up from what actually happened. | 7 | @flow-60 @ai-agent @heartbeat @loop @should |
 | [FLOW-61 What the agent learned about following up is used, and judged](flow-61-what-the-agent-learned-about-following-up-is-used-and-judged.feature) | As the person whose owners follow things up, I want what the agent has learned about following up to be put in front of the owner when a loop falls due, and that advice to grow stronger when following it was answered and weaker when it was not, so that the owners' habits of following up are shaped by what actually worked. | 5 | @flow-61 @ai-agent @heartbeat @loop @should |
+| [FLOW-62 DEP as pure documentation](flow-62-dep-as-pure-documentation.feature) | As someone who wants DEP only for documentation, I want a project that says nothing about the loop to write nothing beside its documents — no record of requests, no usage, no heartbeat, no proposals — so that adopting DEP never means adopting the loop, and switching it off is one line. | 6 | @flow-62 @human-author @project-lead @must |
+| [FLOW-63 Choosing which parts of the loop run](flow-63-choosing-which-parts-of-the-loop-run.feature) | As the person who runs a project with the loop on, I want to choose which parts of it run — recording, usage, the heartbeat, how owners act, whether a model is ever asked and how often — so that I turn on only what I trust, and can see at a glance what is running and why. | 8 | @flow-63 @project-lead @should |

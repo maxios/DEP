@@ -80,7 +80,9 @@ export interface DocspecConfig {
   custom_types?: Array<{ id: string; extends: string; additional_required_patterns: string[] }>
   custom_relationships?: Array<{ id: string; meaning: string; inverse?: string }>
   vectorization?: VectorizationConfig
-  /** The heartbeat's limits and the person's quiet hours. */
+  /** Which of the loop's parts run: see src/loop-config.ts. Absent: none — DEP is pure documentation. */
+  loop?: Record<string, unknown>
+  /** Read as loop.heartbeat, when the loop is on; kept for projects written before the loop block. */
   heartbeat?: { quiet_hours?: string; timezone?: string; max_hops?: number }
 }
 

@@ -51,6 +51,8 @@ export interface Wake {
 }
 
 export interface Runner {
+  /** What decides: rules, or a model. A model is asked only where the project allows it. */
+  readonly kind?: 'rules' | 'model'
   /** The actions to take. A runner that thinks slowly, such as a model, returns a promise; beat it with `beatAsync`. */
   act(wake: Wake): unknown[] | Promise<unknown[]>
 }
@@ -66,6 +68,7 @@ export interface ActionOutcome {
 
 /** Rules, no model: answer what was asked, follow up what is due, take up open work. */
 export class MockRunner implements Runner {
+  readonly kind = 'rules' as const
   act(wake: Wake): Action[] {
     const actions: Action[] = []
     for (const s of wake.signals) {

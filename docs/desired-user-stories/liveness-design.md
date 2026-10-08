@@ -675,6 +675,28 @@ marks and time-to-reply holding — needs owners with more than one thing they
 could do about a due loop, and a person whose marks are scored. Today the only
 scored action is the follow-up itself.
 
+## Configuring the loop
+
+DEP is documentation tooling first. A project whose `.docspec` has no `loop:`
+block is pure documentation: no record of requests, no usage, no heartbeat,
+no proposals, and never a model (FLOW-62). The loop is turned on, and each
+part chosen, in that block (FLOW-63); `docs/reference/loop-configuration.md`
+is the reference, `dep loop` shows what runs and why.
+
+The settings are resolved once (`cli/src/loop-config.ts`) and every part reads
+the result, gated where it acts: the set for recording, usage and proposals;
+MCP for which tools are offered; the heartbeat for whether it runs, whether
+owners act (`off`, `rules`, `model`), whether a model may ever be asked, and a
+daily model budget; the console for Review. A caller may switch a part off
+for its own set but never on past the configuration, and `DEP_LOOP=off`
+switches everything off whatever the file says. Turning the loop on is
+deliberately conservative: owners are pulsed and woken, but act only once
+`heartbeat.act` says how, and no model is asked until `models.enabled`.
+
+The story harness runs with the loop on, every part allowed, so the stories
+written for the loop keep testing it; the pure-documentation stories switch it
+off.
+
 ## Open tensions
 
 - **Is a disowned claim gone for good?** Striking a line out puts the claim
