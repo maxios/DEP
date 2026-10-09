@@ -7,11 +7,13 @@ dep:
     - project-lead
   owner: "@dep-core"
   created: 2026-03-22T23:36:54+02:00
-  last_verified: 2026-04-26T20:29:13.527+03:00
+  last_verified: 2026-10-09T08:19:31.690+03:00
   confidence: high
   depends_on:
     - seed.md
     - .docspec
+    - cli/src/types.ts
+    - cli/src/loop-config.ts
   tags:
     - docspec
     - configuration
@@ -38,7 +40,10 @@ governance: <GovernanceConfig>
 generation: <GenerationConfig>
 custom_types: <CustomTypeConfig[]>        # optional
 custom_relationships: <RelationshipConfig[]>  # optional
-validation: <ValidationConfig>            # optional
+validation: <ValidationConfig>            # optional; not read by the dep CLI
+vectorization: <VectorizationConfig>      # optional
+loop: <LoopConfig>                        # optional
+heartbeat: <HeartbeatConfig>              # optional, legacy
 ```
 
 ---
@@ -123,6 +128,8 @@ Minimum: 2 audience entries. If only 1 is defined, audience modeling is insuffic
 
 Suggested defaults: tutorials 90, how-to 60, reference 30, explanation 180, decision-record 365.
 
+Keys may also be custom type ids. A type with no entry uses 90 days when `dep` computes lifecycle.
+
 ---
 
 ## `generation`
@@ -168,7 +175,35 @@ custom_types:
 |-------|------|----------|-------------|
 | `custom_rules` | `object[]` | No | List of custom validator paths |
 
-Each entry: `{ path: "<relative path to validator script>" }`
+Each entry: `{ path: "<relative path to validator script>" }`. Reserved: the `dep` CLI does not read this block.
+
+---
+
+## `loop` (Optional)
+
+Which of DEP's living parts run. Absent: none — DEP writes nothing beside the documents. Every setting is defined in [The loop: block](loop-configuration.md). `dep validate` reports a *Loop configuration valid* check when the block exists.
+
+---
+
+## `heartbeat` (Optional, legacy)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `quiet_hours` | `string` | No | `HH:MM-HH:MM` |
+| `timezone` | `string` | No | IANA name |
+| `max_hops` | `integer` | No | Messages between owners before an exchange comes to the person |
+
+Read as `loop.heartbeat` only when the loop is on and `loop.heartbeat` does not set the same key.
+
+---
+
+## `vectorization` (Optional)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `provider` | `enum` | No | `local`, `openai`, `hash` (default: `local`) |
+| `model` | `string` | No | Embedding model (default: `Xenova/all-MiniLM-L6-v2` for `local`, `text-embedding-3-small` for `openai`) |
+| `chunk_max_tokens` | `integer` | No | Maximum tokens per chunk (default: `512`) |
 
 ---
 

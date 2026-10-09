@@ -5,11 +5,12 @@ dep:
     - project-lead
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-04-26T20:29:13.349+03:00
+  last_verified: 2026-10-09T08:19:31.760+03:00
   confidence: high
   depends_on:
     - docs/reference/docspec-schema.md
     - seed.md
+    - install.sh
   tags:
     - getting-started
     - bootstrap
@@ -29,7 +30,7 @@ dep:
 ## Prerequisites
 
 - A project repository (any language, any domain)
-- Bun installed (`bun --version`) for running the DEP CLI
+- A macOS or Linux shell with `curl`, for the standalone `dep` binary (Bun only if you run the CLI from source)
 - Basic familiarity with YAML and Markdown
 
 ## What You'll Build
@@ -176,9 +177,9 @@ dep validate --root .
 dep graph --root .
 ```
 
-Alternatively, run from source: `cd cli && bun install && bun run src/index.ts validate --root ..`
+Alternatively, from a clone of the DEP repository: `cd cli && bun install && bun run src/index.ts validate --root /path/to/your/project`
 
-**Expected result**: The validator runs and reports the status of your documents.
+**Expected result**: The validator runs and reports the status of your documents. Until every audience's entry point exists, *Entry points exist* fails — that is expected at this stage.
 
 ## What You Built
 

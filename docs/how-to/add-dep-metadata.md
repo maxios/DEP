@@ -1,13 +1,19 @@
 ---
 dep:
   type: how-to
-  audience: [human-author]
+  audience:
+    - human-author
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-10-09T08:19:31.336+03:00
   confidence: high
-  depends_on: [docs/reference/dep-metadata-schema.md]
-  tags: [metadata, migration, workflow]
+  depends_on:
+    - docs/reference/dep-metadata-schema.md
+    - cli/src/commands/validate.ts
+  tags:
+    - metadata
+    - migration
+    - workflow
   links:
     - target: ../reference/dep-metadata-schema.md
       rel: USES
@@ -65,7 +71,7 @@ dep:
 7. Run validation:
 
    ```bash
-   cd cli && bun run src/index.ts validate --root ..
+   dep validate --root .
    ```
 
 ## Verification

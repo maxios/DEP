@@ -1,13 +1,18 @@
 ---
 dep:
   type: explanation
-  audience: [ai-generator]
+  audience:
+    - ai-generator
   owner: "@dep-core"
   created: 2026-03-22T23:36:54+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-10-09T08:19:31.973+03:00
   confidence: high
   depends_on: []
-  tags: [meta, seed, protocol, bootstrap]
+  tags:
+    - meta
+    - seed
+    - protocol
+    - bootstrap
   links:
     - target: docs/decision-records/dr-001-five-types-not-four.md
       rel: NEXT
@@ -97,13 +102,15 @@ An audience is not a job title. An audience is a **mind-state + goal** pair. The
 
 ### The Schema
 
-Every audience persona is defined by six properties:
+Every audience persona is defined by eight properties:
 
 | Property | Purpose | Effect on Documentation |
 |----------|---------|------------------------|
 | `id` | Machine-readable identifier | Used in document metadata to declare target audience |
+| `name` | Human-readable name | How the persona is shown to people |
 | `goal` | What the reader is trying to accomplish | Determines document scope — everything included must serve this goal |
 | `context` | What the reader already knows | Determines vocabulary level, prerequisite assumptions, starting point |
+| `vocabulary_level` | How much domain language the reader has | Determines which terms are used without definition |
 | `entry_point` | Where this reader begins | The first document they encounter; must route to everything they need |
 | `time_budget` | How much attention they can give | `deep` = learning mode, `scanning` = evaluating, `urgent` = firefighting |
 | `success_criteria` | How we know the doc worked | The measurable outcome of successful documentation |
@@ -259,19 +266,21 @@ FRESH → AGING → STALE → ABANDONED
 | State | Condition | Action Required |
 |-------|-----------|-----------------|
 | `FRESH` | Last verified within review cadence; no dependency changes | None |
-| `AGING` | Approaching review deadline (within 2× cadence) | Schedule review |
-| `STALE` | Exceeds review cadence OR a dependency has changed | Owner must review within 48 hours |
+| `AGING` | Past its review cadence, but within 2× cadence | Schedule review |
+| `STALE` | Past twice its review cadence | Owner must review within 48 hours |
 | `ABANDONED` | Exceeds 3× cadence with no owner action | Escalate to fallback owner |
 | `DEPRECATED` | Explicitly marked; superseded by another document | Maintain redirect; archive after one review cycle |
 | `ARCHIVED` | Removed from active navigation; retained for history | No action; read-only |
 
+Tooling computes the first three states from `last_verified` and the review cadence. `ABANDONED`, `DEPRECATED` and `ARCHIVED` are governance states that people assign.
+
 ### Staleness Triggers
 
-A document transitions to `STALE` when any of these occur:
+A document needs review when any of these occur:
 
-1. **Time-based**: `last_verified` exceeds the `review_cadence` for its type.
-2. **Dependency-based**: Any document or artifact listed in `depends_on` has been modified since `last_verified`.
-3. **Trigger-based**: A decision record's `review_trigger` condition is met (e.g., "if we exceed 10k users").
+1. **Time-based**: `last_verified` exceeds twice the `review_cadence` for its type — the computed `STALE` state.
+2. **Dependency-based**: Any document or artifact listed in `depends_on` has been modified since `last_verified`. This is found by review and the sync skill, not computed.
+3. **Trigger-based**: A decision record's `review_trigger` condition is met (e.g., "if we exceed 10k users"). This too is a judgement, not computed.
 
 ### Ownership
 
@@ -336,7 +345,7 @@ Validators check both individual documents and the graph as a whole.
 **Document-level checks:**
 
 - Metadata block is present and valid.
-- Declared type is one of the five canonical types.
+- Declared type is one of the five canonical types (or a type declared in `custom_types`).
 - Declared audience references a defined persona.
 - Document structure matches the type signature (required patterns present, violation patterns absent).
 - All internal links resolve.

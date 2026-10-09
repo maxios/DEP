@@ -1,13 +1,19 @@
 ---
 dep:
   type: explanation
-  audience: [ai-generator, project-lead]
+  audience:
+    - ai-generator
+    - project-lead
   owner: "@dep-core"
   created: 2026-03-23T21:49:13+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-10-09T08:19:31.266+03:00
   confidence: high
-  depends_on: [seed.md]
-  tags: [extensions, customization, advanced]
+  depends_on:
+    - seed.md
+  tags:
+    - extensions
+    - customization
+    - advanced
   links:
     - target: ../reference/docspec-schema.md
       rel: EXPLAINS
@@ -30,11 +36,11 @@ custom_types:
     additional_required_patterns: [severity_classification, escalation_path, rollback_procedure]
 ```
 
-The custom type inherits all rules of its parent and adds additional constraints. It does NOT replace the parent type in the taxonomy.
+Conceptually, the custom type inherits all rules of its parent and adds additional constraints. It does NOT replace the parent type in the taxonomy. Tooling recognises the custom `id` as a valid type; `extends` and `additional_required_patterns` record that intent for authors and AI generators, and a custom type needs its own `review_cadence` entry, or it is reviewed on the 90-day default.
 
 ## Custom Validators
 
-Domain-specific validation rules can be added alongside the standard validators:
+The `.docspec` reserves a slot for domain-specific validation rules alongside the standard validators. The reference CLI does not run them yet; the slot records where they would live:
 
 ```yaml
 validation:
@@ -53,6 +59,8 @@ custom_relationships:
     meaning: "This document replaces an older version"
     inverse: SUPERSEDED_BY
 ```
+
+`inverse` is descriptive: tooling accepts the custom relationship `id`, but does not derive inverse links from it.
 
 ## AI Instruction on Extensions
 

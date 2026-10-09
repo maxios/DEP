@@ -6,11 +6,13 @@ dep:
     - human-author
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-04-26T20:29:13.306+03:00
+  last_verified: 2026-10-09T08:19:31.548+03:00
   confidence: high
   depends_on:
     - cli/src/commands/validate.ts
     - docs/reference/dep-metadata-schema.md
+    - cli/src/graph.ts
+    - dap/trees/validate-and-fix.md
   tags:
     - validation
     - cli
@@ -28,7 +30,7 @@ dep:
 
 # How-To: Validate a Document
 
-**Goal**: Check a DEP document (or full documentation set) for metadata completeness, type purity, link integrity, and lifecycle freshness.
+**Goal**: Check a DEP documentation set for metadata completeness, link integrity, graph integrity, and lifecycle freshness — and, through the `/dep-validate` skill, type purity.
 
 ## Prerequisites
 
@@ -44,7 +46,7 @@ export PATH="$HOME/.dep/bin:$PATH"
 
 ## Steps
 
-### Single Document Validation
+### Validate with the CLI
 
 1. Run the validator:
 
@@ -54,8 +56,10 @@ export PATH="$HOME/.dep/bin:$PATH"
 
 2. Review the output. Each document gets a status:
    - **PASS** — all checks passed
-   - **WARN** — non-critical issues (e.g., approaching staleness)
+   - **WARN** — the only failing check is lifecycle: the document is STALE (more than twice its type's review cadence since `last_verified`)
    - **FAIL** — critical issues that must be fixed
+
+   Besides metadata, type, audience, links, relationship types, dates and confidence, a document with a `heart:` block is checked for *Heart valid* and one with an `agent:` block for *Role valid*; either failing makes it **FAIL**.
 
 3. For machine-readable output, add `--json`:
 
@@ -63,7 +67,7 @@ export PATH="$HOME/.dep/bin:$PATH"
    dep validate --root . --json
    ```
 
-**From source** (alternative): `cd cli && bun install && bun run src/index.ts validate --root ..`
+**From source** (alternative): `cd cli && bun install && bun run src/index.ts validate --root /path/to/your/project`
 
 ### Using the `/dep-validate` Skill
 
@@ -73,13 +77,13 @@ export PATH="$HOME/.dep/bin:$PATH"
    /dep-validate
    ```
 
-2. Provide the path to a single document or let it scan the full docs root.
+2. Let it run validation across the docs root; it walks the `validate-and-fix` decision tree and checks type purity by reading each document.
 
 3. Review the validation report and apply suggested fixes.
 
 ## Verification
 
-After fixing issues, re-run `validate`. A clean run shows all documents as **PASS** and the graph integrity section shows no orphans, no cycles, and all entry points present.
+After fixing issues, re-run `validate`. A clean run exits 0, shows no document as **FAIL**, and the graph integrity section shows no orphans, no `REQUIRES` cycles, all entry points present — and, if your `.docspec` has a `loop:` block, *Loop configuration valid*.
 
 ## Related
 

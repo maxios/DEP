@@ -5,13 +5,15 @@ dep:
     - ai-agent
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-04-26T20:29:13.252+03:00
+  last_verified: 2026-10-09T08:19:31.829+03:00
   confidence: high
   depends_on:
     - skills/dep-generate/SKILL.md
     - skills/dep-validate/SKILL.md
     - skills/dep-audit/SKILL.md
     - skills/dep-sync/SKILL.md
+    - cli/src/index.ts
+    - dap/trees/validate-and-fix.md
   tags:
     - agent
     - integration
@@ -49,7 +51,7 @@ A working agent integration that can generate, validate, and maintain DEP-compli
 Add the DEP marketplace and install the plugin:
 
 ```bash
-/plugin marketplace add owner/dep
+/plugin marketplace add maxios/DEP
 /plugin install dep@dep-marketplace
 ```
 
@@ -128,7 +130,7 @@ The sync skill:
 
 ### Step 6 — Install and Use the CLI
 
-All skills use the DEP CLI under the hood and will auto-install it if missing (Step 0). You can also install the standalone binary manually for direct access:
+All skills use the DEP CLI under the hood and will install it if missing (see each skill's Prerequisites; they need `dep` 0.3.0 or newer). You can also install the standalone binary manually for direct access:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maxios/DEP/main/install.sh | sh
@@ -146,6 +148,9 @@ dep graph --root . --mermaid
 
 # Find backlinks
 dep backlinks docs/reference/some-doc.md --root .
+
+# Load just the passages a task needs, packed to a budget
+dep context "how is freshness decided" --budget 4000 --json --root .
 
 # Query by metadata
 dep query --type how-to --root .
@@ -170,14 +175,14 @@ dep link docs/ref/schema.md --target other.md --rel TEACHES --root .
 
 # Semantic search (requires vectorization)
 dep vectorize --root .
-dep search "lifecycle" --root .
+dep search "lifecycle" --semantic --root .
 ```
 
 **Expected result**: CLI commands run successfully and return structured output.
 
 ### Step 7 — Use DAP for Decision Navigation
 
-Skills delegate their decision logic to DAP (Decision Action Protocol) trees. You can interact with DAP directly:
+Skills delegate their decision logic to DAP (Decision Action Protocol) trees. You can interact with DAP directly. These commands read trees from the project's `dap/` directory (`dap/.dapspec` and `dap/trees/`), so run them where those exist — for example a checkout of the DEP repository:
 
 ```bash
 # Find a decision tree matching a query

@@ -6,11 +6,12 @@ dep:
     - human-author
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-04-26T20:29:13.394+03:00
+  last_verified: 2026-10-09T08:19:31.477+03:00
   confidence: high
   depends_on:
     - skills/dep-generate/SKILL.md
     - docs/reference/docspec-schema.md
+    - dap/trees/generate-doc-set.md
   tags:
     - generation
     - cli
@@ -47,14 +48,11 @@ dep:
    - Who uses it (potential audiences)
    - Key concepts and components
 
-3. Review the proposed `.docspec` file. Confirm or adjust:
-   - Audience definitions (IDs, goals, entry points)
-   - Directory structure
-   - Governance settings (review cadences, ownership)
+3. Review the proposed audiences (IDs, goals, entry points) and approve or revise them. The skill then writes the `.docspec` (directory structure, governance) — adjust it afterwards if needed.
 
 4. Review the document plan. The skill presents a list of documents it will generate, organized by type. Approve or modify the plan before generation begins.
 
-5. Wait for generation. Documents are created in dependency order — references first, then tutorials and how-tos that link to them, then explanations.
+5. Wait for generation. Documents are created in dependency order, following `REQUIRES` links — entry points and tutorials first, then supporting references and explanations. The skill validates the set and fixes failures before asking for your final review.
 
 6. Run validation on the generated set:
 
