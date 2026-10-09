@@ -14,6 +14,7 @@ import { DepError } from '../context/errors'
 import { buildDapGraph, getNodeTargets } from '../dap/tree-builder'
 import { loopReport } from '../commands/loop'
 import { consolePage } from './page'
+import { renderMarkdown } from './markdown'
 
 export const DEFAULT_PORT = 4317
 
@@ -296,6 +297,9 @@ function documentPayload(set: DocumentationSet, root: string, asked: string) {
     audience: node?.metadata.audience ?? (Array.isArray(declared.audience) ? declared.audience : []),
     tags: Array.isArray(declared.tags) ? declared.tags : [],
     content,
+    // rendered for the reader, safe by construction; frontmatter shown apart, as it was written
+    html: renderMarkdown(content, asked),
+    frontmatter: /^---\r?\n([\s\S]*?)\r?\n---/.exec(content)?.[1] ?? '',
     forwardLinks: node?.forwardLinks ?? [],
     backlinks: node?.backlinks ?? [],
   }

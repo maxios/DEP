@@ -1634,6 +1634,21 @@ Feature: FLOW-41 Serve a documentation set to a console
     Then I am given that document's metadata, its freshness and what links to it
 
   @happy-path
+  Scenario: The console shows a document's content, rendered
+    Given a document with headings, a list, a table, code and a link to another document
+    And a running console
+    When I ask it for that document
+    Then I am given its content rendered for reading, headings, lists, tables and code
+    And its links to other documents in the set can be followed in the console
+
+  @security
+  Scenario: A document's content cannot run anything in the console
+    Given a document whose content contains a script
+    And a running console
+    When I ask it for that document
+    Then the script is shown as text, never as something that runs
+
+  @happy-path
   Scenario: The console shows what the agents have been asking for
     Given an agent has asked the set a question
     And a running console

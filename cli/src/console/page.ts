@@ -158,6 +158,27 @@ const PAGE = `<!doctype html>
   .diff .same { color: var(--dim); }
   .decide { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
   #review-count:not(:empty) { margin-left: 4px; padding: 0 6px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 10px; }
+  .reader { display: flex; width: 100%; min-height: 0; }
+  .reader-meta { width: 340px; flex: 0 0 340px; border-right: 1px solid var(--line); overflow-y: auto; padding: 18px; background: var(--panel-solid); }
+  .reader-meta pre { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; color: var(--dim); background: rgba(0,0,0,0.35); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; margin: 8px 0 14px; }
+  .reader-meta a, .prose a { color: #6cb6ff; text-decoration: none; cursor: pointer; }
+  .reader-meta a:hover, .prose a:hover { text-decoration: underline; }
+  .prose { flex: 1; min-width: 0; overflow-y: auto; padding: 34px 48px 80px; max-width: 900px; font-size: 14px; line-height: 1.65; color: #d8d8dc; }
+  .prose h1 { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 16px; color: var(--ink); }
+  .prose h2 { font-size: 19px; font-weight: 620; margin: 30px 0 10px; color: var(--ink); padding-top: 14px; border-top: 1px solid var(--line-soft); }
+  .prose h3 { font-size: 15.5px; font-weight: 600; margin: 22px 0 8px; color: var(--ink); }
+  .prose h4, .prose h5, .prose h6 { font-size: 13.5px; font-weight: 600; margin: 18px 0 6px; color: var(--ink); }
+  .prose p { margin: 0 0 12px; }
+  .prose ul, .prose ol { margin: 0 0 12px 22px; }
+  .prose li { margin: 3px 0; }
+  .prose code { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 12px; background: rgba(255,255,255,0.08); border-radius: 5px; padding: 1px 5px; color: #e4e4e8; }
+  .prose pre { background: rgba(0,0,0,0.45); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 0 0 14px; }
+  .prose pre code { background: none; padding: 0; font-size: 12px; line-height: 1.55; }
+  .prose table { width: auto; margin: 0 0 16px; font-size: 12.5px; }
+  .prose th, .prose td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  .prose th { background: rgba(255,255,255,0.05); color: var(--ink); font-weight: 600; }
+  .prose blockquote { border-left: 3px solid var(--accent); padding: 4px 14px; color: var(--dim); margin: 0 0 12px; }
+  .prose hr { border: 0; border-top: 1px solid var(--line); margin: 22px 0; }
   .strip { display: flex; gap: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 16px; }
   .strip > div { flex: 1; padding: 12px 15px; border-left: 1px solid var(--line-soft); min-width: 0; }
   .strip > div:first-child { border-left: 0; }
@@ -289,6 +310,13 @@ const PAGE = `<!doctype html>
 
   <section class="screen" id="screen-health">
     <div class="pane" id="health"></div>
+  </section>
+
+  <section class="screen" id="screen-reader">
+    <div class="reader">
+      <aside class="reader-meta" id="reader-meta"></aside>
+      <article class="prose" id="reader-body"></article>
+    </div>
   </section>
 
   <section class="screen" id="screen-loop">
@@ -699,6 +727,10 @@ const PAGE = `<!doctype html>
     box.appendChild(badges);
     box.appendChild(el('h2', null, doc.title || basename(doc.path)));
     box.appendChild(el('div', 'path mono', doc.path));
+    var read = el('button', 'act on', 'Read document');
+    read.style.marginTop = '10px';
+    read.onclick = function () { openReader(doc.path); };
+    box.appendChild(read);
 
     var meta = el('div', 'group');
     meta.appendChild(el('h3', null, 'Metadata'));
@@ -1339,7 +1371,7 @@ const PAGE = `<!doctype html>
       var age = days(n.lastVerified);
       row.appendChild(el('div', 'meta', n.owner + ' ' + String.fromCharCode(183) + ' ' + n.type + (age !== null ? ' ' + String.fromCharCode(183) + ' verified ' + age + ' days ago' : '')));
       // opening it shows the inspector, where it can be read and, once reviewed, marked so
-      row.onclick = function () { showScreen('graph'); select(n.path); };
+      row.onclick = function () { openReader(n.path); };
       list.appendChild(row);
     });
   }
@@ -1608,6 +1640,63 @@ const PAGE = `<!doctype html>
   }
 
   // ── screens & loading ───────────────────────────────────────────────
+
+  // ── reader ──────────────────────────────────────────────────────────
+
+  var readerFrom = 'graph';
+
+  function openReader(path) {
+    var current = document.querySelector('section.screen.on');
+    if (current && current.id !== 'screen-reader') readerFrom = current.id.replace('screen-', '');
+    showScreen('reader');
+    clear(byId('reader-body')).appendChild(el('div', 'empty', 'Loading.'));
+    clear(byId('reader-meta'));
+    get('/api/document?path=' + encodeURIComponent(path)).then(renderReader).catch(function (err) {
+      clear(byId('reader-body')).appendChild(el('div', 'empty', String(err.message || err)));
+    });
+  }
+
+  function renderReader(doc) {
+    var meta = clear(byId('reader-meta'));
+    var back = el('button', 'act', String.fromCharCode(8592) + ' Back');
+    back.onclick = function () { showScreen(readerFrom); };
+    meta.appendChild(back);
+    var badges = el('div', 'badges'); badges.style.margin = '14px 0 8px';
+    badges.appendChild(el('span', 'badge', doc.type));
+    var life = el('span', 'badge life', doc.lifecycle); life.style.background = lifeColor(doc.lifecycle);
+    badges.appendChild(life);
+    badges.appendChild(el('span', 'badge', 'confidence ' + doc.confidence));
+    meta.appendChild(badges);
+    meta.appendChild(el('div', 'mono', doc.path));
+    var age = days(doc.lastVerified || (doc.declared && doc.declared.last_verified));
+    if (age !== null) meta.appendChild(el('div', 'muted', 'last verified ' + age + ' days ago ' + String.fromCharCode(183) + ' owner ' + doc.owner));
+    var fm = el('h3', null, 'Frontmatter'); fm.style.cssText = 'font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer);margin-top:16px';
+    meta.appendChild(fm);
+    meta.appendChild(el('pre', null, doc.frontmatter || '(none)'));
+    function links(title, list, pick) {
+      var h = el('h3', null, title + ' ' + list.length); h.style.cssText = 'font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer);margin:10px 0 6px';
+      meta.appendChild(h);
+      list.forEach(function (l) {
+        var row = el('div'); row.style.cssText = 'font-size:11.5px;margin:3px 0';
+        var a = el('a', 'mono', pick(l)); a.onclick = function () { openReader(pick(l)); };
+        row.appendChild(el('span', 'tag', l.rel)); row.appendChild(a);
+        meta.appendChild(row);
+      });
+    }
+    links('Links out', doc.forwardLinks || [], function (l) { return l.target; });
+    links('Linked from', doc.backlinks || [], function (l) { return l.source; });
+    // the html is built by the server from escaped text only; it carries no markup of the document's own
+    var body = byId('reader-body');
+    body.innerHTML = doc.html || '';
+    body.scrollTop = 0;
+  }
+
+  byId('reader-body').addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('a[data-doc]') : null;
+    if (!a) return;
+    e.preventDefault();
+    openReader(a.getAttribute('data-doc'));
+  });
 
   function showScreen(which) {
     Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
