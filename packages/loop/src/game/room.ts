@@ -40,9 +40,27 @@ export interface GameListing extends GameCheck {
   levelsIndependent: boolean
   /** Days this project has played, oldest first. */
   days: Array<{ day: number; passRate: number; passed: number; failed: number; void: number }>
+  /** How many levels a day plays. */
+  perDay: number
+  /** The policy the judge must encode, as the game document's own When/Then table states it. */
+  policy: Array<{ when: string; then: string }>
 }
 
 const CHECKS = ['SCORER', 'JUDGE_GROUND', 'ARENA_MISSING', 'SITUATION', 'OPTIONS'] as const
+/** The first two-column table in the document's body: what the judge must hold to. */
+function policyTable(file: string): GameListing['policy'] {
+  const body = readFileSync(file, 'utf-8').replace(/^---\r?\n[\s\S]*?\r?\n---/, '')
+  const rows: GameListing['policy'] = []
+  for (const line of body.split('\n')) {
+    const t = line.trim()
+    if (!t.startsWith('|')) { if (rows.length) break; continue }
+    const cells = t.replace(/^\||\|$/g, '').split('|').map((c) => c.trim())
+    if (cells.length !== 2 || cells.every((c) => /^:?-+:?$/.test(c))) continue
+    rows.push({ when: cells[0]!, then: cells[1]! })
+  }
+  return rows.slice(1)
+}
+
 const stateDir = (root: string, id: string) => join(root, '.dep-loop', id.replace(/[^A-Za-z0-9._-]/g, '_'))
 
 function stepFiles(dir: string, root: string): string[] {
@@ -60,7 +78,7 @@ function days(root: string, id: string): GameListing['days'] {
 export function describeGame(root: string, document: string): GameListing {
   const base: GameListing = {
     document, id: null, levels: 0, options: [], situation: {}, levelsExpression: '', scoring: null, mayWrite: [],
-    arena: null, levelsIndependent: false, days: [], checks: [], judge: [], playable: false,
+    arena: null, levelsIndependent: false, days: [], checks: [], judge: [], playable: false, perDay: 0, policy: [],
   }
   let loaded: LoadedGame
   try {
@@ -87,6 +105,7 @@ export function describeGame(root: string, document: string): GameListing {
     levelsExpression: game.levels, scoring: { pass: game.scoring.pass, fail: game.scoring.fail, regression: game.scoring.regression },
     mayWrite: game.actions.mayWrite, arena, levelsIndependent: game.levelsIndependent,
     days: days(root, game.id), checks, judge, playable: judge.length > 0,
+    perDay: Math.min(40, levels.length), policy: policyTable(join(root, document)),
     ...(judge.length ? {} : { why: checks.at(-1)!.message }),
   }
 }
