@@ -67,7 +67,8 @@ export const css = `  /* games: the designer's screen; every value is from desig
   .gm .g-box .g-col { gap: 3px; } .gm .g-box .g-p { font-size: 11.5px; color: #F5F5F7; } .gm .g-box .g-n { font-size: 11px; color: #6B6B73; line-height: 1.2; }
   .gm .g-box .g-head { font-size: 12.5px; font-weight: 600; color: #F5F5F7; } .gm .g-box .g-hs { font-size: 11px; }
   .gm .g-box.g-amber .g-hs { color: #FFE680; } .gm .g-box.g-ok .g-hs { color: #9BF0AA; } .gm .g-box.g-bad .g-hs { color: #FF9A93; }
-  .gm .g-rule { gap: 8px; font-size: 12px; color: #F5F5F7; white-space: nowrap; min-width: 0; } .gm .g-rule svg { color: #A1A1A8; }
+  .gm .g-rule { gap: 8px; font-size: 12px; color: #F5F5F7; white-space: nowrap; min-width: 0; }
+  .gm .g-rule .g-when { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; } .gm .g-rule .g-chip { flex: 0 0 auto; } .gm .g-rule svg { color: #A1A1A8; }
   .gm .g-rule .g-rest { color: #6B6B73; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .gm .g-ground { gap: 6px; padding-top: 4px; font-size: 11px; color: #6B6B73; } .gm .g-ground svg { color: #6B6B73; }
   .gm .g-levels { flex: 1 1 auto; min-height: 240px; background: #0F1013; border: 1px solid #FFFFFF12; border-radius: 14px; overflow: hidden; }
@@ -116,7 +117,17 @@ export const css = `  /* games: the designer's screen; every value is from desig
   .gm .g-spacer { flex: 1 1 auto; }
   .gm .g-btn.g-wide { justify-content: center; width: 100%; padding: 8px 12px; }
   .gm .g-btn.g-wide .g-arrow { color: #6B6B73; }
-  .gm .g-empty-g { color: #6B6B73; font-size: 12px; }`
+  .gm .g-empty-g { color: #6B6B73; font-size: 12px; }
+  .gm .g-btn.g-ghost.g-on { border-color: #0A84FF55; color: #9CCBFF; } .gm .g-btn.g-ghost.g-on svg { color: #6CB4FF; }
+  .gm .g-tpl { flex: 0 0 auto; }
+  .gm .g-tpl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .gm .g-tpl-card { gap: 10px; padding: 14px 16px; border: 1px solid #FFFFFF12; border-radius: 10px; background: #FFFFFF05; min-width: 0; }
+  .gm .g-tpl-head { gap: 10px; align-items: flex-start; }
+  .gm .g-tpl-title { font-size: 13px; font-weight: 600; color: #F5F5F7; }
+  .gm .g-tpl-id { font-size: 10.5px; color: #6B6B73; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gm .g-tpl-teaches { font-size: 11.5px; color: #A1A1A8; line-height: 1.45; }
+  .gm .g-tpl-dims { font-size: 10.5px; color: #6B6B73; }
+  .gm .g-tpl-opts { gap: 4px; flex-wrap: wrap; }`
 
 export const html = `  <section class="screen" id="screen-games">
     <div class="gm" id="games"></div>
@@ -141,7 +152,8 @@ export const js = `  // ── games ──────────────�
     ARENA_MISSING: ['The arena can be found', 'The arena is missing'],
     SITUATION: ['Every situation dimension can be read', 'A situation dimension cannot be read'],
     OPTIONS: ['Every option can be learned', 'An option cannot be learned'],
-    JUDGE: ['The judge' + String.fromCharCode(39) + 's steps are written', 'Judge steps missing']
+    JUDGE: ['The judge' + String.fromCharCode(39) + 's steps are written', 'Judge steps missing'],
+    RUNNER: ['The judge can be run', 'The judge cannot be run']
   };
 
   /** Every class on this screen is prefixed, so the rest of the page's styles never reach it. */
@@ -248,8 +260,8 @@ export const js = `  // ── games ──────────────�
       card.onclick = function () { state.selectedGame = g.document; state.editing = false; state.gameNote = null; renderGames(); };
       bar.appendChild(card);
     });
-    bar.appendChild(btn('ghost', 'plus', 'New game', function () {
-      state.gameNote = { bad: false, text: 'A game is a reference document with a game: block. Copy ' + game.document + ', give it a new id and arena, then write its judge.' };
+    bar.appendChild(btn('ghost' + (state.picking ? ' on' : ''), 'plus', 'New game', function () {
+      state.picking = !state.picking;
       renderGames();
     }));
     bar.appendChild(ge('div', 'fill'));
@@ -331,7 +343,8 @@ export const js = `  // ── games ──────────────�
       panel.appendChild(ge('div', 'cap', 'Policy it must encode'));
       game.policy.forEach(function (p) {
         var parts = p.then.split(TICK);
-        var row = h('div', 'row rule', [icon('corner-down-right', 12), ge('span', null, p.when)]);
+        var row = h('div', 'row rule', [icon('corner-down-right', 12), ge('span', 'when', p.when)]);
+        row.title = p.when;
         parts.forEach(function (part, i) {
           var t = part.replace(/^[ ,;:]+|[ ,;:]+$/g, '');
           if (!t) return;
@@ -424,6 +437,7 @@ export const js = `  // ── games ──────────────�
       ARENA_MISSING: arenaParts(game).base + '/features/ exists',
       SITUATION: dims.length + ' of ' + dims.length + (rows ? DOT + 'row:<column>' : ''),
       OPTIONS: game.options.join(DOT),
+      RUNNER: 'Cucumber found where the arena can reach it',
       JUDGE: game.judge.length + ' step file' + (game.judge.length === 1 ? '' : 's') + ' in ' + arenaParts(game).base + '/steps/'
     }[code] || '';
   }
@@ -491,17 +505,74 @@ export const js = `  // ── games ──────────────�
     return panel;
   }
 
+  // ── templates: start a game for a kind of agent ────────────────────
+
+  function loadTemplates() {
+    if (state.templates) return;
+    state.templates = 'loading';
+    get('/api/games/templates').then(function (r) { state.templates = r.templates; renderGames(); })
+      .catch(function (err) { state.templates = String(err.message || err); renderGames(); });
+  }
+
+  function startTemplate(name) {
+    state.templateNote = { bad: false, text: 'Starting ' + name + DOT + 'writing its document, scenarios and judge.' };
+    renderGames();
+    post('/api/games/new', { template: name }).then(function (answer) {
+      if (!answer.ok) { state.templateNote = { bad: true, text: answer.data.error || 'refused' }; renderGames(); return; }
+      state.picking = false;
+      state.templateNote = null;
+      state.selectedGame = answer.data.document;
+      state.gameNote = { bad: !answer.data.game.playable, text: answer.data.game.playable
+        ? 'Started from the ' + name + ' template: ' + answer.data.files.length + ' files written. Its policy is a draft for your team to change.'
+        : 'Started, but it cannot be played yet: ' + (answer.data.game.why || 'see Check') };
+      return checkGames().then(function () { return refresh(false); });
+    }).catch(function () {});
+  }
+
+  function templatePanel(existing) {
+    loadTemplates();
+    var have = {};
+    existing.forEach(function (g) { if (g.id) have[g.id] = true; });
+    var panel = h('div', 'col panel tpl', [titleRow('Start a game from a template', 'a game for the kind of agent you run' + DOT + 'its policy is a draft you can change',
+      existing.length ? [btn('small', null, 'Close', function () { state.picking = false; state.templateNote = null; renderGames(); })] : null)]);
+    if (state.templateNote) panel.appendChild(ge('div', 'said ' + (state.templateNote.bad ? 'no' : 'ok'), state.templateNote.text));
+    if (!Array.isArray(state.templates)) {
+      panel.appendChild(ge('div', 'empty-g', typeof state.templates === 'string' && state.templates !== 'loading' ? state.templates : 'Reading templates.'));
+      return panel;
+    }
+    var grid = ge('div', 'tpl-grid');
+    state.templates.forEach(function (t) {
+      var started = have[t.id];
+      var options = h('div', 'row tpl-opts', t.options.map(function (o, i) { return chip(o, OPTION_TONE[i % OPTION_TONE.length]); }));
+      var dims = h('div', 'tpl-dims m', [t.dimensions.map(function (d) { return d.name; }).join(String.fromCharCode(32, 215, 32)) + ' = ' + t.levels + ' levels']);
+      var action = started
+        ? ge('span', 'stat c-green', 'STARTED')
+        : btn('check', 'plus', 'Start this game', function () { startTemplate(t.name); });
+      grid.appendChild(h('div', 'col tpl-card', [
+        h('div', 'row tpl-head', [ge('div', 'tpl-title fill', t.title), action]),
+        ge('div', 'tpl-id m', 'dep game new --template ' + t.name),
+        ge('div', 'tpl-teaches', 'Teaches ' + t.teaches + '.'),
+        dims,
+        options
+      ]));
+    });
+    panel.appendChild(grid);
+    return panel;
+  }
+
   function renderGames() {
     var pane = clear(byId('games'));
     var list = (state.games && state.games.games) || [];
     if (!list.length) {
-      pane.appendChild(ge('div', 'empty-g', 'No document in this project has a game: block. A game is a reference document whose frontmatter declares one.'));
+      pane.appendChild(templatePanel(list));
+      pane.appendChild(ge('div', 'empty-g', 'No game yet. A game is a reference document with a game: block; a template writes one for you, with its scenarios and judge.'));
       return;
     }
     var game = selectedGame();
     state.selectedGame = game.document;
     loadLevels(game);
     pane.appendChild(gameBar(game, list));
+    if (state.picking) pane.appendChild(templatePanel(list));
     pane.appendChild(h('div', 'row main', [
       h('div', 'col left', [h('div', 'row design', [rulesPanel(game), judgePanel(game)]), levelsPanel(game)]),
       h('div', 'col right', [checkPanel(game), playPanel(game)])

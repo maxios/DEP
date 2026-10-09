@@ -25,7 +25,7 @@ import { IdGenerator } from '@cucumber/messages'
 import parseTagExpression from '@cucumber/tag-expressions'
 import type { SituationKey } from '../types'
 
-export type GameErrorCode = 'NOT_A_GAME' | 'SCORER' | 'JUDGE_GROUND' | 'ARENA_MISSING' | 'SITUATION' | 'INVALID' | 'OPTIONS'
+export type GameErrorCode = 'NOT_A_GAME' | 'SCORER' | 'JUDGE_GROUND' | 'ARENA_MISSING' | 'SITUATION' | 'INVALID' | 'OPTIONS' | 'RUNNER' | 'UNKNOWN_TEMPLATE' | 'GAME_EXISTS'
 
 export class GameError extends Error {
   constructor(readonly code: GameErrorCode, message: string) {

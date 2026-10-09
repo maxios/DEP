@@ -15,6 +15,7 @@ import { buildDapGraph, getNodeTargets } from '../dap/tree-builder'
 import { resolveTrees } from '../dap/commands/resolve'
 import { loopReport } from '../commands/loop'
 import { consolePage } from './page'
+import { gameDocumentDefaults } from '../commands/game'
 import { renderMarkdown } from './markdown'
 
 export const DEFAULT_PORT = 4317
@@ -278,11 +279,21 @@ async function games(request: Request, url: URL, set: DocumentationSet, root: st
   if (request.method === 'POST') {
     const refused = notForUs(request, port)
     if (refused) return json({ error: refused, code: 'NOT_FOR_US' }, 403)
-    let body: { document?: unknown; options?: unknown; levels?: unknown }
+    let body: { document?: unknown; options?: unknown; levels?: unknown; template?: unknown }
     try {
       body = await request.json() as typeof body
     } catch {
       return json({ error: 'the request is not JSON' }, 400)
+    }
+    if (url.pathname === '/api/games/new') {
+      const { startFromTemplate } = await import('../../../packages/loop/src/game/template')
+      try {
+        const started = startFromTemplate(root, String(body.template ?? ''), gameDocumentDefaults(root))
+        set.refresh()
+        return json({ ...started, game: room.describeGame(root, started.document) })
+      } catch (err) {
+        return asGame(err)
+      }
     }
     const document = named(body.document)
     try {
@@ -301,6 +312,10 @@ async function games(request: Request, url: URL, set: DocumentationSet, root: st
     return json({ error: `${url.pathname} is not something the console serves` }, 404)
   }
   if (url.pathname === '/api/games') return json({ games: known.map((d) => room.describeGame(root, d)) })
+  if (url.pathname === '/api/games/templates') {
+    const { listTemplates } = await import('../../../packages/loop/src/game/template')
+    return json({ templates: listTemplates() })
+  }
   if (url.pathname === '/api/games/levels') {
     try {
       return json({ levels: room.gameLevels(root, named(url.searchParams.get('document'))) })

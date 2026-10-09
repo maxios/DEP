@@ -7,8 +7,8 @@ import { spawnSync } from 'child_process'
 import { createHash } from 'crypto'
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'fs'
 import { tmpdir } from 'os'
-import { join, resolve } from 'path'
-import type { Game, Level } from './game'
+import { dirname, join, resolve } from 'path'
+import { GameError, type Game, type Level } from './game'
 
 export type Verdict = 'passed' | 'failed'
 
@@ -42,7 +42,23 @@ export interface JudgeOptions {
 /** Far longer than any judging takes (a day's sample runs in about two seconds). */
 const JUDGE_TIMEOUT_MS = 120_000
 
-const CUCUMBER = resolve(import.meta.dir, '..', '..', 'node_modules', '@cucumber', 'cucumber', 'bin', 'cucumber.js')
+/**
+ * The Cucumber that runs a game's judge: the one its steps would import,
+ * found the way they find it, walking up from the arena. A project starts
+ * games of its own, so the engine's own copy is not the one to use.
+ */
+export function cucumberFor(arena: string): string | null {
+  let dir = resolve(arena)
+  for (;;) {
+    const bin = join(dir, 'node_modules', '@cucumber', 'cucumber', 'bin', 'cucumber.js')
+    if (existsSync(bin)) return bin
+    const up = dirname(dir)
+    if (up === dir) return null
+    dir = up
+  }
+}
+
+export const RUNNER_MISSING = 'the judge cannot be run: @cucumber/cucumber is not installed where the arena can reach it. Install it in the project with `bun add -d @cucumber/cucumber` (or npm install -D @cucumber/cucumber)'
 
 interface Envelope {
   gherkinDocument?: { uri: string; feature?: { children: Array<{ scenario?: { id: string; location: { line: number }; examples: Array<{ tableBody: Array<{ id: string; location: { line: number } }> }> } }> } }
@@ -76,7 +92,9 @@ export function judge(root: string, game: Game, all: Level[], options: JudgeOpti
   const messages = join(out, 'messages.ndjson')
   try {
     const targets = [...new Set(levels.map((l) => `${l.file}:${l.line}`))]
-    const once = () => spawnSync('bun', ['--bun', CUCUMBER,
+    const cucumber = cucumberFor(game.arena)
+    if (!cucumber) throw new GameError('RUNNER', RUNNER_MISSING)
+    const once = () => spawnSync('bun', ['--bun', cucumber,
       '--import', `${relativeArena(root, game)}/steps/**/*.ts`,
       '--format', `message:${messages}`,
       ...targets,

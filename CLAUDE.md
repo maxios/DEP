@@ -45,6 +45,10 @@ dep vectorize --only docs/ref/schema.md     # refresh one document
 dep mcp --print-config --root .  # Claude Desktop entry for this machine (absolute paths, no Node needed)
 dep mcp --root .                 # tools: dep_context, dep_search, dep_validate, dep_graph, dep_query, dep_metadata, dep_index, dap_resolve, dap_node, dap_trace, dep_version
 
+# Games for agents (needs the loop on, and Cucumber in the project)
+dep game templates               # games for kinds of agents: tester, react-component, code-reviewer, api-change
+dep game new --template tester   # write the game document, its scenarios and its judge into the project
+
 # Keep the binary current
 dep version                      # prints the installed version
 dep upgrade [--check]            # replace the binary with the latest release (verifies it first)
