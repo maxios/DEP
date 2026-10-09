@@ -12,6 +12,7 @@ import { openDocumentationSet } from '../lib'
 import type { DocumentationSet } from '../lib'
 import { DepError } from '../context/errors'
 import { buildDapGraph, getNodeTargets } from '../dap/tree-builder'
+import { loopReport } from '../commands/loop'
 import { consolePage } from './page'
 
 export const DEFAULT_PORT = 4317
@@ -122,7 +123,7 @@ function json(body: unknown, status = 200): Response {
 /** Codes that mean the caller asked for something it should not have. */
 const CALLER_ERRORS = new Set(['INVALID_OPTION', 'INVALID_BUDGET', 'INVALID_DEPTH', 'INVALID_FRESHNESS', 'INVALID_TYPE', 'UNKNOWN_AUDIENCE', 'OUTSIDE_SET', 'UNKNOWN_BUNDLE', 'UNKNOWN_PASSAGE'])
 
-const STATUS: Record<string, number> = { DOCUMENT_NOT_FOUND: 404, UNKNOWN_PROPOSAL: 404, PROPOSAL_STALE: 409, LOOP_OFF: 403 }
+const STATUS: Record<string, number> = { DOCUMENT_NOT_FOUND: 404, UNKNOWN_PROPOSAL: 404, UNKNOWN_MESSAGE: 404, PROPOSAL_STALE: 409, LOOP_OFF: 403 }
 
 function failure(err: unknown): Response {
   if (err instanceof DepError) {
@@ -182,9 +183,28 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
       if (body.decision === 'reject') return json(current().rejectProposal(document))
       return json({ error: 'the decision is accept or reject' }, 400)
     }
+    if (url.pathname === '/api/reply' && request.method === 'POST') {
+      const refused = notForUs(request, port)
+      if (refused) return json({ error: refused, code: 'NOT_FOR_US' }, 403)
+      let body: { message?: unknown; body?: unknown }
+      try {
+        body = await request.json() as typeof body
+      } catch {
+        return json({ error: 'the reply is not JSON' }, 400)
+      }
+      if (typeof body.message !== 'string' || !body.message) return json({ error: 'no message was named' }, 400)
+      return json(current().replyAsPerson(body.message, typeof body.body === 'string' ? body.body : ''))
+    }
     switch (url.pathname) {
+      case '/api/heartbeat':
+        // a project without the heartbeat has none to show
+        if (!current().loop.heartbeat.enabled) break
+        return json(current().heartbeatOverview())
+      case '/api/learned':
+        if (!current().loop.enabled) break
+        return json(current().learnedSummary())
       case '/api/loop':
-        return json(current().loop)
+        return json({ ...current().loop, parts: loopReport(current().loop) })
       case '/api/proposals':
         // a project that takes no proposals has nothing to review
         if (current().loop.proposals === 'off') break

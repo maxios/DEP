@@ -15,6 +15,8 @@ import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
 import { amendDocument, type Amendment, type AmendResult } from './amend'
 import { Heartbeat, type HeartbeatConfig, type Advisor } from '../heart/heartbeat'
 import { resolveLoop, loopOff, type LoopSettings } from '../loop-config'
+import { heartbeatOverview, type HeartbeatOverview } from '../heart/overview'
+import { replyAsPerson, type Message } from '../heart/inbox'
 import type { Runner } from '../heart/actions'
 import { propose, listProposals, acceptProposal, rejectProposal, type Proposal } from './proposals'
 import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
@@ -493,6 +495,28 @@ export class DocumentationSet {
       MODEL_REQUESTS_PER_DAY: this.loop.models.max_requests_per_day,
     }
     return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, { ...fromDocspec, ...config }, runner, advisor)
+  }
+
+  /** The heartbeat at a glance, read from what it wrote: nobody is pulsed, nothing changes. */
+  heartbeatOverview(): HeartbeatOverview {
+    if (!this.loop.heartbeat.enabled) throw loopOff('the heartbeat', 'loop.heartbeat.enabled', this.loop)
+    const owners = [...this.graph().nodes.values()].filter((n) => n.metadata.heart || n.metadata.agent).map((n) => n.metadata.owner)
+    return heartbeatOverview(this.root, owners, this.now())
+  }
+
+  /** Answer, as the person, something an owner brought to them. */
+  replyAsPerson(messageId: string, body: string): Message {
+    if (!this.loop.heartbeat.enabled) throw loopOff('replying', 'loop.heartbeat.enabled', this.loop)
+    if (typeof body !== 'string' || !body.trim()) throw new DepError('INVALID_OPTION', 'a reply says something', { messageId })
+    return replyAsPerson(this.root, messageId, body.trim(), this.now())
+  }
+
+  /** What the loop last wrote about what the agent has learned, if it has: never a strength. */
+  learnedSummary(): unknown {
+    if (!this.loop.enabled) throw loopOff('what the agent has learned', 'loop.enabled', this.loop)
+    const file = join(this.root, '.dep-learned.json')
+    if (!existsSync(file)) throw new DepError('DOCUMENT_NOT_FOUND', 'the loop has written no summary of what the agent learned yet', { file: '.dep-learned.json' })
+    return JSON.parse(readFileSync(file, 'utf-8'))
   }
 
   /** Everything waiting for review, each with the document as it is now. */

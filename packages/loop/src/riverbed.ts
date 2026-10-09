@@ -66,7 +66,7 @@ export function proven(store: Store, config: Config): { advice: MemoryEntry[]; h
   }
 }
 
-function situation(entry: MemoryEntry, names: string[]): string {
+export function situation(entry: MemoryEntry, names: string[]): string {
   const f = entry.key.features
   const known = [...names.filter((n) => n in f), ...Object.keys(f).filter((n) => !names.includes(n)).sort()]
   if (known.length === 0) return 'In every situation'
@@ -175,4 +175,50 @@ export function writeLearned(o: LearnedOptions): LearnedReport {
   mkdirSync(dirname(full), { recursive: true })
   writeFileSync(full, text)
   return { ...report, written: true }
+}
+
+/** One line of the summary: the situation in words, the advice, and the judge's evidence. Never a strength. */
+export interface SummaryLine {
+  situation: string
+  claim: string
+  acted: number
+  passed: number
+}
+
+/** What the console's learning panel reads: written by the loop, `.dep-learned.json` at the project root. */
+export interface LearnedSummary {
+  game: string
+  updated: string
+  /** Pass rate by day, per run — a run with your edits is its own series. */
+  runs: Array<{ label: string; passRates: number[] }>
+  advice: SummaryLine[]
+  habits: SummaryLine[]
+  taught: SummaryLine[]
+  notes: string[]
+  totals: { claims: number; rules: number; habits: number; nightsKept: number; nightsUndone: number }
+}
+
+export function learnedSummary(store: Store, loaded: LoadedGame, runs: LearnedSummary['runs'], options: { config?: Partial<Config>; now?: Date } = {}): LearnedSummary {
+  const config = configWith(options.config)
+  const { advice, habits, taught } = proven(store, config)
+  const names = Object.keys(loaded.game.situation)
+  const lines = (entries: MemoryEntry[]) => entries.map((e) => ({ situation: situation(e, names), claim: e.claim, acted: e.gains + e.pains, passed: e.gains }))
+  const nights = store.log.flatMap((e) => (e.body.type === 'sleep' ? [e.body] : []))
+  const active = store.active()
+  return {
+    game: loaded.game.id,
+    updated: (options.now ?? new Date()).toISOString(),
+    runs: runs.map((r) => ({ label: r.label, passRates: r.passRates.map((x) => Math.round(x * 100) / 100) })),
+    advice: lines(advice), habits: lines(habits), taught: lines(taught), notes: [...store.notes],
+    totals: {
+      claims: active.length, rules: active.filter((e) => e.kind === 'rule').length, habits: active.filter((e) => e.distilled).length,
+      nightsKept: nights.filter((n) => n.slept && !n.undone).length, nightsUndone: nights.filter((n) => n.undone).length,
+    },
+  }
+}
+
+export function writeLearnedSummary(root: string, summary: LearnedSummary): string {
+  const file = resolve(root, '.dep-learned.json')
+  writeFileSync(file, JSON.stringify(summary, null, 2) + '\n')
+  return file
 }

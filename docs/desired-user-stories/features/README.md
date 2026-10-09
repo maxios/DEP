@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-40 flows, 322 scenarios.
+41 flows, 329 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -49,3 +49,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-61 What the agent learned about following up is used, and judged](flow-61-what-the-agent-learned-about-following-up-is-used-and-judged.feature) | As the person whose owners follow things up, I want what the agent has learned about following up to be put in front of the owner when a loop falls due, and that advice to grow stronger when following it was answered and weaker when it was not, so that the owners' habits of following up are shaped by what actually worked. | 5 | @flow-61 @ai-agent @heartbeat @loop @should |
 | [FLOW-62 DEP as pure documentation](flow-62-dep-as-pure-documentation.feature) | As someone who wants DEP only for documentation, I want a project that says nothing about the loop to write nothing beside its documents — no record of requests, no usage, no heartbeat, no proposals — so that adopting DEP never means adopting the loop, and switching it off is one line. | 6 | @flow-62 @human-author @project-lead @must |
 | [FLOW-63 Choosing which parts of the loop run](flow-63-choosing-which-parts-of-the-loop-run.feature) | As the person who runs a project with the loop on, I want to choose which parts of it run — recording, usage, the heartbeat, how owners act, whether a model is ever asked and how often — so that I turn on only what I trust, and can see at a glance what is running and why. | 8 | @flow-63 @project-lead @should |
+| [FLOW-64 See the loop in the console](flow-64-see-the-loop-in-the-console.feature) | As the person the owners work for, I want the console to show the loop at a glance — which parts run, each owner's heartbeat, what woke them and what they did, what is waiting for me, how follow-ups were scored, and what the agent has learned — and to let me answer what was brought to me, so that I can watch the loop work and step in without leaving the console. | 7 | @flow-64 @human-author @console @heartbeat @loop @should |

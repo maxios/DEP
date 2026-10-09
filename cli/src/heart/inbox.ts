@@ -10,6 +10,7 @@ import { createHash } from 'crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { parse as parseYaml, stringify } from 'yaml'
+import { DepError } from '../context/errors'
 
 export type MessageKind = 'question' | 'answer' | 'task' | 'notice' | 'escalation'
 
@@ -104,4 +105,19 @@ export function markRead(root: string, message: Message): void {
   if (meta.message.read === true) return
   meta.message.read = true
   writeFileSync(join(root, message.path), `---\n${stringify(meta)}---\n${text.slice(m[0].length)}`)
+}
+
+/**
+ * The person answers something brought to them: the answer goes to the owner
+ * who brought it, in the same exchange, and the question is no longer waiting.
+ */
+export function replyAsPerson(root: string, messageId: string, body: string, at: Date): Message {
+  const question = inbox(root, 'user').find((m) => m.id === messageId)
+  if (!question) throw new DepError('UNKNOWN_MESSAGE', `nothing brought to you is called ${messageId}`, { messageId })
+  const { message } = send(root, {
+    from: 'user', to: question.from, kind: 'answer', re: question.re ?? question.id, body, at,
+    dedupe: `user|${question.id}|${body}`, thread: question.thread ?? question.id, hops: 1,
+  })
+  markRead(root, question)
+  return message
 }

@@ -21,6 +21,7 @@ export type DepErrorCode =
   | 'UNKNOWN_PROPOSAL'
   | 'PROPOSAL_STALE'
   | 'LOOP_OFF'
+  | 'UNKNOWN_MESSAGE'
 
 /**
  * The one error type the library raises. Carries a stable code a program can

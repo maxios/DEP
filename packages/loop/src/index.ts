@@ -21,7 +21,7 @@ export { loadGame, GameError, type Game, type Level, type LoadedGame, type Scori
 export { judge, groundPrint, type Verdict, type VerdictCache, type JudgeOptions } from './game/suite'
 export { suiteHeldOut, type SuiteHeldOutOptions } from './game/heldout'
 export { playSuiteDay, playSuiteDayAsync, ChoosingPlayer, choicePath, refusal, situationSimilarity, gameReach, type SuitePlayer, type SuiteView, type SuiteDayResult, type SuiteDayOptions, type SuiteEpisode, type Write, type PlannedLevel } from './game/play'
-export { writeLearned, renderLearned, learnedBody, line, proven, WRITE_MIN_ACTED, type LearnedOptions, type LearnedReport } from './riverbed'
+export { writeLearned, renderLearned, learnedBody, line, learnedSummary, writeLearnedSummary, type LearnedSummary, type SummaryLine, proven, WRITE_MIN_ACTED, type LearnedOptions, type LearnedReport } from './riverbed'
 export { readJudgement, type JudgementOptions, type JudgementReport } from './judgement'
 export { ClaudePlayer, promptFor, anthropicAsk, type Ask, type Answer, type Prompt, type ClaudePlayerOptions } from './players/claude'
 export { learnFromOutcomes, followUpSimilarity, followUpAdvisor, type ScoredAsk } from './follow-ups'
