@@ -65,3 +65,9 @@ governance:
 generation:
   ai_provider: constrained
   require_human_review: false
+
+# The intelligent loop: see docs/reference/loop-configuration.md
+loop:
+  enabled: true
+  heartbeat:
+    act: rules
