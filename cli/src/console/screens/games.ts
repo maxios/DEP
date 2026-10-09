@@ -508,18 +508,5 @@ export const js = `  // ── games ──────────────�
     ]));
   }
 
-  function replyTo(id, body, item) {
-    fetch('/api/reply', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message: id, body: body })
-    }).then(function (r) {
-      return r.json().then(function (data) { return { ok: r.ok, data: data }; });
-    }).then(function (answer) {
-      if (!answer.ok) { item.appendChild(el('div', 'said bad', answer.data.error || 'refused')); return; }
-      // the reply is sent: nothing is being typed any more, so the panel may redraw at once
-      if (document.activeElement) document.activeElement.blur();
-      refresh(false).catch(function () {});
-    });
-  }
+
 `

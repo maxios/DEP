@@ -98,6 +98,7 @@ const PAGE = `<!doctype html>
     padding: 5px 18px; border-radius: 7px; cursor: pointer; transition: color .15s, background .15s;
   }
   nav button:hover { color: var(--ink); }
+  nav:has(button[data-screen="review"]:not([style*="none"])) button { padding: 5px 12px; }
   nav button[aria-selected="true"] { background: #FFFFFF1F; color: var(--ink); }
   .live { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 15px; white-space: nowrap;
           background: #32D74B14; border: 1px solid #32D74B33; border-radius: 99px; padding: 5px 12px; }
@@ -592,6 +593,7 @@ __SCREEN_JS__
   function openFromHash(screen, what) {
     if (screen === 'graph') select(what);
     if (screen === 'reader') openReader(what);
+    if (screen === 'decisions') { state.selectedTree = what; renderTrees(); }
   }
   window.addEventListener('hashchange', fromHash);
   refresh(true).then(function () { fromHash(); requestAnimationFrame(frame); }).catch(function () { requestAnimationFrame(frame); });

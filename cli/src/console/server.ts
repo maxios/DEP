@@ -12,6 +12,7 @@ import { openDocumentationSet } from '../lib'
 import type { DocumentationSet } from '../lib'
 import { DepError } from '../context/errors'
 import { buildDapGraph, getNodeTargets } from '../dap/tree-builder'
+import { resolveTrees } from '../dap/commands/resolve'
 import { loopReport } from '../commands/loop'
 import { consolePage } from './page'
 import { renderMarkdown } from './markdown'
@@ -232,6 +233,8 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
       }
       case '/api/procedures':
         return json(procedurePayload(root))
+      case '/api/procedures/resolve':
+        return json(procedureResolve(root, url.searchParams.get('q') ?? ''))
       default:
         break
     }
@@ -381,12 +384,16 @@ function procedurePayload(root: string) {
   const dapRoot = join(root, 'dap')
   if (!existsSync(join(dapRoot, '.dapspec'))) return { trees: [] }
   const dap = buildDapGraph(dapRoot)
+  const treeOf = (ref: string) => ref.replace(/^dap:\/\//, '').replace(/\.md$/, '').split('/')[0]!
   const trees = [...dap.trees.values()].map((tree) => ({
     id: tree.metadata.id,
+    version: tree.metadata.version,
     trigger: tree.metadata.trigger,
     entry: tree.metadata.entry_node,
     lifecycle: tree.lifecycle,
     confidence: tree.metadata.confidence,
+    // the trees that hand work to this one
+    delegatedFrom: [...new Set(dap.delegations.filter((d) => treeOf(d.target) === tree.metadata.id && d.tree !== tree.metadata.id).map((d) => d.tree))],
     steps: [...tree.nodes.values()].map((node) => ({
       id: node.id,
       type: node.type,
@@ -396,6 +403,15 @@ function procedurePayload(root: string) {
       next: getNodeTargets(node),
       conditions: (node.conditions ?? []).map((c) => ({ condition: c.condition, next: c.next })),
       handoff: node.delegate_to ?? null,
+      // the rest of the node, as declared, for the inspector
+      args: node.args ?? null,
+      prompt: node.prompt ?? '',
+      options: node.options ?? [],
+      outputs: node.outputs ?? [],
+      actionType: node.action_type ?? '',
+      ref: node.ref ?? '',
+      intent: node.intent ?? '',
+      terminal: Boolean(node.terminal),
     })),
     handsOffTo: [...new Set(
       [...tree.nodes.values()]
@@ -404,5 +420,13 @@ function procedurePayload(root: string) {
         .map((ref) => ref.replace(/^dap:\/\//, '').replace(/\.md$/, ''))
     )],
   }))
-  return { trees }
+  return { trees, delegations: dap.delegations.length, cycles: dap.cycles.length }
+}
+
+/** What dap_resolve would answer for a request: the trees that cover it, best first. */
+function procedureResolve(root: string, query: string) {
+  const dapRoot = join(root, 'dap')
+  if (!query.trim() || !existsSync(join(dapRoot, '.dapspec'))) return { query, matches: [] }
+  const matches = resolveTrees(buildDapGraph(dapRoot), query)
+  return { query, matches: matches.map((m) => ({ id: m.id, score: Math.round(m.score), entry: m.tree.metadata.entry_node })) }
 }
