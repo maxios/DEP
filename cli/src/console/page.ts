@@ -19,13 +19,19 @@ import * as review from './screens/review'
 const SCREENS = [graph, traversal, decisions, health, reader, loop, games, review]
 const JS_ORDER = [graph, traversal, decisions, health, review, loop, games, reader]
 
-export function consolePage(project: string): string {
-  const name = project.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+/** What the header names: the project, the folder it lives in, and the branch checked out. */
+export interface PageInfo { place?: string; branch?: string }
+
+const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+export function consolePage(project: string, info: PageInfo = {}): string {
+  const name = escape(project)
   const page = PAGE
     .replace('__SCREEN_CSS__', () => SCREENS.map((s) => s.css).filter(Boolean).join('\n'))
     .replace('__SCREEN_HTML__', () => SCREENS.map((s) => s.html).join('\n'))
     .replace('__SCREEN_JS__', () => JS_ORDER.map((s) => s.js).join('\n'))
-  return page.split('__PROJECT__').join(name)
+  return page.split('__PLACE__').join(escape(info.place ?? project)).split('__BRANCH__').join(escape(info.branch ?? ''))
+    .split('__PROJECT__').join(name)
 }
 
 const PAGE = `<!doctype html>
@@ -36,23 +42,28 @@ const PAGE = `<!doctype html>
 <title>__PROJECT__ — dep console</title>
 <style>
   :root {
-    --bg: #000000;
-    --panel: rgba(255,255,255,0.045);
-    --panel-solid: #0e0e10;
-    --line: rgba(255,255,255,0.09);
-    --line-soft: rgba(255,255,255,0.055);
-    --ink: #f5f5f7;
-    --dim: #86868b;
-    --dimmer: #5c5c61;
-    --accent: #0a84ff;
-    --fresh: #30d158;
-    --aging: #ffd60a;
-    --stale: #ff453a;
-    --tutorial: #30d158;
-    --howto: #ff9f0a;
-    --reference: #0a84ff;
-    --explanation: #bf5af0;
-    --decision: #ff375f;
+    --bg: #07080A;
+    --panel: #0F1013;
+    --panel-solid: #0F1013;
+    --surface-2: #16171B;
+    --surface-3: #1E1F24;
+    --line: #FFFFFF12;
+    --line-soft: #FFFFFF0A;
+    --line-strong: #FFFFFF24;
+    --ink: #F5F5F7;
+    --dim: #A1A1A8;
+    --dimmer: #6B6B73;
+    --accent: #0A84FF;
+    --fresh: #32D74B;
+    --aging: #FFD60A;
+    --stale: #FF453A;
+    --tutorial: #32D74B;
+    --howto: #FF9F0A;
+    --reference: #64D2FF;
+    --explanation: #BF5AF2;
+    --decision: #FF6482;
+    --ui: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "JetBrainsMonoNL Nerd Font", "SF Mono", ui-monospace, Menlo, monospace;
     --radius: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -60,40 +71,52 @@ const PAGE = `<!doctype html>
   body {
     background: var(--bg);
     color: var(--ink);
-    font: 13px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+    font: 13px/1.5 var(--ui);
     -webkit-font-smoothing: antialiased;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
-  .mono { font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace; font-size: 11.5px; }
+  .mono { font-family: var(--mono); font-size: 11.5px; }
 
   header {
-    display: flex; align-items: center; gap: 16px;
-    padding: 0 16px; height: 46px; flex: 0 0 46px;
-    border-bottom: 1px solid var(--line);
-    background: rgba(20,20,22,0.72);
-    backdrop-filter: saturate(180%) blur(20px);
-    position: relative; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; height: 52px; flex: 0 0 52px;
+    border-bottom: 1px solid var(--line); background: var(--panel); position: relative; z-index: 20;
   }
-  .brand { display: flex; align-items: center; gap: 9px; font-weight: 590; letter-spacing: -0.01em; }
-  .mark {
-    width: 19px; height: 19px; border-radius: 6px;
-    background: linear-gradient(145deg, #0a84ff, #bf5af0);
-    box-shadow: 0 0 14px rgba(10,132,255,0.35);
-  }
-  nav { display: flex; gap: 2px; margin: 0 auto; background: rgba(255,255,255,0.055); padding: 3px; border-radius: 9px; }
+  .hd-side { flex: 1 1 0; display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .hd-side.end { justify-content: flex-end; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .mark { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+          background: linear-gradient(135deg, #0A84FF 14.6%, #BF5AF2 85.4%); color: #FFFFFF; }
+  .brand .name { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .brand .branch { font-family: var(--mono); font-size: 11px; color: var(--dimmer); white-space: nowrap; }
+  nav { display: flex; gap: 2px; background: var(--surface-3); padding: 3px; border-radius: 9px; flex: 0 0 auto; }
   nav button {
     appearance: none; border: 0; background: transparent; color: var(--dim);
-    font: inherit; font-size: 12px; font-weight: 510;
-    padding: 4px 13px; border-radius: 7px; cursor: pointer; transition: color .15s, background .15s;
+    font: inherit; font-size: 12px; font-weight: 500; line-height: 15px;
+    padding: 5px 18px; border-radius: 7px; cursor: pointer; transition: color .15s, background .15s;
   }
   nav button:hover { color: var(--ink); }
-  nav button[aria-selected="true"] { background: rgba(255,255,255,0.12); color: var(--ink); }
-  .live { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--dim);
-          border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; }
-  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--fresh); box-shadow: 0 0 8px var(--fresh); }
+  nav button[aria-selected="true"] { background: #FFFFFF1F; color: var(--ink); }
+  .live { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 15px; white-space: nowrap;
+          background: #32D74B14; border: 1px solid #32D74B33; border-radius: 99px; padding: 5px 12px; }
+  .live #live-text { color: #9BF0AA; font-weight: 500; } .live #live-ago { color: var(--dimmer); }
+  .live.cold { background: #FFFFFF0A; border-color: var(--line); } .live.cold #live-text { color: var(--dim); }
+  .dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--fresh); box-shadow: 0 0 8px #32D74BAA; }
   .dot.cold { background: var(--dimmer); box-shadow: none; }
+  .search { position: relative; width: 180px; flex: 0 0 180px; display: flex; align-items: center; gap: 8px;
+            padding: 6px 10px; background: var(--surface-3); border-radius: 8px; color: var(--dimmer); }
+  .search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: var(--ink); font: inherit; font-size: 12px; line-height: 16px; padding: 0; }
+  .search input::placeholder { color: var(--dimmer); }
+  .search kbd { font: inherit; font-size: 11px; color: var(--dimmer); }
+  .search-results { position: absolute; top: calc(100% + 6px); right: 0; width: 340px; background: var(--surface-2); border: 1px solid var(--line-strong);
+                    border-radius: 10px; padding: 4px; display: none; box-shadow: 0 12px 32px #00000080; }
+  .search-results.on { display: block; }
+  .search-results div { padding: 6px 9px; border-radius: 6px; cursor: pointer; display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink); }
+  .search-results div span { font-family: var(--mono); font-size: 10.5px; color: var(--dimmer); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .search-results div.on, .search-results div:hover { background: #FFFFFF14; }
+  .search-results i { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; }
 
   main { flex: 1; min-height: 0; position: relative; }
   section.screen { position: absolute; inset: 0; display: none; }
@@ -284,7 +307,7 @@ __SCREEN_CSS__
 </head>
 <body>
 <header>
-  <div class="brand"><div class="mark"></div><span>__PROJECT__</span></div>
+  <div class="hd-side"><div class="brand"><div class="mark" id="mark"></div><span class="name">__PLACE__</span><span class="branch">__BRANCH__</span></div></div>
   <nav>
     <button data-screen="graph" aria-selected="true">Graph</button>
     <button data-screen="traversal" aria-selected="false">Traversal</button>
@@ -294,7 +317,10 @@ __SCREEN_CSS__
     <button data-screen="loop" aria-selected="false">Loop</button>
     <button data-screen="games" aria-selected="false" style="display:none">Games</button>
   </nav>
-  <div class="live"><span class="dot" id="pulse"></span><span id="live-text">connecting</span></div>
+  <div class="hd-side end">
+    <div class="live cold" id="live"><span class="dot cold" id="pulse"></span><span id="live-text">connecting</span><span id="live-ago"></span></div>
+    <label class="search" id="search-box"><span id="search-icon"></span><input id="search" placeholder="Find a document" autocomplete="off" spellcheck="false"><kbd>&#8984;K</kbd><div class="search-results" id="search-results"></div></label>
+  </div>
 </header>
 
 <main>
@@ -306,10 +332,10 @@ __SCREEN_HTML__
   'use strict';
 
   var TYPE_COLOR = {
-    tutorial: '#30d158', 'how-to': '#ff9f0a', reference: '#0a84ff',
-    explanation: '#bf5af0', 'decision-record': '#ff375f'
+    tutorial: '#32D74B', 'how-to': '#FF9F0A', reference: '#64D2FF',
+    explanation: '#BF5AF2', 'decision-record': '#FF6482'
   };
-  var LIFE_COLOR = { FRESH: '#30d158', AGING: '#ffd60a', STALE: '#ff453a' };
+  var LIFE_COLOR = { FRESH: '#32D74B', AGING: '#FFD60A', STALE: '#FF453A' };
   var REL_ORDER = ['TEACHES', 'USES', 'EXPLAINS', 'DECIDES', 'REQUIRES', 'NEXT', 'INLINE'];
 
   var state = {
@@ -327,6 +353,65 @@ __SCREEN_HTML__
     return node;
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); return node; }
+
+  /** Lucide icons, as the designs use them; drawn with the text colour. */
+  var ICONS = {
+    'activity': '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+    'arrow-down-left': '<path d="M17 7 7 17"/><path d="M17 17H7V7"/>',
+    'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    'arrow-up-right': '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
+    'ban': '<circle cx="12" cy="12" r="10"/><path d="M4.929 4.929 19.07 19.071"/>',
+    'book-open': '<path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/>',
+    'check': '<path d="M20 6 9 17l-5-5"/>',
+    'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+    'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+    'circle-alert': '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+    'circle-check': '<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>',
+    'circle-dashed': '<path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/>',
+    'circle-x': '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+    'copy': '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    'corner-down-right': '<path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/>',
+    'eye': '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+    'file-check': '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="m9 15 2 2 4-4"/>',
+    'file-text': '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    'file-x': '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="m14.5 12.5-5 5"/><path d="m9.5 12.5 5 5"/>',
+    'git-compare-arrows': '<circle cx="5" cy="6" r="3"/><path d="M12 6h5a2 2 0 0 1 2 2v7"/><path d="m15 9-3-3 3-3"/><circle cx="19" cy="18" r="3"/><path d="M12 18H7a2 2 0 0 1-2-2V9"/><path d="m9 15 3 3-3 3"/>',
+    'git-fork': '<circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/>',
+    'hand': '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+    'layers': '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
+    'lightbulb': '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+    'link-2': '<path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/>',
+    'list-tree': '<path d="M8 5h13"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="M3 10a2 2 0 0 0 2 2h3"/><path d="M3 5v12a2 2 0 0 0 2 2h3"/>',
+    'locate-fixed': '<line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/>',
+    'lock': '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    'minus': '<path d="M5 12h14"/>',
+    'pencil': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+    'pencil-line': '<path d="M13 21h8"/><path d="m15 5 4 4"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+    'play': '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
+    'plus': '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    'power': '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>',
+    'quote': '<path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/><path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/>',
+    'refresh-cw': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    'reply': '<path d="M20 18v-2a4 4 0 0 0-4-4H4"/><path d="m9 17-5-5 5-5"/>',
+    'rotate-ccw': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+    'scan': '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>',
+    'search': '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+    'shield-check': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    'triangle-alert': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    'user-round': '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+    'waypoints': '<path d="m10.586 5.414-5.172 5.172"/><path d="m18.586 13.414-5.172 5.172"/><path d="M6 12h12"/><circle cx="12" cy="20" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="20" cy="12" r="2"/><circle cx="4" cy="12" r="2"/>',
+    'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'
+  };
+  function icon(name, size) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', size); svg.setAttribute('height', size);
+    svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2'); svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+    svg.style.flex = '0 0 auto';
+    svg.innerHTML = ICONS[name] || '';
+    return svg;
+  }
   function byId(id) { return document.getElementById(id); }
   function typeColor(t) { return TYPE_COLOR[t] || '#8e8e93'; }
   function lifeColor(l) { return LIFE_COLOR[l] || '#8e8e93'; }
@@ -361,6 +446,62 @@ __SCREEN_HTML__
 
 __SCREEN_JS__
   // ── screens & loading ───────────────────────────────────────────────
+
+  // ── header ──────────────────────────────────────────────────────────
+
+  byId('mark').appendChild(icon('waypoints', 13));
+  byId('search-icon').appendChild(icon('search', 14));
+  byId('search-icon').style.display = 'flex';
+
+  function agoText(at) {
+    var s = Math.max(0, Math.round((Date.now() - at) / 1000));
+    return s < 60 ? s + 's ago' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago';
+  }
+  function liveAgo() {
+    if (state.refreshedAt && !byId('live').classList.contains('cold')) byId('live-ago').textContent = 'scraped ' + agoText(state.refreshedAt);
+  }
+  setInterval(liveAgo, 1000);
+
+  /** Find a document by title or path; choosing one selects it in the graph. */
+  var searchHits = [], searchAt = 0;
+  function renderSearch() {
+    var box = clear(byId('search-results'));
+    var q = byId('search').value.trim().toLowerCase();
+    searchHits = !q || !state.graph ? [] : state.graph.nodes.filter(function (n) {
+      return (n.title || '').toLowerCase().indexOf(q) >= 0 || n.path.toLowerCase().indexOf(q) >= 0;
+    }).slice(0, 8);
+    searchAt = Math.min(searchAt, Math.max(0, searchHits.length - 1));
+    searchHits.forEach(function (n, i) {
+      var row = el('div', i === searchAt ? 'on' : null);
+      var dot = el('i'); dot.style.background = TYPE_COLOR[n.type] || 'var(--dim)';
+      row.appendChild(dot);
+      row.appendChild(document.createTextNode(n.title || n.path));
+      row.appendChild(el('span', null, n.path));
+      row.onmousedown = function (e) { e.preventDefault(); chooseSearch(n); };
+      box.appendChild(row);
+    });
+    if (q && !searchHits.length) box.appendChild(el('div', null, 'No document matches.'));
+    box.classList.toggle('on', !!q);
+  }
+  function chooseSearch(n) {
+    byId('search').value = '';
+    byId('search').blur();
+    renderSearch();
+    showScreen('graph');
+    select(n.path);
+  }
+  byId('search').addEventListener('input', function () { searchAt = 0; renderSearch(); });
+  byId('search').addEventListener('blur', function () { byId('search-results').classList.remove('on'); });
+  byId('search').addEventListener('focus', renderSearch);
+  byId('search').addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') { searchAt = Math.min(searchAt + 1, searchHits.length - 1); renderSearch(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { searchAt = Math.max(searchAt - 1, 0); renderSearch(); e.preventDefault(); }
+    else if (e.key === 'Enter' && searchHits[searchAt]) chooseSearch(searchHits[searchAt]);
+    else if (e.key === 'Escape') { byId('search').value = ''; byId('search').blur(); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); byId('search').focus(); byId('search').select(); }
+  });
 
   function showScreen(which) {
     Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
@@ -402,9 +543,10 @@ __SCREEN_JS__
       state.checkedAt = Date.now();
       var gamesTab = document.querySelector('nav button[data-screen="games"]');
       if (gamesTab) gamesTab.style.display = state.games ? '' : 'none';
-      // what the project has switched off is not shown at all
+      // what the project has switched off is not shown at all; Review shows itself while something waits for you
       var review = document.querySelector('nav button[data-screen="review"]');
-      if (review) review.style.display = state.loop && state.loop.proposals === 'off' ? 'none' : '';
+      var waiting = state.proposals.length + dueForReview().length;
+      if (review) review.style.display = (state.loop && state.loop.proposals === 'off') || (!waiting && review.getAttribute('aria-selected') !== 'true') ? 'none' : '';
       if (first || !sameShape) layout(state.graph);
       renderStats();
       renderLegend();
@@ -423,19 +565,33 @@ __SCREEN_JS__
         renderTree(state.procedures.trees[0]);
       }
       byId('pulse').classList.remove('cold');
-      byId('live-text').textContent = 'live · ' + state.graph.stats.documents + ' documents';
+      byId('live').classList.remove('cold');
+      byId('live-text').textContent = 'Live ' + String.fromCharCode(183) + ' ' + location.host;
+      state.refreshedAt = Date.now();
+      liveAgo();
     }).catch(function (err) {
       byId('pulse').classList.add('cold');
-      byId('live-text').textContent = 'offline';
+      byId('live').classList.add('cold');
+      byId('live-text').textContent = 'Offline';
+      byId('live-ago').textContent = state.refreshedAt ? 'last seen ' + agoText(state.refreshedAt) : '';
       throw err;
     });
   }
 
   sizeCanvas();
   // a screen can be linked to: #games opens on the Games tab
+  // #graph/docs/seed.md selects that document; #decisions/<tree> opens that tree
   function fromHash() {
-    var want = location.hash.slice(1);
-    if (want && document.querySelector('nav button[data-screen="' + want + '"]')) showScreen(want);
+    var want = decodeURIComponent(location.hash.slice(1));
+    var cut = want.indexOf('/');
+    var screen = cut < 0 ? want : want.slice(0, cut), what = cut < 0 ? '' : want.slice(cut + 1);
+    if (!screen || !document.querySelector('nav button[data-screen="' + screen + '"]')) return;
+    showScreen(screen);
+    if (what) openFromHash(screen, what);
+  }
+  function openFromHash(screen, what) {
+    if (screen === 'graph') select(what);
+    if (screen === 'reader') openReader(what);
   }
   window.addEventListener('hashchange', fromHash);
   refresh(true).then(function () { fromHash(); requestAnimationFrame(frame); }).catch(function () { requestAnimationFrame(frame); });

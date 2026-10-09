@@ -7,7 +7,7 @@
  * It listens on the loopback address only. Nothing it serves leaves the machine.
  */
 import { existsSync, readFileSync, watch, type FSWatcher } from 'fs'
-import { join, resolve, relative, isAbsolute } from 'path'
+import { basename, dirname, join, resolve, relative, isAbsolute } from 'path'
 import { openDocumentationSet } from '../lib'
 import type { DocumentationSet } from '../lib'
 import { DepError } from '../context/errors'
@@ -217,7 +217,7 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
         return json({ proposals: current().proposals() })
       case '/':
       case '/index.html':
-        return new Response(consolePage(current().config().project.name ?? 'documentation'), {
+        return new Response(consolePage(current().config().project.name ?? 'documentation', { place: `${basename(dirname(root))} / ${basename(root)}`, branch: branchOf(root) }), {
           headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
         })
       case '/api/graph':
@@ -251,6 +251,16 @@ function gameDocuments(set: DocumentationSet, root: string): string[] {
       return false
     }
   }).sort()
+}
+
+/** The branch checked out, read from .git/HEAD; empty when the project is not a plain git checkout. */
+function branchOf(root: string): string {
+  try {
+    const head = readFileSync(join(root, '.git', 'HEAD'), 'utf-8').trim()
+    return head.startsWith('ref: refs/heads/') ? head.slice('ref: refs/heads/'.length) : head.slice(0, 7)
+  } catch {
+    return ''
+  }
 }
 
 async function games(request: Request, url: URL, set: DocumentationSet, root: string, port: number): Promise<Response> {
