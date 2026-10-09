@@ -18,6 +18,10 @@ export type DepErrorCode =
   | 'UNKNOWN_BUNDLE'
   | 'DOCUMENT_NOT_FOUND'
   | 'PORT_TAKEN'
+  | 'UNKNOWN_PROPOSAL'
+  | 'PROPOSAL_STALE'
+  | 'LOOP_OFF'
+  | 'UNKNOWN_MESSAGE'
 
 /**
  * The one error type the library raises. Carries a stable code a program can

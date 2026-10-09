@@ -24,8 +24,10 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
     "@huggingface/transformers": "^3.0.0",
     "gray-matter": "^4.0.3",
-    "yaml": "^2.8.3"
+    "yaml": "^2.8.3",
+    "zod": "^4.6.5"
   }
 }

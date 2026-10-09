@@ -16,6 +16,9 @@ export interface DepMetadata {
   superseded_by?: string
   review_trigger?: string
   participants?: string[]
+  heart?: import('./heart/heart').Heart
+  /** This document describes an owner's role: see src/heart/heart.ts. */
+  agent?: import('./heart/heart').Role
 }
 
 export interface DepEdge {
@@ -77,6 +80,10 @@ export interface DocspecConfig {
   custom_types?: Array<{ id: string; extends: string; additional_required_patterns: string[] }>
   custom_relationships?: Array<{ id: string; meaning: string; inverse?: string }>
   vectorization?: VectorizationConfig
+  /** Which of the loop's parts run: see src/loop-config.ts. Absent: none — DEP is pure documentation. */
+  loop?: Record<string, unknown>
+  /** Read as loop.heartbeat, when the loop is on; kept for projects written before the loop block. */
+  heartbeat?: { quiet_hours?: string; timezone?: string; max_hops?: number }
 }
 
 // Vector types

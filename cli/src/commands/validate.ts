@@ -1,3 +1,5 @@
+import { heartProblems, roleProblems } from '../heart/heart'
+import { loopProblems } from '../loop-config'
 import { buildGraph } from '../graph'
 import { loadDocspec } from '../config'
 import { existsSync } from 'fs'
@@ -126,6 +128,16 @@ function validateDocument(
     }
   }
 
+  if (meta.heart !== undefined) {
+    const problems = heartProblems(meta.heart, (p) => existsSync(join(root, p)))
+    checks.push({ name: 'Heart valid', passed: problems.length === 0, message: problems.length > 0 ? problems.join('; ') : undefined })
+  }
+
+  if (meta.agent !== undefined) {
+    const problems = roleProblems(meta.agent)
+    checks.push({ name: 'Role valid', passed: problems.length === 0, message: problems.length > 0 ? problems.join('; ') : undefined })
+  }
+
   // Confidence
   checks.push({
     name: 'Confidence valid',
@@ -147,6 +159,12 @@ function validateGraph(
   config: DocspecConfig
 ): Array<{ name: string; passed: boolean; message?: string }> {
   const checks: Array<{ name: string; passed: boolean; message?: string }> = []
+
+  // the loop's configuration, when the project has one
+  if (config.loop !== undefined) {
+    const problems = loopProblems(config.loop)
+    checks.push({ name: 'Loop configuration valid', passed: problems.length === 0, message: problems.length ? problems.join('; ') : undefined })
+  }
 
   // Orphan check
   checks.push({

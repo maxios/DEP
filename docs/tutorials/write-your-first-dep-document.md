@@ -1,13 +1,21 @@
 ---
 dep:
   type: tutorial
-  audience: [human-author]
+  audience:
+    - human-author
   owner: "@dep-core"
   created: 2026-03-22T23:36:54+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-10-09T08:19:31.899+03:00
   confidence: high
-  depends_on: [seed.md, docs/reference/dep-metadata-schema.md, docs/reference/document-type-signatures.md]
-  tags: [getting-started, first-document, tutorial]
+  depends_on:
+    - seed.md
+    - docs/reference/dep-metadata-schema.md
+    - docs/reference/document-type-signatures.md
+    - cli/src/commands/validate.ts
+  tags:
+    - getting-started
+    - first-document
+    - tutorial
   links:
     - target: ../reference/dep-metadata-schema.md
       rel: TEACHES
@@ -142,7 +150,7 @@ At the bottom of your document, add a Related section linking to:
 - [Why Type Purity Matters](../explanation/why-type-purity-matters.md) — context for type separation
 ```
 
-**Expected result**: Your document links to at least one other document. No orphans.
+**Expected result**: Your document links to at least one other document.
 
 ### Step 6 — Self-Validate
 
@@ -153,7 +161,7 @@ Run through this checklist:
 - [ ] `audience` references IDs from `.docspec`
 - [ ] Document has: goal statement, prerequisites, steps, verification
 - [ ] Document does NOT have: teaching asides, reference tables, historical context
-- [ ] All links point to real files (or planned files noted as `(planned)`)
+- [ ] All links point to files that exist (`dep validate --root .` fails *Links resolve* for a link to a missing file)
 - [ ] The document is reachable from your audience's entry point
 
 **Expected result**: All checks pass. Your document is DEP-compliant.

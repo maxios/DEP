@@ -9,6 +9,13 @@ export interface TraceOffered {
   section: string
   /** Why this passage was in the answer: a direct match, or how it was reached. */
   reason: string
+  /** The document it was reached from, when it was not a direct match. */
+  via?: string
+  type?: string
+  tokens?: number
+  score?: number
+  signals?: { semantic: number | null; keyword: number; graph: number; usage: number }
+  freshness?: string
 }
 
 export interface TraceEntry {
@@ -23,9 +30,17 @@ export interface TraceEntry {
   outcome: 'answered' | 'refused'
   error?: { code: string; message: string }
   budget?: { declared: number; used: number }
+  /** What the consumer asked for besides the question: audience, freshness policy. */
+  asked?: { audience?: string; freshness?: string }
+  /** How long the answer took, in milliseconds. */
+  ms?: number
+  /** What came back, in brief: a validation's pass/warn/fail, a procedure step's node type. */
+  result?: Record<string, number | string>
   offered: TraceOffered[]
   /** Passages the consumer later reported using. Empty until it reports. */
   used: string[]
+  /** What matched but was kept from the consumer, and why: past or near its review date. */
+  withheld?: Array<{ document: string; section: string; reason: 'stale' | 'aging'; lastVerified: string | null }>
 }
 
 export interface TraceReport {

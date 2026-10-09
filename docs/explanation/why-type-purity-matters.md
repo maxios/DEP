@@ -1,13 +1,20 @@
 ---
 dep:
   type: explanation
-  audience: [human-author, ai-generator]
+  audience:
+    - human-author
+    - ai-generator
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-10-09T08:05:38.382+03:00
   confidence: high
-  depends_on: [seed.md, docs/reference/document-type-signatures.md]
-  tags: [type-purity, architecture, principles]
+  depends_on:
+    - seed.md
+    - docs/reference/document-type-signatures.md
+  tags:
+    - type-purity
+    - architecture
+    - principles
   links:
     - target: ../reference/document-type-signatures.md
       rel: EXPLAINS

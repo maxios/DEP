@@ -1,13 +1,19 @@
 ---
 dep:
   type: explanation
-  audience: [project-lead, human-author]
+  audience:
+    - project-lead
+    - human-author
   owner: "@dep-core"
   created: 2026-03-23T14:00:00+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-10-09T08:05:38.456+03:00
   confidence: high
-  depends_on: [seed.md]
-  tags: [comparison, frameworks, adoption]
+  depends_on:
+    - seed.md
+  tags:
+    - comparison
+    - frameworks
+    - adoption
   links:
     - target: ../decision-records/dr-001-five-types-not-four.md
       rel: EXPLAINS

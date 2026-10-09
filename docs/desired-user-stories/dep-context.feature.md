@@ -1634,11 +1634,34 @@ Feature: FLOW-41 Serve a documentation set to a console
     Then I am given that document's metadata, its freshness and what links to it
 
   @happy-path
+  Scenario: The console shows a document's content, rendered
+    Given a document with headings, a list, a table, code and a link to another document
+    And a running console
+    When I ask it for that document
+    Then I am given its content rendered for reading, headings, lists, tables and code
+    And its links to other documents in the set can be followed in the console
+
+  @security
+  Scenario: A document's content cannot run anything in the console
+    Given a document whose content contains a script
+    And a running console
+    When I ask it for that document
+    Then the script is shown as text, never as something that runs
+
+  @happy-path
   Scenario: The console shows what the agents have been asking for
     Given an agent has asked the set a question
     And a running console
     When I ask it for the record of requests
     Then I am given that request, with what it offered and who asked for it
+
+  @happy-path
+  Scenario: The console shows what was kept from an agent, and why
+    Given a document past its review date that answers the agent's question
+    And an agent has asked the set a question
+    And a running console
+    When I ask it for the record of requests
+    Then I am given what was kept from the agent, because it is past its review date
 
   @happy-path
   Scenario: The console keeps up with the documents
@@ -1841,6 +1864,1644 @@ Feature: FLOW-43 Fix a document from the console
     When a request arrives addressed to a host that is not this machine
     Then the change is refused
     And the document is left as it was
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-44 @developer @loop @should
+Feature: FLOW-44 Learn a maze from a store of claims
+  """
+  As someone building an agent that should get better at a task with experience,
+  I want a store of claims keyed by situation that only honest outcomes can strengthen,
+  so that the agent's context improves with what happened, not with what it says about itself.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#build-order
+  # Design: docs/desired-user-stories/liveness-design.md#the-contradiction
+  # Source: packages/loop/src
+
+  Background:
+    Given the reference maze, pinned to the core it was proven on
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: An empty store changes nothing
+    When the player plays a day of fresh mazes, starting with an empty store
+    Then its first maze is played exactly as it would be with no store at all
+    And the store holds claims about situations, never about particular places
+
+  @happy-path
+  Scenario: Playing with the store beats playing without it
+    When the player plays the same days of mazes with a store and without one
+    Then with the store it falls short less often
+    And with the store its runs score better
+
+  @happy-path
+  Scenario: The same seed plays the same day
+    When I play a day twice from the same seed
+    Then both days end with the same fingerprint
+
+  @happy-path
+  Scenario: The store can be rebuilt from what it recorded
+    Given a day has been played
+    When I rebuild the store from its record of changes
+    Then the rebuilt store has the same fingerprint as the one the day left behind
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @validation
+  Scenario: The player cannot award itself
+    Given a player that reports every episode as a triumph
+    When it plays a day of fresh mazes with a store of claims
+    Then the store is exactly what an honest player making the same moves would have left
+
+  @edge-case
+  Scenario: The player is shown claims, never how much they are trusted
+    When the player is shown what the store knows about a situation
+    Then it receives the claims best first
+    And nothing it receives says how strongly any of them is held
+
+  @edge-case
+  Scenario: Only the claims the player followed are credited
+    Given the store holds two claims about one situation that recommend different moves
+    When the player follows one of them and the episode goes well
+    Then the claim it followed is held more strongly
+    And the claim it passed over is held exactly as strongly as before
+
+  @error
+  Scenario: Refuse a maze core that is not the one the engine was proven on
+    Given the vendored maze core no longer matches its pin
+    When I start a day
+    Then I am told the core does not match its pin
+    And no day is played
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-45 @developer @loop @should
+Feature: FLOW-45 Keep the store small and general between days
+  """
+  As someone whose agent learns a little from every episode,
+  I want the end of each day to fade what went unused, put away what has long stopped
+  helping, and fold claims that say the same thing about similar situations into one rule,
+  so that the store stays small enough to read and general enough to carry to new situations.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#build-order
+  # Source: packages/loop/src
+
+  Background:
+    Given the reference maze, pinned to the core it was proven on
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Claims nobody read today fade
+    Given the store holds a claim that was read today and one that was not
+    When the day ends
+    Then the claim nobody read is held a little less strongly than before
+    And the claim that was read is held exactly as strongly as the day left it
+
+  @happy-path
+  Scenario: A claim that has long stopped helping is put away, not destroyed
+    Given a claim that has faded below use and is older than faded claims are kept
+    When the day ends
+    Then the player is no longer shown it
+    And it is still in the store, with its history
+
+  @happy-path
+  Scenario: The same advice about situations that look alike becomes one rule
+    Given the store holds the same advice about situations that differ only in which way the player came in
+    When the day ends
+    Then the store holds one rule in their place
+    And the rule says which claims it came from
+    And the rule is about only what those situations had in common
+    And the claims it came from are put away
+
+  @happy-path
+  Scenario: The end of a day is part of the record
+    Given several days have been played
+    When I rebuild the store from its record of changes
+    Then the rebuilt store has the same fingerprint as the one the day left behind
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @validation
+  Scenario: Different advice is never folded together
+    Given the store holds different advice about situations that differ only in which way the player came in
+    When the day ends
+    Then each piece of advice is still held on its own
+
+  @edge-case
+  Scenario: A claim too new to judge is not put away
+    Given a claim that has faded below use but is younger than faded claims are kept
+    When the day ends
+    Then the player can still be shown it
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-46 @developer @loop @should
+Feature: FLOW-46 Sleep on what the day proved
+  """
+  As someone whose agent's context fills with claims that keep proving right,
+  I want a night that moves those claims out of context and into the agent's instincts,
+  only after a day that was going well and only when the move does not make it worse,
+  so that context holds what is still being learned rather than what is already known.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#build-order
+  # Source: packages/loop/src
+
+  Background:
+    Given the reference maze, pinned to the core it was proven on
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: A day that was going well is slept on
+    Given a day of play that was settling down
+    When the night comes
+    Then the player wakes with a new version of its instincts
+    And the new version was taught only claims that had proved themselves
+
+  @happy-path
+  Scenario: The night teaches without showing the claim it teaches
+    Given a day of play that was settling down
+    When the night comes
+    Then nothing the night was taught from contains a claim from the store
+
+  @happy-path
+  Scenario: A claim the instincts now carry is let go
+    Given a day of play that was settling down
+    When the night comes and the following days pass
+    Then a claim the new instincts carry is no longer offered as advice
+    And it is still in the store, marked as absorbed
+
+  @happy-path
+  Scenario: Every night is part of the record
+    Given several days and nights have passed
+    When I rebuild the store from its record of changes
+    Then the rebuilt store has the same fingerprint as the one the day left behind
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @validation
+  Scenario: A day that was thrashing is not slept on
+    Given a day of play that was getting worse
+    When the night comes
+    Then the player wakes with the instincts it went to sleep with
+    And I am told the day was not slept on, and why
+    And no claim is marked as absorbed
+
+  @validation
+  Scenario: A day that failed throughout is not slept on
+    Given a day of play that failed from start to finish
+    When the night comes
+    Then the player wakes with the instincts it went to sleep with
+    And I am told the day was not slept on, and why
+    And no claim is marked as absorbed
+
+  @edge-case
+  Scenario: A claim the instincts did not take in stays in context
+    Given a day of play that was settling down
+    And a trainer that leaves one proven claim out
+    When the night comes
+    Then that claim is still offered as advice
+    And it is not marked as absorbed
+    And the rest of what the night learned is kept
+
+  @edge-case
+  Scenario: A claim the context still needs is held back without losing the night
+    Given a day of play after which letting every proven claim go would leave the player worse
+    When the night comes
+    Then the rest of what the night learned is kept
+    And not every claim it was taught was let go
+    And a claim it held back is still offered as advice
+
+  @error
+  Scenario: A night that taught the opposite of its claims is undone
+    Given a day of play that was settling down
+    And a trainer that teaches the opposite of what the claims say
+    When the night comes
+    Then the player wakes with the instincts it went to sleep with
+    And I am told the night was undone because it taught against its own claims
+    And no claim is marked as absorbed
+
+  @error
+  Scenario: A night that would make the player worse is undone
+    Given a day of play that was settling down
+    And a trainer that teaches only a habit leading away from the goal everywhere
+    When the night comes
+    Then the player wakes with the instincts it went to sleep with
+    And I am told the night was undone because its instincts, on their own, did worse
+    And no claim is marked as absorbed
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-47 @developer @loop @should
+Feature: FLOW-47 Describe a game in a document
+  """
+  As someone setting an agent a task it should get better at,
+  I want to write the rules of the game in a documentation file — which scenarios are the
+  levels, what makes two situations the same, where the player may write, and who keeps score —
+  so that the game is reviewed and kept current like any other documentation, and so the
+  player can never be given a way to judge itself.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#notating-the-game
+  # Source: packages/loop/src/game
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Read a game from its document
+    Given a game document that names an arena of scenarios and which of them are in play
+    When I read the game
+    Then every scenario in play is a level
+    And no scenario outside the selection is a level
+
+  @happy-path
+  Scenario: Each level is a situation the store can recognise
+    Given a game whose situations are described by a scenario's tags and its example row
+    When I read the game
+    Then each level's situation carries the features the game names
+    And two rows of the same outline are different situations that share their tags
+
+  @happy-path
+  Scenario: A game document is documentation like any other
+    Given a game document in the project's documentation
+    When the documentation set is validated
+    Then the game document is checked like any other reference
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @validation
+  Scenario: Refuse a game the player could score
+    Given a game document that lets something other than the scenarios keep score
+    When I read the game
+    Then I am told the scenarios must be the only judge
+
+  @validation
+  Scenario: Refuse a game that lets the player write where it is judged
+    Given a game document whose writable paths reach the scenarios' own steps
+    When I read the game
+    Then I am told the player may not write where it is judged
+
+  @validation
+  Scenario: Refuse a game whose arena is missing
+    Given a game document that names an arena that does not exist
+    When I read the game
+    Then I am told the arena cannot be found
+
+  @error
+  Scenario: Refuse a situation the engine cannot read
+    Given a game document that describes situations by something its scenarios do not have
+    When I read the game
+    Then I am told which part of the situation cannot be read
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-48 @developer @loop @should
+Feature: FLOW-48 Play a game of scenarios with a store of claims
+  """
+  As someone building an agent that should get better at a task judged by scenarios,
+  I want the same store that learned the maze to learn a game whose levels are Gherkin
+  scenarios and whose only judge is running them,
+  so that what the agent remembers is shaped by what passes, not by what it believes.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#notating-the-game
+  # Source: packages/loop/src/game
+
+  Background:
+    Given the reference game of scenarios
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: The scenarios keep score
+    When the player plays a day of the game
+    Then every level it played was judged by running its scenario
+    And each level scores what the game document says passing and failing are worth
+
+  @happy-path
+  Scenario: Playing with the store beats playing without it
+    When the player plays the same days of the game with a store and without one
+    Then by the last day it passes more levels with the store
+
+  @happy-path
+  Scenario: The same seed plays the same day
+    When I play a day of the game twice from the same seed
+    Then both days end with the same fingerprint
+
+  @happy-path
+  Scenario: What is learned in one product area is offered in another
+    Given the store learned a claim on a level in one product area
+    When the player meets a level in another area that is otherwise the same situation
+    Then that claim is offered
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: Breaking a level that used to pass costs more than failing it
+    Given a level the player passed on an earlier day
+    When the player fails it on a later day
+    Then that failure scores as breaking what worked, below an ordinary failure
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-49 @developer @loop @security @should
+Feature: FLOW-49 An answer that reaches the judge does not count
+  """
+  As someone whose agent is scored by scenarios,
+  I want any answer that writes outside where the player may write, or onto the scenarios
+  and steps that judge it, to count for nothing,
+  so that the agent cannot get better by changing the test instead of the work.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#notating-the-game
+  # Source: packages/loop/src/game/play.ts
+
+  Background:
+    Given the reference game of scenarios
+
+  @validation
+  Scenario: An answer that writes somewhere the player may not write is void
+    Given a player that also writes outside where the game lets it
+    When the player plays a day of the game
+    Then its answers count for nothing that day
+    And I am told where it tried to write
+
+  @security
+  Scenario: An answer that writes onto the steps that judge it is void
+    Given a player that also rewrites the steps that judge it
+    When the player plays a day of the game
+    Then its answers count for nothing that day
+    And the steps that judge it are unchanged
+
+  @security
+  Scenario: A day on which the judge was changed by any route is void
+    Given a player that changes the scenarios behind the game's back
+    When the player plays a day of the game
+    Then nothing from that day is learned
+    And I am told the judge changed during the day
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-50 @developer @loop @should
+Feature: FLOW-50 Sleep on a game of scenarios
+  """
+  As someone whose agent plays a game judged by scenarios,
+  I want its nights to work as they do on the maze — trying what they learned on levels
+  no day played, and undoing anything that makes the player worse —
+  and to rerun the scenarios only when the answer or the judge has changed,
+  so that a night costs what it has to and no more, without trusting a stale verdict.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#build-order
+  # Source: packages/loop/src/game
+
+  Background:
+    Given the reference game of scenarios
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: A good run of days at the game is slept on
+    Given several days of the game that were going well
+    When the night comes after the last of them
+    Then the player wakes with a new version of its instincts
+
+  @happy-path
+  Scenario: The night tries its work on levels no day played
+    Given several days of the game that were going well
+    When the night comes after the last of them
+    Then every level the night judged on is one no day played
+
+  @happy-path
+  Scenario: An answer judged once is not judged again when the game says levels stand alone
+    Given a game whose levels each read only their own answer
+    When the same answers are judged twice
+    Then the scenarios are run once
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @validation
+  Scenario: Without that promise, every judging runs the scenarios
+    Given a game that does not say its levels stand alone
+    When the same answers are judged twice
+    Then the scenarios are run twice
+
+  @security
+  Scenario: Nothing judged before the judge changed is trusted after
+    Given a game whose levels each read only their own answer
+    And the same answers were judged once
+    When the steps that judge them change
+    And the same answers are judged again
+    Then the scenarios are run again
+
+  @error
+  Scenario: A night that would make the player worse at the game is undone
+    Given several days of the game that were going well
+    And a trainer that teaches only one answer for everything
+    When the night comes after the last of them
+    Then the player wakes with the instincts it went to sleep with
+    And I am told the night was undone because its instincts, on their own, did worse
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-51 @human-author @loop @should
+Feature: FLOW-51 Read what the agent has learned
+  """
+  As the person whose agent is learning,
+  I want what it has learned written out as a document I can read — the advice it relies on,
+  the habits it has formed, and the evidence behind each —
+  so that its memory is something I can inspect and argue with, not a number inside it.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#the-claim
+  # Source: packages/loop/src/riverbed.ts
+
+  Background:
+    Given a game the agent has played for several days
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: What the agent relies on is written out as sentences
+    When I write out what the agent has learned
+    Then each piece of advice it relies on reads as a sentence about a situation
+    And each says how often it was acted on and how often that passed
+
+  @happy-path
+  Scenario: Habits are told apart from advice
+    Given some of what it learned has become habit
+    When I write out what the agent has learned
+    Then the habits are listed apart from the advice it still needs to be told
+
+  @happy-path
+  Scenario: The learned document is documentation like any other
+    When I write out what the agent has learned
+    And the documentation set is validated
+    Then the learned document is checked like any other reference
+    And it names the game it was learned from
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: Only what has proved itself is written
+    When I write out what the agent has learned
+    Then nothing weak, untested or put away is in it
+
+  @edge-case
+  Scenario: The same memory is written the same way
+    When I write out what the agent has learned twice
+    Then both documents say the same thing
+
+  @security
+  Scenario: Nothing in it says how strongly a claim is held
+    When I write out what the agent has learned
+    Then no line carries the strength a claim is held at
+
+  @error
+  Scenario: A document I changed is not overwritten
+    Given I have written out what the agent has learned
+    And I have changed the document by hand
+    When I write out what the agent has learned again
+    Then my changes are still there
+    And I am told the document was changed by hand since it was written
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-52 @human-author @loop @should
+Feature: FLOW-52 What the agent learned reads as rules
+  """
+  As the person whose agent is learning,
+  I want what it learned in many alike situations said once, as a rule,
+  without the details that never mattered,
+  so that the document of what it learned is short enough to read and argue with.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#phase-c--what-it-learned-written-out
+  # Source: packages/loop/src/clock.ts
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Advice that holds whatever the area is, is written without the area
+    Given a game the agent has played for several days
+    When I write out what the agent has learned
+    Then some of its advice does not mention the area at all
+
+  @happy-path
+  Scenario: Alike claims are kept long enough to become a rule
+    Given the agent holds advice about one situation
+    When the same advice proves itself in a situation that differs in one detail
+    Then both are kept until the end of the day
+
+  @happy-path
+  Scenario: A rule grows more general a day at a time
+    Given the agent holds a rule and proven advice that differs from it in one more detail
+    When the day ends
+    Then the two become one rule that leaves out that detail too
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: A rule never covers an exception the agent knows of
+    Given the agent holds alike advice that would fold into a rule
+    And proven advice to do something else in a situation that rule would cover
+    When the day ends
+    Then no rule covers the exception
+    And the exception is still held
+
+  @edge-case
+  Scenario: A rule is only given where its conditions hold
+    Given the agent holds a rule about large requests from new customers
+    When it meets a large request from a gold customer
+    Then the rule is not given
+    But a large request from a new customer is given the rule
+
+  @edge-case
+  Scenario: Only advice that has proved itself becomes a rule
+    Given the agent holds alike advice that has hardly been acted on
+    When the day ends
+    Then no rule is made from it
+
+  @edge-case
+  Scenario: A rule keeps the evidence of what it was made from
+    Given the agent holds alike advice that would fold into a rule
+    When the day ends
+    Then the rule has been acted on as often as all of them together
+    And has passed as often as all of them together
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-53 @human-author @console @loop @should
+Feature: FLOW-53 Review what the agent learned before it lands
+  """
+  As the person whose agent is learning,
+  I want what it learned to wait for my review before it becomes documentation,
+  so that nothing it tells itself reaches the agent as context until I have read it.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#open-tensions
+  # Source: cli/src/context/proposals.ts
+
+  Background:
+    Given the agent has proposed what it learned
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: What it learned waits for review
+    Then the documentation set does not contain it yet
+    And it is waiting for review, with who proposed it
+
+  @happy-path
+  Scenario: I can compare what is with what would be
+    When I ask the console what is waiting for review
+    Then I see the document as it is now and as it would be
+
+  @happy-path
+  Scenario: Accepting it lands it
+    When I accept the proposal from the console
+    Then the documentation set contains what it learned
+    And the learned document is checked like any other reference
+    And nothing is waiting for review
+
+  @happy-path
+  Scenario: Rejecting it discards it
+    When I reject the proposal from the console
+    Then nothing is waiting for review
+    And the documentation set does not contain it yet
+
+  # ─────────────────────────────────────────────
+  # Error / Security
+  # ─────────────────────────────────────────────
+
+  @error
+  Scenario: A proposal does not land over a document changed since it was proposed
+    Given the document it would replace was changed after it was proposed
+    When I accept the proposal from the console
+    Then I am told the document changed since it was proposed
+    And the changed document is still there
+    And the proposal is still waiting for review
+
+  @security
+  Scenario: Nothing can be proposed for a document outside the project
+    When something proposes a document outside the project
+    Then the proposal is refused
+    And nothing outside the project was written
+
+  @security
+  Scenario: A page from another site cannot accept a proposal
+    When a page from another site tries to accept the proposal
+    Then the change is refused
+    And the proposal is still waiting for review
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-54 @human-author @loop @should
+Feature: FLOW-54 Teach the agent by editing what it learned
+  """
+  As the person whose agent is learning,
+  I want my changes to the document of what it learned to change what it knows —
+  advice I strike out is no longer given, advice I add is given and tested,
+  and what I write in my own words is kept —
+  so that its memory comes to match the way I work, not only what the scenarios reward.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#the-claim
+  # Source: packages/loop/src/judgement.ts
+
+  Background:
+    Given a game the agent has played for several days
+    And what it learned has landed as a document
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Advice I strike out is no longer given
+    Given I struck out a piece of its advice
+    When the agent reads my changes
+    Then that advice is not given in the situation it was about
+
+  @happy-path
+  Scenario: A habit I strike out is dropped
+    Given I struck out one of its habits
+    When the agent reads my changes
+    Then it no longer acts on that habit without being told
+
+  @happy-path
+  Scenario: Advice I add is given
+    Given I added advice of my own in the same form as its own
+    When the agent reads my changes
+    Then my advice is given in the situation I named
+
+  @happy-path
+  Scenario: Advice I add is tested like any other
+    Given I added advice of my own in the same form as its own
+    And the agent has read my changes
+    When it plays another day
+    And it writes out what it learned again
+    Then my advice is listed as what I told it
+    And it says how often my advice was acted on and how often that passed
+
+  @happy-path
+  Scenario: What I write in my own words is kept
+    Given I wrote a note of my own in the document
+    When the agent reads my changes
+    And it writes out what it learned again
+    Then my note is still in the document
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: Once it has read my changes it can propose again
+    Given I struck out a piece of its advice
+    When the agent reads my changes
+    And it writes out what it learned again
+    Then it is no longer refused as changed by hand
+
+  @edge-case
+  Scenario: Reading the same changes twice changes nothing more
+    Given I struck out a piece of its advice
+    When the agent reads my changes twice
+    Then its memory is the same as after the first reading
+
+  @edge-case
+  Scenario: What I told it is never folded into a rule of its own
+    Given I told it advice alike to proven advice of its own
+    When the day ends
+    Then my advice is still held in my own words
+
+  @error
+  Scenario: Advice naming a choice the game does not have is kept as a note
+    Given I added advice that names a choice the game does not offer
+    When the agent reads my changes
+    Then that advice is not given anywhere
+    And it is kept as my note
+    And I am told it was not understood as advice
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-55 @human-author @ai-agent @heartbeat @should
+Feature: FLOW-55 A document that is waiting wakes its owner
+  """
+  As the owner of documents that wait on someone or something,
+  I want a cheap, regular check that wakes me only when one of them needs me —
+  a follow-up that is due, a review that is overdue, something I watch that changed —
+  so that open loops are followed up without anyone having to remember them,
+  and nothing expensive runs when nothing needs doing.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#liveness-without-a-second-vocabulary
+  # Source: cli/src/heart/
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: A loop waiting past its follow-up time wakes its owner
+    Given a document of mine waiting on someone, asked five hours ago, to follow up after four
+    When my heart beats
+    Then I am woken
+    And I am told which document is waiting, on whom, and since when
+
+  @happy-path
+  Scenario: Nothing waiting, nothing woken
+    Given documents of mine that are fresh and wait on no one
+    When my heart beats
+    Then I am not woken
+
+  @happy-path
+  Scenario: A document past its review date wakes its owner
+    Given a document of mine that is past its review date
+    When my heart beats
+    Then I am woken
+    And I am told the document is due for review
+
+  @happy-path
+  Scenario: A change to a document I watch wakes me
+    Given a document of mine that watches another document
+    And my heart has beaten once already
+    When the watched document changes
+    And my heart beats
+    Then I am woken
+    And I am told which watched document changed
+
+  @happy-path
+  Scenario: What needs me most comes first
+    Given a document of mine past its review date
+    And a document of mine waiting past its follow-up time
+    When my heart beats
+    Then the follow-up is the first thing I am told
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: A loop not yet due does not wake its owner, but sets when they look next
+    Given a document of mine waiting on someone, asked a minute short of four hours ago, to follow up after four
+    When my heart beats
+    Then I am not woken
+    And my next beat is no later than when the follow-up falls due
+
+  @edge-case
+  Scenario: Someone else's documents do not wake me
+    Given a document waiting past its follow-up time that someone else owns
+    When my heart beats
+    Then I am not woken
+
+  @edge-case
+  Scenario: An owner with nothing to do is checked less and less often
+    Given documents of mine that are fresh and wait on no one
+    When my heart beats five times with nothing found
+    Then each wait before the next beat is longer than the last, up to a limit
+
+  @edge-case
+  Scenario: A change brings an idle owner's next beat forward
+    Given an owner whose beats have backed off
+    When something changes that concerns them
+    Then their next beat comes at the shortest interval
+
+  @edge-case
+  Scenario: Every beat is recorded, woken or not
+    Given a document of mine waiting past its follow-up time
+    When my heart beats twice, with the follow-up answered in between
+    Then both beats are recorded
+    And the record says how many beats woke me
+
+  # ─────────────────────────────────────────────
+  # Error / Security
+  # ─────────────────────────────────────────────
+
+  @security
+  Scenario: With the kill switch on, owners are checked but never woken
+    Given a document of mine waiting past its follow-up time
+    And the kill switch is on
+    When my heart beats
+    Then I am not woken
+    And the beat is recorded with what it would have woken me for
+
+  @error
+  Scenario: A heart that does not make sense is reported by validation
+    Given a document whose heart waits on no one and follows up "soon"
+    When the documentation set is validated
+    Then the document fails validation
+    And I am told what is wrong with its heart
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-56 @ai-agent @heartbeat @should
+Feature: FLOW-56 A woken owner acts, and only once
+  """
+  As an owner woken by my heart,
+  I want to act through a small set of typed actions — reply, ask, wait, take up, close —
+  that change my documents and send messages in the project, never twice, and never
+  on a document someone else is acting on,
+  so that a beat that is retried or interrupted leaves the project as if it had run once.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#the-policy-is-already-a-dep-artifact
+  # Source: cli/src/heart/actions.ts
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: A message to me is answered within one beat
+    Given someone wrote to me
+    When my heart beats and I act on what I am told
+    Then a reply to them is waiting in their inbox
+    And their message to me is marked read
+    And my next beat is not woken by it
+
+  @happy-path
+  Scenario: A follow-up that is due is followed up
+    Given a document of mine waiting past its follow-up time
+    When my heart beats and I act on what I am told
+    Then the one it waits on is asked again about the document
+    And the document says it has been followed up once more, from now
+
+  @happy-path
+  Scenario: Open work I own is taken up
+    Given a document of mine that is open work
+    When my heart beats and I act on what I am told
+    Then the document is active
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: A document another beat is acting on is left alone
+    Given a document of mine waiting past its follow-up time
+    And another beat holds the document
+    When my heart beats and I act on what I am told
+    Then nothing is done to the document
+    And no one is asked again
+
+  @edge-case
+  Scenario: A hold that has run out is taken over
+    Given a document of mine waiting past its follow-up time
+    And another beat held the document but its hold has run out
+    When my heart beats and I act on what I am told
+    Then the one it waits on is asked again about the document
+
+  @error
+  Scenario: A beat stopped partway is run again without doing anything twice
+    Given a document of mine waiting past its follow-up time
+    And my beat stopped after sending the follow-up but before the document recorded it
+    When the same beat is run again
+    Then each action has been done exactly once
+
+  @error
+  Scenario: The same action asked for twice in one beat is done once
+    Given a document of mine waiting past its follow-up time
+    And I would ask for every follow-up twice
+    When my heart beats and I act on what I am told
+    Then the one it waits on is asked again about the document
+    And the document says it has been followed up once more, from now
+
+  # ─────────────────────────────────────────────
+  # Security
+  # ─────────────────────────────────────────────
+
+  @security
+  Scenario: An action on a document I do not own is refused
+    Given a document waiting past its follow-up time that someone else owns
+    And I would act on it if I could
+    When my heart beats and I act on what I am told
+    Then the action is refused and recorded as refused
+    And I am told I do not own the document
+    And the document is unchanged
+
+  @security
+  Scenario: An action that is not one of the allowed kinds is refused
+    Given a document of mine that is open work
+    And I would answer with an action of my own invention
+    When my heart beats and I act on what I am told
+    Then the action is refused and recorded as refused
+    And nothing is written
+
+  @security
+  Scenario: With the kill switch on, nothing acts
+    Given someone wrote to me
+    And the kill switch is on
+    When my heart beats and I act on what I am told
+    Then nothing was asked to act
+    And nothing is written
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-57 @human-author @heartbeat @should
+Feature: FLOW-57 Loops that go nowhere come to me
+  """
+  As the person the owners work for,
+  I want a loop that has been followed up enough, or an exchange between owners that
+  is going round in circles, to stop and come to me — and not at night unless it is urgent —
+  and each owner to ask only whom their role allows,
+  so that the owners never nag, never talk among themselves forever, and never wake me for nothing.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#the-clocks
+  # Source: cli/src/heart/actions.ts
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: After the last follow-up, the loop comes to me
+    Given a document of mine waiting past its follow-up time, already followed up as often as it allows
+    When my heart beats and I act on what I am told
+    Then no one is asked again
+    And I am told the loop needs me, and which document it is
+    And the document says it is escalated
+
+  @happy-path
+  Scenario: A loop that came to me does not wake its owner again
+    Given a document of mine waiting past its follow-up time, already followed up as often as it allows
+    And my heart has beaten and escalated it
+    When my heart beats again an hour later
+    Then I am not woken
+
+  @happy-path
+  Scenario: Two owners answering each other stop at the limit
+    Given one owner has asked another a question
+    When both answer whatever they are sent, beat after beat
+    Then the exchange stops after the limit of messages between them
+    And I am told the exchange needs me
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: An owner may only ask whom their role allows
+    Given my role says I may ask only the testers
+    And someone wrote to me
+    And I would ask the finance owner about it
+    When my heart beats and I act on what I am told
+    Then the action is refused and recorded as refused
+    And I am told whom my role allows me to ask
+
+  @edge-case
+  Scenario: Whatever my role says, I can always bring a loop to the person
+    Given my role says I may ask no one
+    And a document of mine waiting past its follow-up time, already followed up as often as it allows
+    When my heart beats and I act on what I am told
+    Then I am told the loop needs me, and which document it is
+
+  @edge-case
+  Scenario: At night, what comes to me waits until morning
+    Given my quiet hours are from 22:00 to 08:00
+    And it is 23:00
+    And a document of mine waiting past its follow-up time, already followed up as often as it allows
+    When my heart beats and I act on what I am told
+    Then nothing has reached me yet
+    And it reaches me at 08:00
+
+  @edge-case
+  Scenario: What is urgent reaches me even at night
+    Given my quiet hours are from 22:00 to 08:00
+    And it is 23:00
+    And someone wrote to me
+    And I would bring it to the person as urgent
+    When my heart beats and I act on what I am told
+    Then it has reached me already
+
+  # ─────────────────────────────────────────────
+  # Error
+  # ─────────────────────────────────────────────
+
+  @error
+  Scenario: A role that does not make sense is reported by validation
+    Given a role that may ask "everyone"
+    When the documentation set is validated
+    Then the role document fails validation
+    And I am told what is wrong with the role
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-58 @ai-agent @loop @should
+Feature: FLOW-58 A model plays the game
+  """
+  As the person whose agent is learning,
+  I want a real model to answer the game's levels — shown the situation, the options,
+  and what the agent has learned, and nothing about how it will be judged —
+  so that the store and the documents it writes are learned from a real agent's play,
+  under the same judge and the same guards as before.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#build-order
+  # Source: packages/loop/src/players/claude.ts
+
+  Background:
+    Given the reference game of scenarios
+    And a model player
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: The model answers each level with one of the game's options
+    When the model plays a day of the game
+    Then every level it played was judged by running its scenario
+    And each answer is one of the game's options
+
+  @happy-path
+  Scenario: What the agent has learned is put in front of the model
+    Given the agent holds advice about a situation
+    When the model answers a level in that situation
+    Then the advice is in what the model was shown
+
+  @happy-path
+  Scenario: The model's play is learned from like any other player's
+    When the model plays a day of the game
+    Then what passed is remembered as advice, and nothing that failed is
+
+  # ─────────────────────────────────────────────
+  # Security
+  # ─────────────────────────────────────────────
+
+  @security
+  Scenario: The model is never shown how its answer will be judged
+    When the model plays a day of the game
+    Then nothing it was shown contains a step of the scenario it answered
+    And nothing it was shown names the outcome its scenario expects
+
+  @security
+  Scenario: The model is never shown how strongly a claim is held
+    Given the agent holds advice about a situation
+    When the model answers a level in that situation
+    Then nothing it was shown carries the strength a claim is held at
+
+  # ─────────────────────────────────────────────
+  # Error
+  # ─────────────────────────────────────────────
+
+  @error
+  Scenario: An answer that is not one of the options is not played
+    Given a model that answers one level with a choice the game does not offer
+    When the model plays a day of the game
+    Then that level is void, with the reason
+    And nothing is learned from it
+
+  @error
+  Scenario: A model that cannot be reached leaves the day unplayed
+    Given a model that cannot be reached
+    When the model plays a day of the game
+    Then I am told the model could not be reached
+    And the agent's memory is unchanged
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-59 @ai-agent @heartbeat @should
+Feature: FLOW-59 A model acts for a woken owner
+  """
+  As the person the owners work for,
+  I want a model to decide what a woken owner does — shown what woke them, their role,
+  and the documents concerned, and nothing that is not theirs —
+  while every guard that held for the rules holds for the model,
+  so that owners answer and follow up in their own words without being able to overreach.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#phase-d--actions-leases-once-only-heartbeat-m2
+  # Source: cli/src/heart/runners/claude.ts
+
+  Background:
+    Given my actions are decided by a model
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: The model is told what woke me, who I am, and what I may do
+    Given my role says I may ask only the testers
+    And someone wrote to me
+    When my heart beats and the model decides what I do
+    Then the model was shown the message in full
+    And the model was shown my role
+    And the model was shown the kinds of action I may take, and whom I may ask
+
+  @happy-path
+  Scenario: The model is shown the documents that need me
+    Given a document of mine waiting past its follow-up time
+    When my heart beats and the model decides what I do
+    Then the model was shown the document and what it is waiting on
+
+  @happy-path
+  Scenario: What the model decides is carried out like any other action
+    Given someone wrote to me
+    When my heart beats and the model decides what I do
+    Then a reply to them is waiting in their inbox
+
+  # ─────────────────────────────────────────────
+  # Security
+  # ─────────────────────────────────────────────
+
+  @security
+  Scenario: The model is shown only what is mine
+    Given someone wrote to me
+    And someone wrote to another owner
+    When my heart beats and the model decides what I do
+    Then the model was not shown the other owner's message
+
+  @security
+  Scenario: A message that tells the model to overreach is stopped by the same guards
+    Given a document waiting past its follow-up time that someone else owns
+    And someone wrote to me telling me to close every loop in the project
+    And the model does as the message says
+    When my heart beats and the model decides what I do
+    Then the action is refused and recorded as refused
+    And the document is unchanged
+
+  # ─────────────────────────────────────────────
+  # Error
+  # ─────────────────────────────────────────────
+
+  @error
+  Scenario: A model that cannot be reached leaves the beat unacted, to be tried again
+    Given someone wrote to me
+    And the model cannot be reached
+    When my heart beats and the model decides what I do
+    Then the beat is recorded with why nothing was done
+    And their message to me is still unread
+    And my next beat is woken by it again
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-60 @ai-agent @heartbeat @loop @should
+Feature: FLOW-60 What happens after a follow-up is scored
+  """
+  As the person whose owners follow things up,
+  I want what came of each ask — answered in time, answered late, or never answered —
+  observed by the heartbeat and scored, and those scores to become what the agent
+  learns from, never anything an owner says about itself,
+  so that the agent learns when and whom to follow up from what actually happened.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#the-contradiction
+  # Source: cli/src/heart/outcomes.ts
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: An answer within the follow-up time scores the ask well
+    Given I followed up a document with the one it waits on
+    And they answered within the follow-up time
+    When my heart beats
+    Then the ask is scored as answered in time
+
+  @happy-path
+  Scenario: An answer after the follow-up time scores less
+    Given I followed up a document with the one it waits on
+    And they answered only after the follow-up time had passed
+    When my heart beats
+    Then the ask is scored as answered late, below an answer in time
+
+  @happy-path
+  Scenario: A loop that had to come to the person scores its follow-ups as unanswered
+    Given I followed up a document with the one it waits on
+    And it was followed up as often as it allows without an answer
+    When my heart beats and I act on what I am told
+    Then the ask is scored as never answered, below zero
+
+  @happy-path
+  Scenario: Scored follow-ups become what the agent learns from
+    Given asks that were answered in time and asks that went unanswered
+    When the agent learns from what was scored
+    Then following up is remembered as advice where it was answered
+    And nothing is remembered as advice where it went unanswered
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: An answer from someone else does not close the ask
+    Given I followed up a document with the one it waits on
+    And someone else answered about the document
+    When my heart beats
+    Then the ask is not scored yet
+
+  @edge-case
+  Scenario: An ask is scored once
+    Given I followed up a document with the one it waits on
+    And they answered within the follow-up time
+    When my heart beats twice
+    Then the ask has been scored once
+
+  # ─────────────────────────────────────────────
+  # Security
+  # ─────────────────────────────────────────────
+
+  @security
+  Scenario: Nothing an owner says about itself changes a score
+    Given I followed up a document with the one it waits on
+    And I would claim, in what I answer, that it went well
+    And they answered only after the follow-up time had passed
+    When my heart beats and I act on what I am told
+    Then the ask is scored as answered late, below an answer in time
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-61 @ai-agent @heartbeat @loop @should
+Feature: FLOW-61 What the agent learned about following up is used, and judged
+  """
+  As the person whose owners follow things up,
+  I want what the agent has learned about following up to be put in front of the owner
+  when a loop falls due, and that advice to grow stronger when following it was answered
+  and weaker when it was not,
+  so that the owners' habits of following up are shaped by what actually worked.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#the-bridge--follow-up-outcomes-become-episodes-heartbeat-m5-first-half
+  # Source: packages/loop/src/follow-ups.ts
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: What was learned about following up is shown when a loop falls due
+    Given the agent has learned that following up with the testers gets answered
+    And my actions are decided by a model
+    And a document of mine waiting past its follow-up time
+    When my heart beats and the model decides what I do
+    Then the model was shown that advice for the document
+
+  @happy-path
+  Scenario: Advice followed and answered is held more strongly
+    Given the agent has learned that following up with the testers gets answered
+    And a document of mine waiting past its follow-up time
+    When I follow it up as advised and the testers answer in time
+    And the agent learns from what was scored
+    Then the advice is held more strongly than before
+
+  @happy-path
+  Scenario: Advice followed and not answered is held less strongly
+    Given the agent has learned that following up with the testers gets answered
+    And a document of mine waiting past its follow-up time
+    When I follow it up as advised and it goes unanswered until it comes to the person
+    And the agent learns from what was scored
+    Then the advice is held less strongly than before
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: Advice about someone else is not shown
+    Given the agent has learned that following up with legal gets answered
+    And my actions are decided by a model
+    And a document of mine waiting past its follow-up time
+    When my heart beats and the model decides what I do
+    Then the model was shown no advice for the document
+
+  @security
+  Scenario: The advice shown carries no strength
+    Given the agent has learned that following up with the testers gets answered
+    And my actions are decided by a model
+    And a document of mine waiting past its follow-up time
+    When my heart beats and the model decides what I do
+    Then nothing the model was shown carries the strength the advice is held at
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-62 @human-author @project-lead @must
+Feature: FLOW-62 DEP as pure documentation
+  """
+  As someone who wants DEP only for documentation,
+  I want a project that says nothing about the loop to write nothing beside its documents —
+  no record of requests, no usage, no heartbeat, no proposals —
+  so that adopting DEP never means adopting the loop, and switching it off is one line.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#configuring-the-loop
+  # Source: cli/src/loop-config.ts
+
+  Background:
+    Given a project that says nothing about the loop
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Answering questions writes nothing beside the documents
+    When I ask the documentation set a question, search it and validate it
+    Then nothing has been written beside the documents
+
+  @happy-path
+  Scenario: Documents with hearts still validate, and wake no one
+    Given a document waiting on someone past its follow-up time
+    When the documentation set is validated
+    Then the document passes validation
+    And no owner can be woken
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: The heartbeat is refused, saying how to turn it on
+    When I ask for an owner's heartbeat
+    Then I am told the loop is off and which setting turns it on
+
+  @edge-case
+  Scenario: A usage report is refused, and not offered to agents
+    Given a question I asked earlier
+    When I report which passages I used
+    Then the report is not recorded, and I am told why
+    And an agent connected over MCP is not offered usage reports
+
+  @edge-case
+  Scenario: Proposals are refused, and the console has nothing to review
+    When something proposes a new version of a document
+    Then I am told the loop is off and which setting turns it on
+    And the console offers no review
+
+  @security
+  Scenario: The environment can switch the loop off for a project that turned it on
+    Given a project whose configuration turns the loop on
+    And the environment says the loop is off
+    When I ask the documentation set a question, search it and validate it
+    Then nothing has been written beside the documents
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-63 @project-lead @should
+Feature: FLOW-63 Choosing which parts of the loop run
+  """
+  As the person who runs a project with the loop on,
+  I want to choose which parts of it run — recording, usage, the heartbeat, how owners act,
+  whether a model is ever asked and how often —
+  so that I turn on only what I trust, and can see at a glance what is running and why.
+  """
+  # Design: docs/desired-user-stories/liveness-design.md#configuring-the-loop
+  # Source: cli/src/loop-config.ts
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Turning the loop on records requests
+    Given a project whose configuration turns the loop on
+    When I ask the documentation set a question
+    Then the request is recorded
+
+  @happy-path
+  Scenario: Recording off, usage on
+    Given a project whose configuration turns the loop on, but not recording
+    And a question I asked earlier
+    When I report which passages I used
+    Then the report is recorded
+    And no request was recorded
+
+  @happy-path
+  Scenario: With the loop on, owners are woken but nothing acts until I choose how
+    Given a project whose configuration turns the loop on
+    And a document waiting on someone past its follow-up time
+    And someone has supplied a way to act
+    When the owner's heart beats
+    Then the owner is woken
+    And nothing was asked to act, and the beat says why
+
+  @happy-path
+  Scenario: I can see which parts are running, and why
+    Given a project whose configuration turns the loop on, but not recording
+    When I ask which parts of the loop are running
+    Then I am told recording is off because the configuration says so
+    And I am told the heartbeat is on, but acts on nothing
+    And I am told models are off by default
+
+  # ─────────────────────────────────────────────
+  # Edge Cases
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: With models off, a model is never asked; rules still act
+    Given a project whose configuration lets owners act, but not with a model
+    And a document waiting on someone past its follow-up time
+    And a model has been supplied to act
+    When the owner's heart beats
+    Then the model was not asked, and the beat says why
+    But with the rules supplied instead, the owner follows up
+
+  @edge-case
+  Scenario: Owners may act by model, but with models off none is asked
+    Given a project whose configuration lets owners act by model, but turns models off
+    And a document waiting on someone past its follow-up time
+    And a model has been supplied to act
+    When the owner's heart beats
+    Then the model was not asked, because no model may be asked here
+
+  @edge-case
+  Scenario: The day's model budget stops model calls when it is used
+    Given a project whose configuration lets a model act, at most twice a day
+    And a model has been supplied to act
+    When an owner with something to do beats three times in a day
+    Then the model was asked twice
+    And the third beat says the day's model budget is used
+
+  # ─────────────────────────────────────────────
+  # Error
+  # ─────────────────────────────────────────────
+
+  @error
+  Scenario: A loop configuration that does not make sense fails validation
+    Given a project whose loop configuration says owners act "sometimes"
+    When the documentation set is validated
+    Then the configuration fails validation
+    And I am told what is wrong with it
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-64 @human-author @console @heartbeat @loop @should
+Feature: FLOW-64 See the loop in the console
+  """
+  As the person the owners work for,
+  I want the console to show the loop at a glance — which parts run, each owner's heartbeat,
+  what woke them and what they did, what is waiting for me, how follow-ups were scored,
+  and what the agent has learned — and to let me answer what was brought to me,
+  so that I can watch the loop work and step in without leaving the console.
+  """
+  # Design: designs/dep-console-loop.pen
+  # Source: cli/src/console/server.ts
+
+  Background:
+    Given a project whose configuration lets owners act
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: Each owner's heartbeat is shown
+    Given an owner whose heart has beaten with a loop due
+    When I ask the console for the heartbeat
+    Then I see each owner, when they last beat and when they beat next
+    And I see whether they were woken, and for what
+    And I see how many beats there were today and how many woke someone
+
+  @happy-path
+  Scenario: What the owners did is shown, refusals with their reasons
+    Given an owner whose heart has beaten and was refused an action
+    When I ask the console for the heartbeat
+    Then I see the actions that were done and the one that was refused, with why
+
+  @happy-path
+  Scenario: What was brought to me is shown, and I can answer it
+    Given a loop that has been brought to me
+    When I ask the console for the heartbeat
+    Then I see what is waiting for me
+    When I reply to it from the console
+    Then my reply is in the owner's inbox, from me
+    And it is no longer waiting for me
+
+  @happy-path
+  Scenario: How follow-ups were scored is shown
+    Given follow-ups that were answered in time, late and never
+    When I ask the console for the heartbeat
+    Then I see how many follow-ups were answered in time, late and never
+
+  @happy-path
+  Scenario: What the agent has learned is shown from the loop's summary
+    Given the loop has written a summary of what the agent learned
+    When I ask the console what the agent has learned
+    Then I see the pass rate by day, for each run
+    And I see the advice it relies on, with how often it was acted on and passed
+    And nothing I see says how strongly a claim is held
+
+  # ─────────────────────────────────────────────
+  # Edge Cases / Security
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: With the heartbeat off, the console shows none of it
+    Given the project turns the heartbeat off
+    When I ask the console for the heartbeat
+    Then the console says it does not serve it
+
+  @security
+  Scenario: A page from another site cannot reply for me
+    Given a loop that has been brought to me
+    When a page from another site tries to reply to it
+    Then the change is refused
+    And nothing is in the owner's inbox from me
+
+# ═══════════════════════════════════════════════════════════════
+
+@flow-65 @project-lead @console @loop @should
+Feature: FLOW-65 Design and play a game from the console
+  """
+  As the person whose agent is learning,
+  I want to see my project's games, what each level is and what it expects, whether a game
+  can be played and why not, to change its rules safely, and to play a day and watch it learn,
+  so that the agent learns my way of doing things from games I can shape without leaving the console.
+  """
+  # Design: designs/dep-console-game.pen
+  # Source: packages/loop/src/game/room.ts
+
+  Background:
+    Given a project whose configuration turns the loop on, with the doc-maintenance game
+
+  # ─────────────────────────────────────────────
+  # Happy Path
+  # ─────────────────────────────────────────────
+
+  @happy-path
+  Scenario: The console lists the project's games, and whether each can be played
+    When I ask the console for the games
+    Then I see the doc-maintenance game with its levels, options and situation
+    And I see it passes every check and can be played
+
+  @happy-path
+  Scenario: Each level is shown with its situation and what it expects
+    When I ask the console for the doc-maintenance game's levels
+    Then I see every level with the situation it is read as
+    And I see what each level's scenario expects
+
+  @happy-path
+  Scenario: Playing a day judges every level and the agent learns
+    When I play a day of the doc-maintenance game from the console
+    Then every level it played was judged, and the day says how many passed
+    And what the agent learned is written for the Loop tab
+
+  @happy-path
+  Scenario: Each day carries on from the last
+    Given a day of the doc-maintenance game has been played from the console
+    When I play another day from the console
+    Then it is the second day, and the agent remembers the first
+
+  @happy-path
+  Scenario: Changing a game's rules is saved when the game still makes sense
+    When I change the game's options from the console to ones it can learn
+    Then the game document has the new options
+    And the game still passes every check
+
+  # ─────────────────────────────────────────────
+  # Edge Cases / Error
+  # ─────────────────────────────────────────────
+
+  @edge-case
+  Scenario: A game without its judge is checked, and cannot be played
+    Given a draft game whose judge has not been written
+    When I ask the console for the games
+    Then I see the draft cannot be played, because its judge is missing
+    And playing a day of it is refused with that reason
+
+  @error
+  Scenario: A change that would break the game is not saved
+    When I change the game's options from the console to ones it cannot learn
+    Then I am told why the change was refused
+    And the game document is unchanged
+
+  # ─────────────────────────────────────────────
+  # Security
+  # ─────────────────────────────────────────────
+
+  @security
+  Scenario: A page from another site cannot play or change a game
+    When a page from another site tries to play a day and change the rules
+    Then both are refused
+    And no day was played and the game document is unchanged
+
+  @security
+  Scenario: With the loop off, the console offers no games
+    Given the project turns the loop off
+    When I ask the console for the games
+    Then the console says it does not serve them
 
 ```
 

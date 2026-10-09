@@ -33,6 +33,10 @@ export function startFakeReleases(release: Release): Fake {
   const requests: string[] = []
   const server = Bun.serve({
     port: 0,
+    // Requests go to 127.0.0.1, so bind exactly that. On the wildcard address
+    // the OS can hand out a port some other process already holds on
+    // 127.0.0.1, and that process then answers this server's requests.
+    hostname: '127.0.0.1',
     fetch(req) {
       const url = new URL(req.url)
       requests.push(url.pathname)

@@ -24,7 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: cd cli && bun install && bun run build && bun run scripts/bundle.ts --all
+      # the console's Games tab bundles packages/loop, so its dependencies must be there too
+      - run: (cd packages/loop && bun install) && cd cli && bun install && bun run build && bun run scripts/bundle.ts --all
       - uses: actions/upload-artifact@v4
         with:
           name: binaries

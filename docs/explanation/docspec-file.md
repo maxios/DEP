@@ -1,13 +1,18 @@
 ---
 dep:
   type: explanation
-  audience: [ai-generator]
+  audience:
+    - ai-generator
   owner: "@dep-core"
   created: 2026-03-23T21:49:13+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-10-09T08:19:31.196+03:00
   confidence: high
-  depends_on: [seed.md]
-  tags: [docspec, configuration, governance]
+  depends_on:
+    - seed.md
+  tags:
+    - docspec
+    - configuration
+    - governance
   links:
     - target: ../reference/docspec-schema.md
       rel: EXPLAINS
@@ -20,6 +25,8 @@ dep:
 The `.docspec` file is the machine-readable root configuration for a documentation system. It encodes all five layers into a single file that tooling, AI generators, and validators consume.
 
 Think of `.docspec` as the constitution of a documentation system. Individual documents are laws that must be consistent with the constitution. Validators are the judiciary. Generators are the legislature operating within constitutional constraints.
+
+Optional blocks extend this core — `custom_types`, `custom_relationships`, and `loop:`. Without a `loop:` block DEP stays pure documentation; the block is what opts a project into DEP's living parts, such as recording requests and waking owners (see [the loop: block](../reference/loop-configuration.md)).
 
 ## Structure
 
@@ -46,7 +53,7 @@ architecture:
     how-to: [path]
     reference: [path]
     explanation: [path]
-    decision-record: [path]
+    decision-records: [path]
   require_index_files: true
   link_style: relative
 

@@ -2,7 +2,7 @@ import { Given, When, Then, After } from '@cucumber/cucumber'
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
-import { DepWorld, DEFAULT_QUESTION, freshnessBody } from '../support/world'
+import { DepWorld, DEFAULT_QUESTION, freshnessBody, daysAgo } from '../support/world'
 import { openDocumentationSet } from '../../src/lib'
 import { startConsole } from '../../src/console/server'
 import type { ConsoleServer } from '../../src/console/server'
@@ -273,4 +273,70 @@ Then('it still holds only what the agents asked for', function (this: DepWorld) 
 Then('nothing the console itself asked for is in it', function (this: DepWorld) {
   const record = this.result as { entries: Array<Record<string, any>> }
   for (const entry of record.entries) assert.notEqual(entry.caller, 'console')
+})
+
+Given("a document past its review date that answers the agent's question", function (this: DepWorld) {
+  if (this.docs.size === 0) this.seedDefaultDocs()
+  this.docs.get('docs/reference/lifecycle-states.md')!.lastVerified = daysAgo(400, this.now)
+})
+
+Then('I am given what was kept from the agent, because it is past its review date', function (this: DepWorld) {
+  const record = this.result as { entries: Array<Record<string, any>> }
+  const entry = record.entries.find((e) => e.id === this.notes.get('askedId'))!
+  const kept = (entry.withheld ?? []) as Array<{ document: string; reason: string; lastVerified: string | null }>
+  const stale = kept.find((w) => w.document === 'docs/reference/lifecycle-states.md')
+  assert.ok(stale, `nothing was recorded as kept from the agent: ${JSON.stringify(entry.withheld)}`)
+  assert.equal(stale!.reason, 'stale')
+  assert.ok(stale!.lastVerified, 'the record does not say when it was last verified')
+})
+
+// ── reading a document ──────────────────────────────────────────────────
+
+const READ = 'docs/reference/reading-fixture.md'
+
+Given('a document with headings, a list, a table, code and a link to another document', function (this: DepWorld) {
+  this.seedDefaultDocs()
+  this.addDoc({
+    path: READ, type: 'reference', title: 'Reading fixture',
+    body: [
+      '## Fields', '', 'Each field is **required** unless marked.', '',
+      '- `type` names the kind', '- `owner` says who keeps it', '',
+      '| Field | Meaning |', '|---|---|', '| type | the kind |', '',
+      '```yaml', 'type: reference', '```', '',
+      'See [lifecycle states](lifecycle-states.md) and [the web](https://example.com).',
+    ].join('\n'),
+  })
+})
+
+Given('a document whose content contains a script', function (this: DepWorld) {
+  this.seedDefaultDocs()
+  this.addDoc({ path: READ, type: 'reference', title: 'Hostile fixture', body: 'Hello <script>alert("x")</script> and <img src=x onerror=alert(1)> [click](javascript:alert(2))' })
+})
+
+When('I ask it for that document', async function (this: DepWorld) {
+  this.result = await json(this, `/api/document?path=${encodeURIComponent(READ)}`)
+})
+
+Then('I am given its content rendered for reading, headings, lists, tables and code', function (this: DepWorld) {
+  const html = (this.result as { html?: string }).html ?? ''
+  assert.match(html, /<h2[^>]*>Fields<\/h2>/)
+  assert.match(html, /<li><code>type<\/code> names the kind<\/li>/)
+  assert.match(html, /<table>[\s\S]*<th>Field<\/th>[\s\S]*<td>the kind<\/td>/)
+  assert.match(html, /<pre><code[^>]*>type: reference\n?<\/code><\/pre>/)
+  assert.match(html, /<strong>required<\/strong>/)
+  assert.doesNotMatch(html, /^---|last_verified/m, 'the frontmatter was rendered as content')
+})
+
+Then('its links to other documents in the set can be followed in the console', function (this: DepWorld) {
+  const html = (this.result as { html?: string }).html ?? ''
+  assert.match(html, /<a [^>]*data-doc="docs\/reference\/lifecycle-states\.md"[^>]*>lifecycle states<\/a>/)
+  assert.match(html, /<a [^>]*href="https:\/\/example\.com"[^>]*target="_blank"/)
+})
+
+Then('the script is shown as text, never as something that runs', function (this: DepWorld) {
+  const html = (this.result as { html?: string }).html ?? ''
+  assert.ok(html.includes('&lt;script&gt;'), html)
+  // escaped text may spell anything; what must never appear is a real tag or attribute
+  assert.doesNotMatch(html, /<script|<img|<[^>]*\son\w+=|href="javascript:/i, html)
+  assert.match(html, /click/)
 })

@@ -1,0 +1,28 @@
+/**
+ * The loop engine. Phase A: a context game played on the reference maze, with
+ * a store that only scored outcomes can strengthen.
+ */
+export { DEFAULTS, configWith, type Config } from './config'
+export { Store, entryId, type StoreEvent, type EventBody } from './store'
+export { read } from './read'
+export { write, claimAction } from './write'
+export { score, PAIN_ABOVE } from './scorer'
+export { mazeKey, mazeKeyWithBearing, mazeSimilarity, mazeBearingSimilarity, bearing, featureSimilarity, keyText, commonKey, covers, type Similarity, type MazeKeying } from './key'
+export { endDay, type ClockOptions, type ClockReport } from './clock'
+export { Instincts, instinctFor, type Adapter, type Instinct, type Reach, type SftExample } from './adapter'
+export { sleepNight, gate, select, MockTrainer, mazeHeldOut, type HeldOut, type PlayedDay, type Trainer, type TrainJob, type Dataset, type PreferencePair, type NightReport, type NightOptions, type GateVerdict } from './sleep'
+export { MockPlayer, loopErased, type Player, type PlayerView } from './players/mock'
+export { playEpisode } from './env/maze'
+export { playDay, type DayResult, type DayMetrics, type DayOptions } from './day'
+export { loadCore, readPin, CorePinError, DEFAULT_CORE_PATH, type MazeCore } from './vendor/core'
+export { canonical, fingerprint, deriveSeed } from './canonical'
+export type * from './types'
+export { loadGame, GameError, type Game, type Level, type LoadedGame, type Scoring, type GameErrorCode } from './game/game'
+export { judge, groundPrint, type Verdict, type VerdictCache, type JudgeOptions } from './game/suite'
+export { suiteHeldOut, type SuiteHeldOutOptions } from './game/heldout'
+export { playSuiteDay, playSuiteDayAsync, ChoosingPlayer, choicePath, refusal, situationSimilarity, gameReach, type SuitePlayer, type SuiteView, type SuiteDayResult, type SuiteDayOptions, type SuiteEpisode, type Write, type PlannedLevel } from './game/play'
+export { writeLearned, renderLearned, learnedBody, line, learnedSummary, writeLearnedSummary, type LearnedSummary, type SummaryLine, proven, WRITE_MIN_ACTED, type LearnedOptions, type LearnedReport } from './riverbed'
+export { readJudgement, type JudgementOptions, type JudgementReport } from './judgement'
+export { ClaudePlayer, promptFor, anthropicAsk, type Ask, type Answer, type Prompt, type ClaudePlayerOptions } from './players/claude'
+export { learnFromOutcomes, followUpSimilarity, followUpAdvisor, type ScoredAsk } from './follow-ups'
+export { describeGame, gameLevels, playGameDay, saveGameRules, type GameListing, type GameCheck } from './game/room'

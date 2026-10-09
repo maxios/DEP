@@ -1,13 +1,19 @@
 ---
 dep:
   type: explanation
-  audience: [ai-generator, human-author]
+  audience:
+    - ai-generator
+    - human-author
   owner: "@dep-core"
   created: 2026-03-23T21:49:13+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-10-09T08:19:31.126+03:00
   confidence: high
-  depends_on: [seed.md]
-  tags: [anti-patterns, quality, validation]
+  depends_on:
+    - seed.md
+  tags:
+    - anti-patterns
+    - quality
+    - validation
   links:
     - target: ../../seed.md
       rel: REQUIRES
@@ -39,7 +45,7 @@ These are the most common failures DEP prevents. An AI system should monitor for
 
 **DEP diagnosis**: Layer 4 was never implemented. No ownership, no review cadence, no dependency tracking.
 
-**Fix**: Add lifecycle metadata. Establish staleness detection. Wire notifications. The document's confidence should have degraded to `stale` automatically.
+**Fix**: Add lifecycle metadata. Establish staleness detection. Wire notifications. The document should have surfaced as `STALE` automatically once it outlived twice its review cadence, prompting its owner to re-verify it or lower its `confidence`.
 
 ## The LLM Flood
 

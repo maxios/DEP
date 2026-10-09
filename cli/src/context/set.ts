@@ -13,6 +13,12 @@ import { normalizeOptions } from './options'
 import { retrieve, type RetrievalContext, type RetrievalInternals } from './retrieve'
 import { UsageStore, type UsageReceipt, type UsageReport } from './usage'
 import { amendDocument, type Amendment, type AmendResult } from './amend'
+import { Heartbeat, type HeartbeatConfig, type Advisor } from '../heart/heartbeat'
+import { resolveLoop, loopOff, type LoopSettings } from '../loop-config'
+import { heartbeatOverview, type HeartbeatOverview } from '../heart/overview'
+import { replyAsPerson, type Message } from '../heart/inbox'
+import type { Runner } from '../heart/actions'
+import { propose, listProposals, acceptProposal, rejectProposal, type Proposal } from './proposals'
 import { TraceStore, traceNotice, type TraceEntry, type TraceKind, type TraceOffered, type TraceReceipt, type TraceReport } from './trace'
 import { ProcedureSession, stepParts, treeIdFromRef, type ProcedureStep, type ProcedureStepOptions, type SupportPassage } from './procedure'
 import { buildDapGraph } from '../dap/tree-builder'
@@ -43,6 +49,8 @@ function requestId(): string {
 
 export class DocumentationSet {
   readonly root: string
+  /** Which of the loop's parts run in this project. */
+  readonly loop: LoopSettings
   readonly stats = { loads: 0 }
 
   private readonly options: OpenOptions
@@ -70,8 +78,10 @@ export class DocumentationSet {
     this.options = options
     this.now = options.now ?? (() => new Date())
     this._config = loadDocspec(root)
-    this._usage = options.usage === false ? null : new UsageStore(join(root, '.dep-usage.json'))
-    this._trace = options.trace === false
+    // what the project turned on; a caller may switch a part off for this set, never on
+    this.loop = resolveLoop(this._config, options.env ?? process.env)
+    this._usage = options.usage === false || !this.loop.usage ? null : new UsageStore(join(root, '.dep-usage.json'))
+    this._trace = options.trace === false || !this.loop.trace
       ? null
       : new TraceStore(join(root, '.dep-trace.jsonl'), typeof options.trace === 'object' ? options.trace : {})
     this._caller = options.caller ?? 'library'
@@ -105,13 +115,14 @@ export class DocumentationSet {
 
   async context(question: string, options: ContextOptions = {}): Promise<Bundle> {
     let bundle: Bundle
+    const started = performance.now()
     try {
       bundle = await this.assemble(question, options)
     } catch (err) {
       this.traceRefusal('context', question, err)
       throw err
     }
-    const notice = traceNotice(this.traceAnswer('context', question, bundle))
+    const notice = traceNotice(this.traceAnswer('context', question, bundle, { asked: { audience: options.audience, freshness: options.freshness ?? 'withhold-stale' }, ms: performance.now() - started }))
     if (notice) bundle.notices.push(notice)
     return bundle
   }
@@ -129,9 +140,19 @@ export class DocumentationSet {
     return this._trace.clear()
   }
 
-  private traceAnswer(kind: TraceKind, question: string, from: { id?: string; budget?: { declared: number; used: number }; passages: Array<{ id: string; document: string; section: string; reason: { kind: string } }> }): TraceReceipt {
+  private traceAnswer(kind: TraceKind, question: string, from: { id?: string; budget?: { declared: number; used: number }; passages: Array<{ id: string; document: string; section: string; reason: { kind: string; via?: string }; type?: string; tokens?: number; score?: number; signals?: TraceOffered['signals']; freshness?: { state: string } }>; withheld?: Array<{ document: string; section: string; reason: 'stale' | 'aging'; lastVerified: string | null }> }, how: { asked?: { audience?: string; freshness?: string }; ms?: number; result?: Record<string, number | string> } = {}): TraceReceipt {
     if (!this._trace) return { recorded: false }
-    const offered: TraceOffered[] = from.passages.map((p) => ({ id: p.id, document: p.document, section: p.section, reason: p.reason.kind }))
+    // what the console shows of each passage: how it got in and how it scored
+    const offered: TraceOffered[] = from.passages.map((p) => ({
+      id: p.id, document: p.document, section: p.section, reason: p.reason.kind,
+      ...(p.reason.via ? { via: p.reason.via } : {}),
+      ...(p.type ? { type: p.type } : {}),
+      ...(typeof p.tokens === 'number' ? { tokens: p.tokens } : {}),
+      ...(typeof p.score === 'number' ? { score: Math.round(p.score * 1000) / 1000 } : {}),
+      ...(p.signals ? { signals: p.signals } : {}),
+      ...(p.freshness ? { freshness: p.freshness.state } : {}),
+    }))
+    const asked = how.asked && (how.asked.audience || how.asked.freshness) ? { ...(how.asked.audience ? { audience: how.asked.audience } : {}), ...(how.asked.freshness ? { freshness: how.asked.freshness } : {}) } : undefined
     return this._trace.record({
       id: from.id ?? requestId(),
       kind,
@@ -140,8 +161,12 @@ export class DocumentationSet {
       question,
       outcome: 'answered',
       ...(from.budget ? { budget: { declared: from.budget.declared, used: from.budget.used } } : {}),
+      ...(asked ? { asked } : {}),
+      ...(typeof how.ms === 'number' ? { ms: Math.round(how.ms) } : {}),
+      ...(how.result ? { result: how.result } : {}),
       offered,
       used: [],
+      ...(from.withheld?.length ? { withheld: from.withheld.map((w) => ({ document: w.document, section: w.section, reason: w.reason, lastVerified: w.lastVerified })) } : {}),
     })
   }
 
@@ -168,7 +193,7 @@ export class DocumentationSet {
 
   /** Report which passages of a bundle were actually used. */
   recordUsage(bundleId: string, used: string[]): UsageReceipt {
-    if (!this._usage) return { recorded: false, reason: 'this set keeps no usage record' }
+    if (!this._usage) return { recorded: false, reason: this.loop.usage ? 'this set keeps no usage record' : loopOff('a usage report', 'loop.usage', this.loop).message }
     const bundle = this._usage.knows(bundleId) ?? this.offeredEarlier(bundleId)
     if (!bundle) {
       throw new DepError('UNKNOWN_BUNDLE', `bundle "${bundleId}" cannot be matched to a bundle this set produced`, { bundleId })
@@ -231,7 +256,7 @@ export class DocumentationSet {
     const notice = traceNotice(this.traceAnswer('procedure', asked, {
       budget: { declared: step.support.budget.declared, used: step.support.budget.used },
       passages: step.support.passages,
-    }))
+    }, { result: { node: step.step.type } }))
     if (notice) step.notices.push(notice)
     return step
   }
@@ -403,13 +428,14 @@ export class DocumentationSet {
   /** Retrieval for a search: the same ranking, recorded as a search rather than as context. */
   private async searched(query: string, options: ContextOptions): Promise<Bundle> {
     let bundle: Bundle
+    const started = performance.now()
     try {
       bundle = await this.assemble(query, options)
     } catch (err) {
       this.traceRefusal('search', query, err)
       throw err
     }
-    this.traceAnswer('search', query, bundle)
+    this.traceAnswer('search', query, bundle, { asked: { audience: options.audience, freshness: options.freshness ?? 'withhold-stale' }, ms: performance.now() - started })
     return bundle
   }
 
@@ -445,7 +471,7 @@ export class DocumentationSet {
       this.traceRefusal('validate', '', err)
       throw err
     }
-    this.traceAnswer('validate', '', { passages: [] })
+    this.traceAnswer('validate', '', { passages: [] }, { result: { pass: report.summary.pass, warn: report.summary.warn, fail: report.summary.fail } })
     return report
   }
 
@@ -456,12 +482,88 @@ export class DocumentationSet {
    */
   amend(document: string, amendment: Amendment): AmendResult {
     this.ensureLoaded()
-    if (isAbsolute(document) || posix(relative(this.root, resolve(this.root, document))).startsWith('..')) {
-      throw new DepError('OUTSIDE_SET', `${document} is outside the documentation set`, { document })
-    }
+    this.insideProject(document)
     const result = amendDocument(this.root, this._config, document, amendment)
     this.refresh()
     return result
+  }
+
+  /**
+   * Propose a new version of a document. It waits, outside the documentation,
+   * until someone accepts it; until then nothing in it is served.
+   */
+  propose(document: string, text: string, options: { from: string }): Proposal {
+    this.proposalsOn()
+    this.insideProject(document)
+    return propose(this.root, posix(relative(this.root, resolve(this.root, document))), text, options.from)
+  }
+
+  /** The owners' heartbeat over this set, on the set's own clock. Each beat reads the project afresh. */
+  heartbeat(options: Partial<HeartbeatConfig> & { runner?: Runner; advisor?: Advisor } = {}): Heartbeat {
+    if (!this.loop.heartbeat.enabled) throw loopOff('the heartbeat', 'loop.heartbeat.enabled', this.loop)
+    const { runner, advisor, ...config } = options
+    const h = this.loop.heartbeat
+    const fromDocspec: Partial<HeartbeatConfig> = {
+      ...(h.quiet_hours ? { QUIET_HOURS: h.quiet_hours } : {}),
+      TIMEZONE: h.timezone, MAX_HOPS: h.max_hops, MAX_FOLLOW_UPS: h.max_follow_ups,
+      ACT: h.act,
+      MODELS: this.loop.models.enabled,
+      MODEL_REQUESTS_PER_DAY: this.loop.models.max_requests_per_day,
+    }
+    return new Heartbeat(this.root, () => { this.refresh(); return this.graph() }, this.now, { ...fromDocspec, ...config }, runner, advisor)
+  }
+
+  /** The heartbeat at a glance, read from what it wrote: nobody is pulsed, nothing changes. */
+  heartbeatOverview(): HeartbeatOverview {
+    if (!this.loop.heartbeat.enabled) throw loopOff('the heartbeat', 'loop.heartbeat.enabled', this.loop)
+    const owners = [...this.graph().nodes.values()].filter((n) => n.metadata.heart || n.metadata.agent).map((n) => n.metadata.owner)
+    return heartbeatOverview(this.root, owners, this.now())
+  }
+
+  /** Answer, as the person, something an owner brought to them. */
+  replyAsPerson(messageId: string, body: string): Message {
+    if (!this.loop.heartbeat.enabled) throw loopOff('replying', 'loop.heartbeat.enabled', this.loop)
+    if (typeof body !== 'string' || !body.trim()) throw new DepError('INVALID_OPTION', 'a reply says something', { messageId })
+    return replyAsPerson(this.root, messageId, body.trim(), this.now())
+  }
+
+  /** What the loop last wrote about what the agent has learned, if it has: never a strength. */
+  learnedSummary(): unknown {
+    if (!this.loop.enabled) throw loopOff('what the agent has learned', 'loop.enabled', this.loop)
+    const file = join(this.root, '.dep-learned.json')
+    if (!existsSync(file)) throw new DepError('DOCUMENT_NOT_FOUND', 'the loop has written no summary of what the agent learned yet', { file: '.dep-learned.json' })
+    return JSON.parse(readFileSync(file, 'utf-8'))
+  }
+
+  /** Everything waiting for review, each with the document as it is now. */
+  proposals(): Proposal[] {
+    if (this.loop.proposals === 'off') return []
+    return listProposals(this.root)
+  }
+
+  /** Land a proposal; refused when the document changed after it was proposed. */
+  acceptProposal(document: string): { document: string; accepted: true } {
+    this.proposalsOn()
+    this.insideProject(document)
+    const result = acceptProposal(this.root, posix(relative(this.root, resolve(this.root, document))))
+    this.refresh()
+    return result
+  }
+
+  rejectProposal(document: string): { document: string; rejected: true } {
+    this.proposalsOn()
+    this.insideProject(document)
+    return rejectProposal(this.root, posix(relative(this.root, resolve(this.root, document))))
+  }
+
+  private proposalsOn(): void {
+    if (this.loop.proposals === 'off') throw loopOff('proposals', 'loop.proposals', this.loop)
+  }
+
+  private insideProject(document: string): void {
+    if (isAbsolute(document) || posix(relative(this.root, resolve(this.root, document))).startsWith('..')) {
+      throw new DepError('OUTSIDE_SET', `${document} is outside the documentation set`, { document })
+    }
   }
 
   /** A document's declared metadata, with its computed freshness. */

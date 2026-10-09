@@ -20,6 +20,8 @@ import { upgradeCommand, versionCommand } from './commands/upgrade'
 import { mcpCommand } from './commands/mcp'
 import { consoleCommand } from './commands/console'
 import { reportCommand } from './commands/report'
+import { beatCommand } from './commands/beat'
+import { loopCommand } from './commands/loop'
 import { doctorCommand } from './commands/doctor'
 import { setupCommand } from './commands/setup'
 import { runningFromSource } from './commands/upgrade'
@@ -177,6 +179,19 @@ switch (command) {
     break
   }
 
+  case 'loop': {
+    const loopFlags = parseFlags(args.slice(args[1] === 'status' ? 2 : 1))
+    loopCommand(getRoot(loopFlags), loopFlags as any)
+    break
+  }
+
+  case 'beat': {
+    const owner = args[1] && !args[1].startsWith('--') ? args[1] : undefined
+    const beatFlags = parseFlags(args.slice(owner ? 2 : 1))
+    await beatCommand(getRoot(beatFlags), owner, beatFlags as any)
+    break
+  }
+
   case 'console': {
     const consoleFlags = parseFlags(args.slice(1))
     await consoleCommand(getRoot(consoleFlags), consoleFlags as any)
@@ -318,6 +333,9 @@ Usage:
                                         Assemble a budgeted, freshness-aware context bundle
   dep vectorize [--force] [--provider local|openai|hash] [--only <file>] [--install-hook] [--dry] [--json]
                                         Build/refresh the vector index (or install a post-commit hook that does)
+  dep loop [--json]                     Which parts of the loop run in this project, and why (off unless .docspec turns it on)
+  dep beat <owner> [--act [--model [id]]] [--json]  One heartbeat for an owner: what needs them now (--act: act by rule; --model: let Claude decide)
+  dep beat [<owner>] --record           Every beat so far and the wake ratio; --stop / --start toggle the kill switch
   dep console [--port N] [--json]       Serve a local console: the graph, health, procedures, and what agents asked for
   dep report <request-id> --used <ids>  Report which passages of an earlier answer were actually used
   dep neighbors <file> [--depth=N] [--follow=RELS] [--direction=in|out|both] [--json]

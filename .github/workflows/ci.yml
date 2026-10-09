@@ -12,6 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      - run: cd packages/loop && bun install && bun test && bun run typecheck
       - run: cd cli && bun install && bun test && bun run test:stories
 
   build:
@@ -20,7 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: cd cli && bun install && bun run build
+      # the console's Games tab bundles packages/loop, so its dependencies must be there too
+      - run: (cd packages/loop && bun install) && cd cli && bun install && bun run build
       - uses: actions/upload-artifact@v4
         with:
           name: binaries

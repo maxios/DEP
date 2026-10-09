@@ -1,13 +1,18 @@
 ---
 dep:
   type: explanation
-  audience: [ai-generator]
+  audience:
+    - ai-generator
   owner: "@dep-core"
   created: 2026-03-23T21:49:13+02:00
-  last_verified: 2026-03-24T00:00:00+02:00
+  last_verified: 2026-10-09T08:05:38.310+03:00
   confidence: high
-  depends_on: [seed.md]
-  tags: [domain, generalization, universality]
+  depends_on:
+    - seed.md
+  tags:
+    - domain
+    - generalization
+    - universality
   links:
     - target: ../../seed.md
       rel: REQUIRES

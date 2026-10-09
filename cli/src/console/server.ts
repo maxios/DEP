@@ -7,12 +7,15 @@
  * It listens on the loopback address only. Nothing it serves leaves the machine.
  */
 import { existsSync, readFileSync, watch, type FSWatcher } from 'fs'
-import { join, resolve, relative, isAbsolute } from 'path'
+import { basename, dirname, join, resolve, relative, isAbsolute } from 'path'
 import { openDocumentationSet } from '../lib'
 import type { DocumentationSet } from '../lib'
 import { DepError } from '../context/errors'
 import { buildDapGraph, getNodeTargets } from '../dap/tree-builder'
+import { resolveTrees } from '../dap/commands/resolve'
+import { loopReport } from '../commands/loop'
 import { consolePage } from './page'
+import { renderMarkdown } from './markdown'
 
 export const DEFAULT_PORT = 4317
 
@@ -122,9 +125,11 @@ function json(body: unknown, status = 200): Response {
 /** Codes that mean the caller asked for something it should not have. */
 const CALLER_ERRORS = new Set(['INVALID_OPTION', 'INVALID_BUDGET', 'INVALID_DEPTH', 'INVALID_FRESHNESS', 'INVALID_TYPE', 'UNKNOWN_AUDIENCE', 'OUTSIDE_SET', 'UNKNOWN_BUNDLE', 'UNKNOWN_PASSAGE'])
 
+const STATUS: Record<string, number> = { DOCUMENT_NOT_FOUND: 404, UNKNOWN_PROPOSAL: 404, UNKNOWN_MESSAGE: 404, PROPOSAL_STALE: 409, LOOP_OFF: 403 }
+
 function failure(err: unknown): Response {
   if (err instanceof DepError) {
-    const status = err.code === 'DOCUMENT_NOT_FOUND' ? 404 : CALLER_ERRORS.has(err.code) ? 400 : 500
+    const status = STATUS[err.code] ?? (CALLER_ERRORS.has(err.code) ? 400 : 500)
     return json({ error: err.message, code: err.code }, status)
   }
   return json({ error: err instanceof Error ? err.message : String(err) }, 500)
@@ -165,10 +170,55 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
       const { document: _named, ...amendment } = body
       return json(current().amend(document, amendment))
     }
+    if (url.pathname === '/api/proposals' && request.method === 'POST') {
+      const refused = notForUs(request, port)
+      if (refused) return json({ error: refused, code: 'NOT_FOR_US' }, 403)
+      let body: { document?: unknown; decision?: unknown }
+      try {
+        body = await request.json() as typeof body
+      } catch {
+        return json({ error: 'the decision is not JSON' }, 400)
+      }
+      const document = typeof body.document === 'string' ? body.document : ''
+      if (!document) return json({ error: 'no document was named' }, 400)
+      if (body.decision === 'accept') return json(current().acceptProposal(document))
+      if (body.decision === 'reject') return json(current().rejectProposal(document))
+      return json({ error: 'the decision is accept or reject' }, 400)
+    }
+    if (url.pathname === '/api/reply' && request.method === 'POST') {
+      const refused = notForUs(request, port)
+      if (refused) return json({ error: refused, code: 'NOT_FOR_US' }, 403)
+      let body: { message?: unknown; body?: unknown }
+      try {
+        body = await request.json() as typeof body
+      } catch {
+        return json({ error: 'the reply is not JSON' }, 400)
+      }
+      if (typeof body.message !== 'string' || !body.message) return json({ error: 'no message was named' }, 400)
+      return json(current().replyAsPerson(body.message, typeof body.body === 'string' ? body.body : ''))
+    }
+    if (url.pathname.startsWith('/api/games')) {
+      // games are the loop's: a project without it has none to show
+      if (!current().loop.enabled) return json({ error: `${url.pathname} is not something the console serves` }, 404)
+      return games(request, url, current(), root, port)
+    }
     switch (url.pathname) {
+      case '/api/heartbeat':
+        // a project without the heartbeat has none to show
+        if (!current().loop.heartbeat.enabled) break
+        return json(current().heartbeatOverview())
+      case '/api/learned':
+        if (!current().loop.enabled) break
+        return json(current().learnedSummary())
+      case '/api/loop':
+        return json({ ...current().loop, parts: loopReport(current().loop) })
+      case '/api/proposals':
+        // a project that takes no proposals has nothing to review
+        if (current().loop.proposals === 'off') break
+        return json({ proposals: current().proposals() })
       case '/':
       case '/index.html':
-        return new Response(consolePage(current().config().project.name ?? 'documentation'), {
+        return new Response(consolePage(current().config().project.name ?? 'documentation', { place: `${basename(dirname(root))} / ${basename(root)}`, branch: branchOf(root) }), {
           headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
         })
       case '/api/graph':
@@ -183,12 +233,82 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
       }
       case '/api/procedures':
         return json(procedurePayload(root))
+      case '/api/procedures/resolve':
+        return json(procedureResolve(root, url.searchParams.get('q') ?? ''))
       default:
-        return json({ error: `${url.pathname} is not something the console serves` }, 404)
+        break
     }
+    return json({ error: `${url.pathname} is not something the console serves` }, 404)
   } catch (err) {
     return failure(err)
   }
+}
+
+/** The documents in the set that declare a game. */
+function gameDocuments(set: DocumentationSet, root: string): string[] {
+  return [...set.graph().nodes.keys()].filter((path) => {
+    try {
+      const head = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(join(root, path), 'utf-8'))?.[1] ?? ''
+      return /^game:/m.test(head)
+    } catch {
+      return false
+    }
+  }).sort()
+}
+
+/** The branch checked out, read from .git/HEAD; empty when the project is not a plain git checkout. */
+function branchOf(root: string): string {
+  try {
+    const head = readFileSync(join(root, '.git', 'HEAD'), 'utf-8').trim()
+    return head.startsWith('ref: refs/heads/') ? head.slice('ref: refs/heads/'.length) : head.slice(0, 7)
+  } catch {
+    return ''
+  }
+}
+
+async function games(request: Request, url: URL, set: DocumentationSet, root: string, port: number): Promise<Response> {
+  // the loop engine is loaded only when a game is asked for
+  const room = await import('../../../packages/loop/src/game/room')
+  const known = gameDocuments(set, root)
+  const named = (document: unknown): string => {
+    if (typeof document !== 'string' || !known.includes(document)) throw new DepError('DOCUMENT_NOT_FOUND', `${String(document)} is not a game in this project`, { document })
+    return document
+  }
+  const asGame = (err: unknown) => json({ error: err instanceof Error ? err.message : String(err), code: (err as { code?: string }).code ?? 'INVALID' }, 409)
+  if (request.method === 'POST') {
+    const refused = notForUs(request, port)
+    if (refused) return json({ error: refused, code: 'NOT_FOR_US' }, 403)
+    let body: { document?: unknown; options?: unknown; levels?: unknown }
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return json({ error: 'the request is not JSON' }, 400)
+    }
+    const document = named(body.document)
+    try {
+      if (url.pathname === '/api/games/play') return json(room.playGameDay(root, document))
+      if (url.pathname === '/api/games/rules') {
+        const change: { options?: string[]; levels?: string } = {}
+        if (Array.isArray(body.options)) change.options = body.options.map(String)
+        if (typeof body.levels === 'string') change.levels = body.levels
+        const saved = room.saveGameRules(root, document, change)
+        set.refresh()
+        return json(saved)
+      }
+    } catch (err) {
+      return asGame(err)
+    }
+    return json({ error: `${url.pathname} is not something the console serves` }, 404)
+  }
+  if (url.pathname === '/api/games') return json({ games: known.map((d) => room.describeGame(root, d)) })
+  if (url.pathname === '/api/games/levels') {
+    try {
+      return json({ levels: room.gameLevels(root, named(url.searchParams.get('document'))) })
+    } catch (err) {
+      return err instanceof DepError ? failure(err) : asGame(err)
+    }
+  }
+  return json({ error: `${url.pathname} is not something the console serves` }, 404)
 }
 
 function graphPayload(set: DocumentationSet) {
@@ -252,6 +372,9 @@ function documentPayload(set: DocumentationSet, root: string, asked: string) {
     audience: node?.metadata.audience ?? (Array.isArray(declared.audience) ? declared.audience : []),
     tags: Array.isArray(declared.tags) ? declared.tags : [],
     content,
+    // rendered for the reader, safe by construction; frontmatter shown apart, as it was written
+    html: renderMarkdown(content, asked),
+    frontmatter: /^---\r?\n([\s\S]*?)\r?\n---/.exec(content)?.[1] ?? '',
     forwardLinks: node?.forwardLinks ?? [],
     backlinks: node?.backlinks ?? [],
   }
@@ -261,12 +384,16 @@ function procedurePayload(root: string) {
   const dapRoot = join(root, 'dap')
   if (!existsSync(join(dapRoot, '.dapspec'))) return { trees: [] }
   const dap = buildDapGraph(dapRoot)
+  const treeOf = (ref: string) => ref.replace(/^dap:\/\//, '').replace(/\.md$/, '').split('/')[0]!
   const trees = [...dap.trees.values()].map((tree) => ({
     id: tree.metadata.id,
+    version: tree.metadata.version,
     trigger: tree.metadata.trigger,
     entry: tree.metadata.entry_node,
     lifecycle: tree.lifecycle,
     confidence: tree.metadata.confidence,
+    // the trees that hand work to this one
+    delegatedFrom: [...new Set(dap.delegations.filter((d) => treeOf(d.target) === tree.metadata.id && d.tree !== tree.metadata.id).map((d) => d.tree))],
     steps: [...tree.nodes.values()].map((node) => ({
       id: node.id,
       type: node.type,
@@ -276,6 +403,15 @@ function procedurePayload(root: string) {
       next: getNodeTargets(node),
       conditions: (node.conditions ?? []).map((c) => ({ condition: c.condition, next: c.next })),
       handoff: node.delegate_to ?? null,
+      // the rest of the node, as declared, for the inspector
+      args: node.args ?? null,
+      prompt: node.prompt ?? '',
+      options: node.options ?? [],
+      outputs: node.outputs ?? [],
+      actionType: node.action_type ?? '',
+      ref: node.ref ?? '',
+      intent: node.intent ?? '',
+      terminal: Boolean(node.terminal),
     })),
     handsOffTo: [...new Set(
       [...tree.nodes.values()]
@@ -284,5 +420,13 @@ function procedurePayload(root: string) {
         .map((ref) => ref.replace(/^dap:\/\//, '').replace(/\.md$/, ''))
     )],
   }))
-  return { trees }
+  return { trees, delegations: dap.delegations.length, cycles: dap.cycles.length }
+}
+
+/** What dap_resolve would answer for a request: the trees that cover it, best first. */
+function procedureResolve(root: string, query: string) {
+  const dapRoot = join(root, 'dap')
+  if (!query.trim() || !existsSync(join(dapRoot, '.dapspec'))) return { query, matches: [] }
+  const matches = resolveTrees(buildDapGraph(dapRoot), query)
+  return { query, matches: matches.map((m) => ({ id: m.id, score: Math.round(m.score), entry: m.tree.metadata.entry_node })) }
 }
