@@ -115,13 +115,14 @@ export class DocumentationSet {
 
   async context(question: string, options: ContextOptions = {}): Promise<Bundle> {
     let bundle: Bundle
+    const started = performance.now()
     try {
       bundle = await this.assemble(question, options)
     } catch (err) {
       this.traceRefusal('context', question, err)
       throw err
     }
-    const notice = traceNotice(this.traceAnswer('context', question, bundle))
+    const notice = traceNotice(this.traceAnswer('context', question, bundle, { asked: { audience: options.audience, freshness: options.freshness ?? 'withhold-stale' }, ms: performance.now() - started }))
     if (notice) bundle.notices.push(notice)
     return bundle
   }
@@ -139,9 +140,19 @@ export class DocumentationSet {
     return this._trace.clear()
   }
 
-  private traceAnswer(kind: TraceKind, question: string, from: { id?: string; budget?: { declared: number; used: number }; passages: Array<{ id: string; document: string; section: string; reason: { kind: string } }>; withheld?: Array<{ document: string; section: string; reason: 'stale' | 'aging'; lastVerified: string | null }> }): TraceReceipt {
+  private traceAnswer(kind: TraceKind, question: string, from: { id?: string; budget?: { declared: number; used: number }; passages: Array<{ id: string; document: string; section: string; reason: { kind: string; via?: string }; type?: string; tokens?: number; score?: number; signals?: TraceOffered['signals']; freshness?: { state: string } }>; withheld?: Array<{ document: string; section: string; reason: 'stale' | 'aging'; lastVerified: string | null }> }, how: { asked?: { audience?: string; freshness?: string }; ms?: number; result?: Record<string, number | string> } = {}): TraceReceipt {
     if (!this._trace) return { recorded: false }
-    const offered: TraceOffered[] = from.passages.map((p) => ({ id: p.id, document: p.document, section: p.section, reason: p.reason.kind }))
+    // what the console shows of each passage: how it got in and how it scored
+    const offered: TraceOffered[] = from.passages.map((p) => ({
+      id: p.id, document: p.document, section: p.section, reason: p.reason.kind,
+      ...(p.reason.via ? { via: p.reason.via } : {}),
+      ...(p.type ? { type: p.type } : {}),
+      ...(typeof p.tokens === 'number' ? { tokens: p.tokens } : {}),
+      ...(typeof p.score === 'number' ? { score: Math.round(p.score * 1000) / 1000 } : {}),
+      ...(p.signals ? { signals: p.signals } : {}),
+      ...(p.freshness ? { freshness: p.freshness.state } : {}),
+    }))
+    const asked = how.asked && (how.asked.audience || how.asked.freshness) ? { ...(how.asked.audience ? { audience: how.asked.audience } : {}), ...(how.asked.freshness ? { freshness: how.asked.freshness } : {}) } : undefined
     return this._trace.record({
       id: from.id ?? requestId(),
       kind,
@@ -150,6 +161,9 @@ export class DocumentationSet {
       question,
       outcome: 'answered',
       ...(from.budget ? { budget: { declared: from.budget.declared, used: from.budget.used } } : {}),
+      ...(asked ? { asked } : {}),
+      ...(typeof how.ms === 'number' ? { ms: Math.round(how.ms) } : {}),
+      ...(how.result ? { result: how.result } : {}),
       offered,
       used: [],
       ...(from.withheld?.length ? { withheld: from.withheld.map((w) => ({ document: w.document, section: w.section, reason: w.reason, lastVerified: w.lastVerified })) } : {}),
@@ -242,7 +256,7 @@ export class DocumentationSet {
     const notice = traceNotice(this.traceAnswer('procedure', asked, {
       budget: { declared: step.support.budget.declared, used: step.support.budget.used },
       passages: step.support.passages,
-    }))
+    }, { result: { node: step.step.type } }))
     if (notice) step.notices.push(notice)
     return step
   }
@@ -414,13 +428,14 @@ export class DocumentationSet {
   /** Retrieval for a search: the same ranking, recorded as a search rather than as context. */
   private async searched(query: string, options: ContextOptions): Promise<Bundle> {
     let bundle: Bundle
+    const started = performance.now()
     try {
       bundle = await this.assemble(query, options)
     } catch (err) {
       this.traceRefusal('search', query, err)
       throw err
     }
-    this.traceAnswer('search', query, bundle)
+    this.traceAnswer('search', query, bundle, { asked: { audience: options.audience, freshness: options.freshness ?? 'withhold-stale' }, ms: performance.now() - started })
     return bundle
   }
 
@@ -456,7 +471,7 @@ export class DocumentationSet {
       this.traceRefusal('validate', '', err)
       throw err
     }
-    this.traceAnswer('validate', '', { passages: [] })
+    this.traceAnswer('validate', '', { passages: [] }, { result: { pass: report.summary.pass, warn: report.summary.warn, fail: report.summary.fail } })
     return report
   }
 
