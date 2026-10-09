@@ -17,6 +17,8 @@ dep:
   links:
     - target: docspec-schema.md
       rel: USES
+    - target: ../games/doc-maintenance.md
+      rel: NEXT
 ---
 
 # The loop: block

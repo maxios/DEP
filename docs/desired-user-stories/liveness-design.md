@@ -697,6 +697,32 @@ The story harness runs with the loop on, every part allowed, so the stories
 written for the loop keep testing it; the pure-documentation stories switch it
 off.
 
+## Designing a game from the console
+
+A game is a document: a reference with a `game:` block beside its `dep:`
+block, so it is validated, owned and aged like any other. The console's Games
+tab lists every such document, checks it with the game loader, previews its
+levels, and plays a day by rule (FLOW-65). This project's first game is
+`docs/games/doc-maintenance.md`: 135 situations a documentation owner meets,
+judged by a policy that is still a draft for the project to review.
+
+Three things were settled while building it:
+
+- **The judge is code, never edited in the console.** The console shows the
+  step files and refuses play while they are missing; writing them happens in
+  the repository, where they are reviewed like any other code.
+- **What a level expects is shown to the person designing it, never to the
+  player.** It is read from the scenario's own `expected` column for the
+  levels view only; the player still sees the situation and nothing else.
+- **A rule change is saved only if the game still loads.** It is tried beside
+  the document first; options the store could not read back as advice are
+  refused (`OPTIONS`), and the document is left untouched.
+
+Each game keeps its own days in `.dep-loop/<id>/` (the store's log, the judge's
+history, one line per day), so a day carries on from the last and the "last
+day" shown is that game's own, or "never played". Playing writes
+`.dep-learned.json`, which is what the Loop tab's learned panel reads.
+
 ## Open tensions
 
 - **Is a disowned claim gone for good?** Striking a line out puts the claim

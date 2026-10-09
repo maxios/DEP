@@ -8,3 +8,4 @@
 .pulse/
 .leases/
 .dep-learned.json
+.dep-loop/

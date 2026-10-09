@@ -262,6 +262,24 @@ const PAGE = `<!doctype html>
   ::-webkit-scrollbar { width: 9px; height: 9px; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
+  .games-strip { display: flex; gap: 12px; align-items: stretch; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 15px; margin-bottom: 16px; flex-wrap: wrap; }
+  .games-strip .lead { font-size: 10.5px; color: var(--dimmer); align-self: center; margin-right: 6px; }
+  .game-card { border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; cursor: pointer; min-width: 220px; background: rgba(255,255,255,0.02); }
+  .game-card.on { border-color: var(--accent); background: rgba(10,132,255,0.08); }
+  .game-card .t { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 12px; display: flex; align-items: center; gap: 7px; }
+  .game-card .t i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .game-card .s { font-size: 10.5px; color: var(--dim); margin-top: 3px; }
+  .games-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .games-grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; }
+  .kv { display: grid; grid-template-columns: 90px 1fr; gap: 7px 12px; font-size: 12px; align-items: center; }
+  .kv > span:nth-child(odd) { color: var(--dimmer); font-size: 11px; }
+  .kv input { width: 100%; background: rgba(0,0,0,0.35); border: 1px solid var(--line); border-radius: 7px; color: var(--ink); font: inherit; font-size: 11.5px; padding: 4px 8px; }
+  .check-row { display: flex; gap: 9px; padding: 8px 0; border-top: 1px solid var(--line-soft); font-size: 12px; }
+  .check-row b { font-weight: 500; }
+  .check-row .code { margin-left: auto; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 9.5px; color: var(--dimmer); }
+  .levels-wrap { max-height: 420px; overflow: auto; }
+  .said.bad { color: var(--stale); font-size: 11px; margin-top: 6px; }
+  .said.good { color: var(--fresh); font-size: 11px; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -274,6 +292,7 @@ const PAGE = `<!doctype html>
     <button data-screen="health" aria-selected="false">Health</button>
     <button data-screen="review" aria-selected="false">Review <span id="review-count"></span></button>
     <button data-screen="loop" aria-selected="false">Loop</button>
+    <button data-screen="games" aria-selected="false" style="display:none">Games</button>
   </nav>
   <div class="live"><span class="dot" id="pulse"></span><span id="live-text">connecting</span></div>
 </header>
@@ -323,6 +342,10 @@ const PAGE = `<!doctype html>
     <div class="pane" id="loop"></div>
   </section>
 
+  <section class="screen" id="screen-games">
+    <div class="pane" id="games"></div>
+  </section>
+
   <section class="screen" id="screen-review">
     <div class="split">
       <div class="rail">
@@ -347,7 +370,7 @@ const PAGE = `<!doctype html>
 
   var state = {
     graph: null, validation: null, trace: null, procedures: null, proposals: [], selectedProposal: null, loop: null,
-    heartbeat: null, learned: null,
+    heartbeat: null, learned: null, games: null, selectedGame: null, levels: {}, editing: false, gameNote: null,
     selected: null, selectedCall: null, selectedTree: null,
     hiddenTypes: {}, hiddenLife: {}, hiddenRels: {},
     nodes: [], edges: [], view: { x: 0, y: 0, k: 1 }, alpha: 1
@@ -1624,6 +1647,244 @@ const PAGE = `<!doctype html>
     right.appendChild(learned);
   }
 
+  // ── games ───────────────────────────────────────────────────────────
+  // The designer's view of a game. What a level expects is shown here, to the
+  // person writing the game, and never handed to the player.
+
+  var DOT = ' ' + String.fromCharCode(183) + ' ';
+  var CHECK_TEXT = {
+    SCORER: 'The scenarios are the only judge',
+    JUDGE_GROUND: 'The player cannot write where it is judged',
+    ARENA_MISSING: 'The arena can be found',
+    SITUATION: 'Every situation dimension can be read',
+    OPTIONS: 'Every option can be learned',
+    JUDGE: 'The judge' + String.fromCharCode(39) + 's steps exist'
+  };
+
+  function post(path, body) {
+    return fetch(path, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
+    }).then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); });
+  }
+
+  function selectedGame() {
+    var list = (state.games && state.games.games) || [];
+    for (var i = 0; i < list.length; i++) if (list[i].document === state.selectedGame) return list[i];
+    return list[0] || null;
+  }
+
+  function loadLevels(game) {
+    if (!game || !game.id || state.levels[game.document]) return;
+    state.levels[game.document] = 'loading';
+    get('/api/games/levels?document=' + encodeURIComponent(game.document)).then(function (r) {
+      state.levels[game.document] = r.levels;
+      renderGames();
+    }).catch(function (err) { state.levels[game.document] = String(err.message || err); renderGames(); });
+  }
+
+  function checkGames() {
+    return get('/api/games').then(function (g) { state.games = g; state.levels = {}; renderGames(); });
+  }
+
+  function renderGames() {
+    var pane = clear(byId('games'));
+    var list = (state.games && state.games.games) || [];
+    if (!list.length) {
+      pane.appendChild(el('div', 'empty', 'No document in this project has a game: block. A game is a reference document whose frontmatter declares one.'));
+      return;
+    }
+    var game = selectedGame();
+    state.selectedGame = game.document;
+    loadLevels(game);
+
+    var strip = el('div', 'games-strip');
+    strip.appendChild(el('div', 'lead', 'GAMES' + DOT + 'documents with a game: block'));
+    list.forEach(function (g) {
+      var card = el('div', 'game-card' + (g.document === game.document ? ' on' : ''));
+      var t = el('div', 't');
+      var dot = el('i'); dot.style.background = g.playable ? 'var(--fresh)' : 'var(--aging)';
+      t.appendChild(dot); t.appendChild(el('span', null, g.id || g.document));
+      t.appendChild(el('span', 'tag ' + (g.playable ? 'green' : 'amber'), g.playable ? 'playable' : 'draft'));
+      card.appendChild(t);
+      card.appendChild(el('div', 's', g.document));
+      var last = g.days.length ? g.days[g.days.length - 1] : null;
+      card.appendChild(el('div', 's', g.levels + ' levels' + DOT + (last ? 'day ' + (last.day + 1) + ' at ' + last.passRate.toFixed(2) : g.playable ? 'never played' : 'cannot be played yet')));
+      card.onclick = function () { state.selectedGame = g.document; state.editing = false; state.gameNote = null; renderGames(); };
+      strip.appendChild(card);
+    });
+    var actions = el('div', 'games-actions');
+    var check = el('button', 'act', 'Check');
+    check.onclick = function () { state.gameNote = null; checkGames().catch(function () {}); };
+    actions.appendChild(check);
+    var read = el('button', 'act', 'Read document');
+    read.onclick = function () { openReader(game.document); };
+    actions.appendChild(read);
+    strip.appendChild(actions);
+    pane.appendChild(strip);
+
+    var grid = el('div', 'games-grid');
+    var left = el('div', 'loop-col');
+    var right = el('div', 'loop-col');
+    grid.appendChild(left); grid.appendChild(right);
+    pane.appendChild(grid);
+
+    // rules and judge
+    var row = el('div', 'loop-row');
+    var rules = panel('Rules', 'what the game: block declares');
+    if (game.id) {
+      var edit = el('button', 'act', state.editing ? 'Cancel' : 'Edit');
+      edit.onclick = function () { state.editing = !state.editing; state.gameNote = null; renderGames(); };
+      rules.firstChild.appendChild(edit);
+    }
+    var kv = el('div', 'kv');
+    function pair(k, v) { kv.appendChild(el('span', null, k)); if (typeof v === 'string') kv.appendChild(el('span', 'mono', v)); else kv.appendChild(v); }
+    pair('id', game.id || '-');
+    pair('arena', game.arena || '-');
+    var optionsInput = null, levelsInput = null;
+    if (state.editing) {
+      levelsInput = el('input'); levelsInput.value = game.levelsExpression;
+      optionsInput = el('input'); optionsInput.value = game.options.join(', ');
+      pair('levels', levelsInput);
+      pair('options', optionsInput);
+    } else {
+      pair('levels', (game.levelsExpression || '-') + (game.levelsIndependent ? DOT + 'independent' : ''));
+      var opts = el('span');
+      game.options.forEach(function (o) { opts.appendChild(el('span', 'tag', o)); });
+      pair('options', opts);
+    }
+    if (game.scoring) {
+      var sc = el('span');
+      sc.appendChild(el('span', 'tag green', 'pass ' + game.scoring.pass));
+      sc.appendChild(el('span', 'tag red', 'fail ' + game.scoring.fail));
+      sc.appendChild(el('span', 'tag red', 'regression ' + game.scoring.regression));
+      pair('scoring', sc);
+    }
+    pair('may write', game.mayWrite.join(', ') || 'nothing');
+    rules.appendChild(kv);
+    if (state.editing) {
+      var save = el('button', 'act on', 'Save if it still checks');
+      save.style.marginTop = '12px';
+      save.onclick = function () {
+        var options = optionsInput.value.split(',').map(function (o) { return o.trim(); }).filter(function (o) { return o; });
+        post('/api/games/rules', { document: game.document, options: options, levels: levelsInput.value.trim() }).then(function (answer) {
+          if (!answer.ok) { state.gameNote = { bad: true, text: 'Not saved: ' + (answer.data.error || 'refused') }; renderGames(); return; }
+          state.editing = false;
+          state.gameNote = { bad: false, text: 'Saved. The game still passes the loader' + String.fromCharCode(39) + 's checks.' };
+          return checkGames();
+        }).catch(function () {});
+      };
+      rules.appendChild(save);
+      rules.appendChild(el('div', 'sub', 'The change is tried beside the document first; it is written only if the game still loads.'));
+    }
+    if (state.gameNote) rules.appendChild(el('div', 'said ' + (state.gameNote.bad ? 'bad' : 'good'), state.gameNote.text));
+    row.appendChild(rules);
+
+    var judgeOk = game.judge.length > 0;
+    var judge = panel('Judge', 'Cucumber is the only judge');
+    judge.firstChild.appendChild(el('span', 'tag ' + (judgeOk ? 'green' : 'red'), judgeOk ? 'written' : 'not written'));
+    if (judgeOk) game.judge.forEach(function (f) { var it = el('div', 'item'); it.appendChild(el('span', 'mono', f)); judge.appendChild(it); });
+    else judge.appendChild(el('div', 'item', (game.arena || 'arena') + '/steps/ has no step files.'));
+    judge.appendChild(el('div', 'sub', 'Steps are code: written and reviewed in the repository, never in the console.'));
+    row.appendChild(judge);
+    left.appendChild(row);
+
+    // levels
+    var levels = state.levels[game.document];
+    var lv = panel('Levels', Array.isArray(levels) ? levels.length + ' levels' + DOT + 'expected is shown to you, never to the player' : '');
+    if (!game.id) lv.appendChild(el('div', 'muted', 'The game does not load, so its levels cannot be read.'));
+    else if (levels === 'loading' || !levels) lv.appendChild(el('div', 'muted', 'Reading levels.'));
+    else if (typeof levels === 'string') lv.appendChild(el('div', 'said bad', levels));
+    else {
+      var dims = Object.keys(game.situation);
+      var wrap = el('div', 'levels-wrap');
+      var table = el('table');
+      var hr = el('tr');
+      hr.appendChild(el('th', null, '#'));
+      dims.forEach(function (d) { hr.appendChild(el('th', null, d)); });
+      hr.appendChild(el('th', null, 'expected'));
+      table.appendChild(hr);
+      levels.forEach(function (l, i) {
+        var tr = el('tr');
+        tr.appendChild(el('td', 'mono muted', 'ex ' + (i + 1)));
+        dims.forEach(function (d) { tr.appendChild(el('td', 'mono', l.situation[d] === undefined ? '-' : l.situation[d])); });
+        var ex = el('td'); ex.appendChild(el('span', 'tag', l.expected || '?')); tr.appendChild(ex);
+        table.appendChild(tr);
+      });
+      wrap.appendChild(table);
+      lv.appendChild(wrap);
+      var h = el('h3', null, 'How a level' + String.fromCharCode(39) + 's situation is read');
+      h.style.cssText = 'font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer);margin:16px 0 6px';
+      lv.appendChild(h);
+      dims.forEach(function (d) {
+        var seen = {};
+        levels.forEach(function (l) { seen[l.situation[d]] = true; });
+        var it = el('div', 'item');
+        it.appendChild(el('span', null, d + ' '));
+        it.appendChild(el('span', 'mono muted', game.situation[d] + '  '));
+        Object.keys(seen).forEach(function (v) { it.appendChild(el('span', 'tag', v)); });
+        lv.appendChild(it);
+      });
+    }
+    left.appendChild(lv);
+
+    // check
+    var failing = game.checks.filter(function (c) { return !c.passed; });
+    var ck = panel('Check', 'the game loader' + String.fromCharCode(39) + 's verdict', failing.length ? 'warm' : null);
+    ck.appendChild(el('div', failing.length ? 'said bad' : 'said good', failing.length
+      ? (game.id ? 'Valid, but not playable yet' : 'The game does not load') + DOT + failing.length + ' blocks play'
+      : 'Every check passes: the game can be played'));
+    game.checks.forEach(function (c) {
+      var r = el('div', 'check-row');
+      var mark = el('span', null, c.passed ? 'ok' : 'no'); mark.style.color = c.passed ? 'var(--fresh)' : 'var(--stale)';
+      r.appendChild(mark);
+      var txt = el('div');
+      txt.appendChild(el('b', null, CHECK_TEXT[c.code] || c.code));
+      if (c.message) txt.appendChild(el('div', 'sub', c.message));
+      r.appendChild(txt);
+      r.appendChild(el('span', 'code', c.code));
+      ck.appendChild(r);
+    });
+    right.appendChild(ck);
+
+    // play a day: this game's own days, never another game's
+    var play = panel('Play a day', 'by rule' + DOT + 'no model is called', game.playable ? null : 'warm');
+    var go = el('button', 'act on', 'Play a day');
+    go.disabled = !game.playable;
+    go.onclick = function () {
+      go.disabled = true; go.textContent = 'Playing';
+      post('/api/games/play', { document: game.document }).then(function (answer) {
+        state.gameNote = answer.ok ? null : { bad: true, text: answer.data.error || 'refused' };
+        return checkGames().then(function () { return refresh(false); });
+      }).catch(function () {});
+    };
+    play.appendChild(go);
+    if (!game.playable) play.appendChild(el('div', 'sub', game.why || 'This game cannot be played yet.'));
+    var days = game.days;
+    var last = days.length ? days[days.length - 1] : null;
+    var lh = el('h3', null, 'Last day' + DOT + (game.id || game.document));
+    lh.style.cssText = 'font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer);margin:16px 0 8px';
+    play.appendChild(lh);
+    if (!last) play.appendChild(el('div', 'muted', 'Never played.'));
+    else {
+      var head = el('div', 'triple');
+      var a = el('div'); a.appendChild(el('div', 'big', last.passRate.toFixed(2))); a.appendChild(el('span', null, 'day ' + (last.day + 1) + ' of ' + days.length)); head.appendChild(a);
+      play.appendChild(head);
+      var total = last.passed + last.failed + last.void;
+      var bar = el('div', 'bar');
+      [['passed', 'var(--fresh)'], ['failed', 'var(--stale)'], ['void', 'var(--dimmer)']].forEach(function (k) {
+        var i = el('i'); i.style.cssText = 'width:' + (total ? last[k[0]] / total * 100 : 0) + '%;background:' + k[1]; bar.appendChild(i);
+      });
+      play.appendChild(bar);
+      play.appendChild(el('div', 'muted', last.passed + ' passed' + DOT + last.failed + ' failed' + DOT + last.void + ' void' + DOT + 'of ' + total));
+      if (days.length > 1) play.appendChild(el('div', 'sub', 'pass rate by day: ' + days.map(function (d) { return d.passRate.toFixed(2); }).join('  ')));
+      var see = el('button', 'act', 'See what it has learned');
+      see.style.marginTop = '12px';
+      see.onclick = function () { showScreen('loop'); };
+      play.appendChild(see);
+    }
+    right.appendChild(play);
+  }
+
   function replyTo(id, body, item) {
     fetch('/api/reply', {
       method: 'POST',
@@ -1721,7 +1982,8 @@ const PAGE = `<!doctype html>
       get('/api/proposals').catch(function () { return { proposals: [] }; }),
       get('/api/loop').catch(function () { return null; }),
       get('/api/heartbeat').catch(function () { return null; }),
-      get('/api/learned').catch(function () { return null; })
+      get('/api/learned').catch(function () { return null; }),
+      get('/api/games').catch(function () { return null; })
     ]).then(function (all) {
       var sameShape = state.graph && state.graph.nodes.length === all[0].nodes.length;
       state.graph = all[0];
@@ -1733,6 +1995,9 @@ const PAGE = `<!doctype html>
       state.loop = all[5];
       state.heartbeat = all[6];
       state.learned = all[7];
+      state.games = all[8];
+      var gamesTab = document.querySelector('nav button[data-screen="games"]');
+      if (gamesTab) gamesTab.style.display = state.games ? '' : 'none';
       // what the project has switched off is not shown at all
       var review = document.querySelector('nav button[data-screen="review"]');
       if (review) review.style.display = state.loop && state.loop.proposals === 'off' ? 'none' : '';
@@ -1746,6 +2011,8 @@ const PAGE = `<!doctype html>
       // a reply being typed is not swept away by the next poll
       var typing = document.activeElement && document.activeElement.tagName === 'INPUT' && byId('loop').contains(document.activeElement);
       if (!typing) renderLoop();
+      var editing = state.editing || (document.activeElement && document.activeElement.tagName === 'INPUT' && byId('games').contains(document.activeElement));
+      if (!editing) renderGames();
       if (first && state.procedures.trees.length) {
         state.selectedTree = state.procedures.trees[0].id;
         renderTrees();

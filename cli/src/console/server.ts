@@ -196,6 +196,11 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
       if (typeof body.message !== 'string' || !body.message) return json({ error: 'no message was named' }, 400)
       return json(current().replyAsPerson(body.message, typeof body.body === 'string' ? body.body : ''))
     }
+    if (url.pathname.startsWith('/api/games')) {
+      // games are the loop's: a project without it has none to show
+      if (!current().loop.enabled) return json({ error: `${url.pathname} is not something the console serves` }, 404)
+      return games(request, url, current(), root, port)
+    }
     switch (url.pathname) {
       case '/api/heartbeat':
         // a project without the heartbeat has none to show
@@ -234,6 +239,63 @@ async function answer(request: Request, current: () => DocumentationSet, root: s
   } catch (err) {
     return failure(err)
   }
+}
+
+/** The documents in the set that declare a game. */
+function gameDocuments(set: DocumentationSet, root: string): string[] {
+  return [...set.graph().nodes.keys()].filter((path) => {
+    try {
+      const head = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(join(root, path), 'utf-8'))?.[1] ?? ''
+      return /^game:/m.test(head)
+    } catch {
+      return false
+    }
+  }).sort()
+}
+
+async function games(request: Request, url: URL, set: DocumentationSet, root: string, port: number): Promise<Response> {
+  // the loop engine is loaded only when a game is asked for
+  const room = await import('../../../packages/loop/src/game/room')
+  const known = gameDocuments(set, root)
+  const named = (document: unknown): string => {
+    if (typeof document !== 'string' || !known.includes(document)) throw new DepError('DOCUMENT_NOT_FOUND', `${String(document)} is not a game in this project`, { document })
+    return document
+  }
+  const asGame = (err: unknown) => json({ error: err instanceof Error ? err.message : String(err), code: (err as { code?: string }).code ?? 'INVALID' }, 409)
+  if (request.method === 'POST') {
+    const refused = notForUs(request, port)
+    if (refused) return json({ error: refused, code: 'NOT_FOR_US' }, 403)
+    let body: { document?: unknown; options?: unknown; levels?: unknown }
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return json({ error: 'the request is not JSON' }, 400)
+    }
+    const document = named(body.document)
+    try {
+      if (url.pathname === '/api/games/play') return json(room.playGameDay(root, document))
+      if (url.pathname === '/api/games/rules') {
+        const change: { options?: string[]; levels?: string } = {}
+        if (Array.isArray(body.options)) change.options = body.options.map(String)
+        if (typeof body.levels === 'string') change.levels = body.levels
+        const saved = room.saveGameRules(root, document, change)
+        set.refresh()
+        return json(saved)
+      }
+    } catch (err) {
+      return asGame(err)
+    }
+    return json({ error: `${url.pathname} is not something the console serves` }, 404)
+  }
+  if (url.pathname === '/api/games') return json({ games: known.map((d) => room.describeGame(root, d)) })
+  if (url.pathname === '/api/games/levels') {
+    try {
+      return json({ levels: room.gameLevels(root, named(url.searchParams.get('document'))) })
+    } catch (err) {
+      return err instanceof DepError ? failure(err) : asGame(err)
+    }
+  }
+  return json({ error: `${url.pathname} is not something the console serves` }, 404)
 }
 
 function graphPayload(set: DocumentationSet) {

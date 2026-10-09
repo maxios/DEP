@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-41 flows, 332 scenarios.
+42 flows, 341 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -50,3 +50,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-62 DEP as pure documentation](flow-62-dep-as-pure-documentation.feature) | As someone who wants DEP only for documentation, I want a project that says nothing about the loop to write nothing beside its documents — no record of requests, no usage, no heartbeat, no proposals — so that adopting DEP never means adopting the loop, and switching it off is one line. | 6 | @flow-62 @human-author @project-lead @must |
 | [FLOW-63 Choosing which parts of the loop run](flow-63-choosing-which-parts-of-the-loop-run.feature) | As the person who runs a project with the loop on, I want to choose which parts of it run — recording, usage, the heartbeat, how owners act, whether a model is ever asked and how often — so that I turn on only what I trust, and can see at a glance what is running and why. | 8 | @flow-63 @project-lead @should |
 | [FLOW-64 See the loop in the console](flow-64-see-the-loop-in-the-console.feature) | As the person the owners work for, I want the console to show the loop at a glance — which parts run, each owner's heartbeat, what woke them and what they did, what is waiting for me, how follow-ups were scored, and what the agent has learned — and to let me answer what was brought to me, so that I can watch the loop work and step in without leaving the console. | 7 | @flow-64 @human-author @console @heartbeat @loop @should |
+| [FLOW-65 Design and play a game from the console](flow-65-design-and-play-a-game-from-the-console.feature) | As the person whose agent is learning, I want to see my project's games, what each level is and what it expects, whether a game can be played and why not, to change its rules safely, and to play a day and watch it learn, so that the agent learns my way of doing things from games I can shape without leaving the console. | 9 | @flow-65 @project-lead @console @loop @should |

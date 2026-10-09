@@ -25,7 +25,7 @@ import { IdGenerator } from '@cucumber/messages'
 import parseTagExpression from '@cucumber/tag-expressions'
 import type { SituationKey } from '../types'
 
-export type GameErrorCode = 'NOT_A_GAME' | 'SCORER' | 'JUDGE_GROUND' | 'ARENA_MISSING' | 'SITUATION' | 'INVALID'
+export type GameErrorCode = 'NOT_A_GAME' | 'SCORER' | 'JUDGE_GROUND' | 'ARENA_MISSING' | 'SITUATION' | 'INVALID' | 'OPTIONS'
 
 export class GameError extends Error {
   constructor(readonly code: GameErrorCode, message: string) {
@@ -217,13 +217,22 @@ export function loadGame(documentPath: string, root: string): LoadedGame {
   }
 
   const number = (v: unknown, fallback: number) => (typeof v === 'number' ? v : fallback)
+  // a choice the store cannot read back as advice is one the agent could never learn
+  const options = strings(actionsRaw.options)
+  const unreadable = options.filter((o) => !/^[a-z][a-z0-9-]*$/.test(o))
+  if (options.length === 0 || unreadable.length) {
+    throw new GameError('OPTIONS', options.length === 0
+      ? 'the game offers no options to choose from'
+      : `the options ${unreadable.map((o) => `"${o}"`).join(', ')} cannot be learned: an option is lower-case letters, digits and dashes`)
+  }
+
   return {
     game: {
       id: String(block.id ?? ''),
       arena,
       levels: levelsExpr,
       situation,
-      actions: { mayWrite, neverWrite, options: strings(actionsRaw.options) },
+      actions: { mayWrite, neverWrite, options },
       scoring: {
         authority: 'suite',
         pass: number(scoringRaw.pass, 1),

@@ -25,3 +25,4 @@ export { writeLearned, renderLearned, learnedBody, line, learnedSummary, writeLe
 export { readJudgement, type JudgementOptions, type JudgementReport } from './judgement'
 export { ClaudePlayer, promptFor, anthropicAsk, type Ask, type Answer, type Prompt, type ClaudePlayerOptions } from './players/claude'
 export { learnFromOutcomes, followUpSimilarity, followUpAdvisor, type ScoredAsk } from './follow-ups'
+export { describeGame, gameLevels, playGameDay, saveGameRules, type GameListing, type GameCheck } from './game/room'
