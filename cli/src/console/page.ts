@@ -978,6 +978,33 @@ const PAGE = `<!doctype html>
     });
     table.appendChild(tbody);
     pane.appendChild(table);
+
+    // what matched but was kept from the agent: the documents it asked about may be the ones it never saw
+    if (entry.withheld && entry.withheld.length) {
+      var kept = el('div', 'panel');
+      kept.style.marginTop = '16px';
+      var head = el('div', 'panel-head');
+      head.appendChild(el('h3', null, 'Kept from the agent'));
+      // one row per document: which sections matched, and how long since it was verified
+      var byDoc = {};
+      entry.withheld.forEach(function (w) {
+        var d = byDoc[w.document] || (byDoc[w.document] = { reason: w.reason, lastVerified: w.lastVerified, sections: [] });
+        d.sections.push(w.section || '(top)');
+      });
+      var docs = Object.keys(byDoc);
+      head.appendChild(el('span', null, docs.length + ' documents, ' + entry.withheld.length + ' sections matched but are past or near their review date'));
+      kept.appendChild(head);
+      docs.forEach(function (path) {
+        var d = byDoc[path];
+        var it = el('div', 'item');
+        it.appendChild(el('span', 'tag ' + (d.reason === 'stale' ? 'red' : 'amber'), d.reason));
+        it.appendChild(el('span', 'mono', path));
+        var age = d.lastVerified ? days(d.lastVerified) : null;
+        it.appendChild(el('div', 'sub', d.sections.length + (d.sections.length === 1 ? ' section' : ' sections') + (age !== null ? ' ' + String.fromCharCode(183) + ' last verified ' + age + ' days ago' : '') + ' ' + String.fromCharCode(183) + ' ' + d.sections.slice(0, 3).join(', ') + (d.sections.length > 3 ? ', ' + String.fromCharCode(8230) : '')));
+        kept.appendChild(it);
+      });
+      pane.appendChild(kept);
+    }
   }
 
   // ── decisions ───────────────────────────────────────────────────────

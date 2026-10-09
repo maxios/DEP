@@ -1641,6 +1641,14 @@ Feature: FLOW-41 Serve a documentation set to a console
     Then I am given that request, with what it offered and who asked for it
 
   @happy-path
+  Scenario: The console shows what was kept from an agent, and why
+    Given a document past its review date that answers the agent's question
+    And an agent has asked the set a question
+    And a running console
+    When I ask it for the record of requests
+    Then I am given what was kept from the agent, because it is past its review date
+
+  @happy-path
   Scenario: The console keeps up with the documents
     Given a running console
     When a document is added to the project

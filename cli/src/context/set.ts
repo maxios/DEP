@@ -139,7 +139,7 @@ export class DocumentationSet {
     return this._trace.clear()
   }
 
-  private traceAnswer(kind: TraceKind, question: string, from: { id?: string; budget?: { declared: number; used: number }; passages: Array<{ id: string; document: string; section: string; reason: { kind: string } }> }): TraceReceipt {
+  private traceAnswer(kind: TraceKind, question: string, from: { id?: string; budget?: { declared: number; used: number }; passages: Array<{ id: string; document: string; section: string; reason: { kind: string } }>; withheld?: Array<{ document: string; section: string; reason: 'stale' | 'aging'; lastVerified: string | null }> }): TraceReceipt {
     if (!this._trace) return { recorded: false }
     const offered: TraceOffered[] = from.passages.map((p) => ({ id: p.id, document: p.document, section: p.section, reason: p.reason.kind }))
     return this._trace.record({
@@ -152,6 +152,7 @@ export class DocumentationSet {
       ...(from.budget ? { budget: { declared: from.budget.declared, used: from.budget.used } } : {}),
       offered,
       used: [],
+      ...(from.withheld?.length ? { withheld: from.withheld.map((w) => ({ document: w.document, section: w.section, reason: w.reason, lastVerified: w.lastVerified })) } : {}),
     })
   }
 

@@ -26,6 +26,8 @@ export interface TraceEntry {
   offered: TraceOffered[]
   /** Passages the consumer later reported using. Empty until it reports. */
   used: string[]
+  /** What matched but was kept from the consumer, and why: past or near its review date. */
+  withheld?: Array<{ document: string; section: string; reason: 'stale' | 'aging'; lastVerified: string | null }>
 }
 
 export interface TraceReport {
