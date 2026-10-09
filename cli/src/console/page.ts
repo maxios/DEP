@@ -298,7 +298,7 @@ const PAGE = `<!doctype html>
   <section class="screen" id="screen-review">
     <div class="split">
       <div class="rail">
-        <div class="rail-head"><h3>Waiting for review</h3><span id="proposal-count"></span></div>
+        <div class="rail-head"><h3>Proposed changes</h3><span id="proposal-count"></span></div>
         <div id="proposals"></div>
       </div>
       <div class="pane" id="proposal-detail"><div class="empty">Nothing selected.</div></div>
@@ -1289,10 +1289,14 @@ const PAGE = `<!doctype html>
     var list = clear(byId('proposals'));
     var ps = state.proposals;
     byId('proposal-count').textContent = ps.length + ' waiting';
-    byId('review-count').textContent = ps.length ? String(ps.length) : '';
+    var due = dueForReview();
+    byId('review-count').textContent = ps.length + due.length ? String(ps.length + due.length) : '';
     if (!ps.length) {
-      list.appendChild(el('div', 'empty', 'Nothing is waiting for review.'));
-      clear(byId('proposal-detail')).appendChild(el('div', 'empty', 'Nothing selected.'));
+      list.appendChild(el('div', 'empty', 'No new versions are waiting for you.'));
+      clear(byId('proposal-detail')).appendChild(el('div', 'empty', due.length
+        ? due.length + ' documents are past or near their review date: they are listed on the left. Select one to open it.'
+        : 'Nothing selected.'));
+      renderDue(list, due);
       return;
     }
     var chosen = ps.filter(function (p) { return p.document === state.selectedProposal; })[0];
@@ -1305,7 +1309,39 @@ const PAGE = `<!doctype html>
       row.onclick = function () { state.selectedProposal = p.document; renderProposals(); };
       list.appendChild(row);
     });
+    renderDue(list, due);
     renderProposal(chosen);
+  }
+
+  /** Documents past or near their review date, the stalest first: what the heartbeat calls review_due. */
+  function dueForReview() {
+    if (!state.graph) return [];
+    var rank = { STALE: 0, AGING: 1 };
+    return state.graph.nodes.filter(function (n) { return n.lifecycle === 'STALE' || n.lifecycle === 'AGING'; })
+      .sort(function (a, b) { return rank[a.lifecycle] - rank[b.lifecycle] || String(a.lastVerified).localeCompare(String(b.lastVerified)); });
+  }
+
+  function renderDue(list, due) {
+    if (!due.length) return;
+    var head = el('div', 'rail-head');
+    head.style.borderTop = '1px solid var(--line)';
+    head.appendChild(el('h3', null, 'Due for review'));
+    head.appendChild(el('span', null, due.length + ' documents'));
+    list.appendChild(head);
+    due.forEach(function (n) {
+      var row = el('div', 'call');
+      var top = el('div');
+      top.style.cssText = 'display:flex;justify-content:space-between;align-items:baseline';
+      top.appendChild(el('span', 'kind mono', basename(n.path)));
+      var life = el('span', 'tag ' + (n.lifecycle === 'STALE' ? 'red' : 'amber'), n.lifecycle.toLowerCase());
+      top.appendChild(life);
+      row.appendChild(top);
+      var age = days(n.lastVerified);
+      row.appendChild(el('div', 'meta', n.owner + ' ' + String.fromCharCode(183) + ' ' + n.type + (age !== null ? ' ' + String.fromCharCode(183) + ' verified ' + age + ' days ago' : '')));
+      // opening it shows the inspector, where it can be read and, once reviewed, marked so
+      row.onclick = function () { showScreen('graph'); select(n.path); };
+      list.appendChild(row);
+    });
   }
 
   function renderProposal(p) {
