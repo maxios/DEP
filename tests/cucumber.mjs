@@ -15,6 +15,7 @@ const IMPLEMENTED = [
   'flow-14-re-verify-documents-in-bulk',
   'flow-15-curate-a-document-s-tags',
   'flow-16-declare-how-documents-relate',
+  'flow-17-regenerate-the-index-documents',
   'flow-18-resolve-a-request-to-a-decision-tree',
   'flow-19-traverse-a-decision-tree-one-node-at-a-time',
   'flow-20-visualise-a-decision-tree',

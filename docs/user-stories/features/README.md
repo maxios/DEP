@@ -5,7 +5,7 @@
 Source of truth: [`../dep.feature.md`](../dep.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-23 flows, 201 scenarios.
+23 flows, 204 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -25,7 +25,7 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-14 Re-verify documents in bulk](flow-14-re-verify-documents-in-bulk.feature) | As a documentation author who has just reviewed a batch of documents, I want to record that they were verified today, one by one or by the whole batch, so that freshness reflects the review I actually did without editing each file by hand. | 10 | @flow-14 @human-author @lifecycle @mvp |
 | [FLOW-15 Curate a document's tags](flow-15-curate-a-document-s-tags.feature) | As a documentation author organising a growing set, I want to add and remove tags on a document in one request, so that the set stays searchable by subject without me editing metadata by hand. | 10 | @flow-15 @human-author @metadata @should |
 | [FLOW-16 Declare how documents relate](flow-16-declare-how-documents-relate.feature) | As a documentation author connecting a new document to the set, I want to declare, retype and remove typed relationships between documents, so that the graph stays navigable and only the six canonical relationships are used. | 13 | @flow-16 @human-author @graph @mvp |
-| [FLOW-17 Regenerate the index documents](flow-17-regenerate-the-index-documents.feature) | As a documentation generator maintaining a set, I want index documents to be produced from the set's own metadata, so that readers always have an up-to-date way in and nobody maintains link lists by hand. | 10 | @flow-17 @ai-generator @indexing @should |
+| [FLOW-17 Regenerate the index documents](flow-17-regenerate-the-index-documents.feature) | As a documentation generator maintaining a set, I want index documents to be produced from the set's own metadata, so that readers always have an up-to-date way in and nobody maintains link lists by hand. | 13 | @flow-17 @ai-generator @indexing @should |
 | [FLOW-18 Resolve a request to a decision tree](flow-18-resolve-a-request-to-a-decision-tree.feature) | As an AI agent receiving a request in the user's own words, I want to find out whether a decision tree already covers that request and how strong the match is, so that I follow the project's own procedure instead of improvising one. | 8 | @flow-18 @ai-agent @dap @mvp |
 | [FLOW-19 Traverse a decision tree one node at a time](flow-19-traverse-a-decision-tree-one-node-at-a-time.feature) | As an AI agent following a project's procedure, I want to be handed one decision node at a time with only what that node needs, so that I act on the project's actual logic without loading the whole procedure into context. | 9 | @flow-19 @ai-agent @dap @mvp |
 | [FLOW-20 Visualise a decision tree](flow-20-visualise-a-decision-tree.feature) | As an author reviewing a project's procedures, I want to see a whole decision tree at once, and the list of routes through it, so that I can judge whether the procedure is complete before an agent follows it. | 7 | @flow-20 @human-author @dap @should |

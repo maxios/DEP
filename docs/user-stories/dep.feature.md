@@ -1398,14 +1398,33 @@ Feature: FLOW-17 Regenerate the index documents
     When I ask for validation
     Then that document is not reported as unreachable
 
-  @edge-case @wip @later
+  @edge-case
   Scenario: Index documents are correct when I am not standing at the project root
-    # Note: assumed behaviour — titles and relative paths in the generated indexes are currently
-    #       resolved against the current location rather than the project root. See Open questions.
     Given I am not standing at the project root
     When I ask for the index documents of that project to be regenerated
     Then every entry shows the document's real title
     And every link is relative to the index document that holds it
+
+  @edge-case
+  Scenario: Root index links are right whatever the documentation root is called
+    Given the project keeps its documents in a documentation root that is not a top-level docs folder
+    When I ask for the index documents to be regenerated
+    Then a root index is written into the documentation root
+    And every link is relative to the index document that holds it
+
+  @edge-case
+  Scenario: Regenerating keeps what the root index says about itself
+    Given the root index names its owner, when it was created, its tags and a document it relates to
+    When I ask for the index documents to be regenerated
+    Then the root index still names that owner, that creation date, those tags and that relationship
+    And it records that it was verified now
+
+  @edge-case
+  Scenario: A first root index belongs to the project's fallback owner
+    Given the project names a fallback owner and has no root index yet
+    When I ask for the index documents to be regenerated
+    Then the root index names the fallback owner as its owner
+    And it records that it was created now
 
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -1886,10 +1905,11 @@ stories and today's code. Each is tagged `@wip @later` in the scenario that depe
    document ranked below that cut is never returned. Should filtering happen before retrieval, or
    should the retrieval depth grow when a filter is present? Source: `cli/src/commands/search.ts`.
 3. **Generated index documents resolve titles and links against the current location** (FLOW-17) —
-   index generation reads titles relative to where the request was made and writes root-index links
-   against a hard-coded `docs` prefix, so regenerating from outside the project root, or in a project
-   whose documentation root is not `docs`, produces wrong titles and links. The root index also
-   carries a hard-coded creation date. Source: `cli/src/commands/index-gen.ts`.
+   *resolved 2026-10-10*: titles are read from the project root, root-index links are relative to
+   the root index whatever the documentation root is called, and a regenerated root index keeps the
+   owner, creation date, tags and relationships it already declared — it had been stamped with a
+   hard-coded owner (`@dep-core`) and creation date in every project. A first root index belongs to
+   the project's fallback owner. Source: `cli/src/commands/index-gen.ts`.
 4. **Link targets are resolved against the current location** (FLOW-03, FLOW-09) — relationship
    targets are made relative to where the request was made rather than to the project root, so the
    graph can come out differently depending on where the request is made from.
