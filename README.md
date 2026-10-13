@@ -84,7 +84,11 @@ All commands support `--json` for machine-readable output.
 | `dep vectorize --root .` | Build/refresh the vector index (`--force`, `--provider local\|openai\|hash`, `--only <file>`, `--install-hook`) |
 | `dep context "question" --budget 8000 --root .` | Assemble a context bundle: passages packed to a budget, stale ones withheld, each with provenance (`--audience`, `--type`, `--tag`, `--within`, `--freshness`, `--depth`, `--json`) |
 | `dep report <request-id> --used <ids> --root .` | Report which passages of an earlier answer were actually used (`--json`) |
-| `dep console --root .` | Serve a local console: the graph, health, procedures, and what agents have been asking for (`--port N`, `--json`) |
+| `dep console --root .` | Serve a local console: the graph, health, procedures, the loop, games, and what agents have been asking for (`--port N`, `--json`) |
+| `dep loop --root .` | List each part of the loop (recording, usage, heartbeat, proposals, models), on or off, and why |
+| `dep beat [owner] --root .` | One heartbeat: pulse an owner's documents and say what needs them (`--act`, `--model`, `--record`, `--stop`/`--start`) |
+| `dep game templates --root .` | List game templates for kinds of agents: tester, react-component, code-reviewer, api-change |
+| `dep game new --template <name> --root .` | Start a game: write its document, scenarios and judge into the project (needs the loop on and Cucumber) |
 | `dep neighbors <file> --depth 2 --root .` | Transitive graph traversal |
 | `dep roadmap <audience> --root .` | Learning path for an audience persona |
 | `dep prereqs <file> --root .` | Prerequisite chain for a document |
@@ -166,7 +170,7 @@ DAP is the companion protocol to DEP. While DEP structures knowledge, DAP struct
 
 ## Decision Trees
 
-Five trees in `dap/trees/`:
+Six trees in `dap/trees/`:
 
 | Tree | Trigger | Entry Node |
 |------|---------|------------|
@@ -175,6 +179,7 @@ Five trees in `dap/trees/`:
 | `audit-existing-docs` | Migrate existing documentation to DEP | `inventory-docs` |
 | `sync-stale-docs` | Documentation may be out of date | `check-staleness` |
 | `choose-document-type` | Determine what type a DEP document should be | `identify-reader-question` |
+| `release-dep` | Release a new version of the dep CLI | `preflight` |
 
 ## Project Structure
 
@@ -187,12 +192,17 @@ Five trees in `dap/trees/`:
 │   ├── how-to/              # Task-oriented guides
 │   ├── reference/           # Lookup documentation
 │   ├── explanation/         # Conceptual understanding
-│   └── decision-records/    # Rationale behind decisions
+│   ├── decision-records/    # Rationale behind decisions
+│   └── games/               # Game documents (what each agent game teaches and its policy)
+├── games/                   # Game arenas: Cucumber scenarios + judge per game
 ├── dap/                     # Decision Action Protocol
 │   ├── .dapspec             # DAP project config
 │   ├── dap-seed.md          # The foundational DAP specification
 │   └── trees/               # Decision trees (one .md per tree)
 ├── cli/                     # TypeScript/Bun CLI tool
+├── packages/
+│   ├── loop/                # The loop engine: context game, games, templates
+│   └── dep-mcp/             # Zero-dependency Node launcher for `dep mcp`
 └── skills/                  # Claude Code plugin skills
 ```
 
@@ -275,7 +285,8 @@ Releases are automated via GitHub Actions — push a version tag (`v*`) to trigg
 - **Tutorials**: [Write your first DEP document](docs/tutorials/write-your-first-dep-document.md) | [Bootstrap DEP for your project](docs/tutorials/bootstrap-dep-for-your-project.md) | [Integrate DEP into an agent](docs/tutorials/integrate-dep-into-agent.md)
 - **Claude Desktop**: [Use DEP from Claude Desktop](docs/how-to/use-dep-from-claude-desktop.md) | [@maxios/dep-mcp launcher](packages/dep-mcp/README.md)
 - **Context engine**: [Assemble a context bundle](docs/how-to/assemble-a-context-bundle.md) | [Keep the index current](docs/how-to/keep-the-index-current.md) | [Embed DEP in your program](docs/how-to/embed-dep-in-your-program.md) | [Bundle schema](docs/reference/context-bundle-schema.md) | [Why budgeted context](docs/explanation/why-budgeted-context.md)
-- **User stories**: [shipped](docs/user-stories/features/README.md) (FLOW-01…23) | [desired](docs/desired-user-stories/features/README.md) (FLOW-24…32) — black-box Gherkin, each with a Cucumber harness
+- **Loop and games**: [Loop configuration](docs/reference/loop-configuration.md) | [Game templates](docs/reference/game-templates.md)
+- **User stories**: [shipped](docs/user-stories/features/README.md) (FLOW-01…23) | [desired](docs/desired-user-stories/features/README.md) (FLOW-24…66) — black-box Gherkin, each with a Cucumber harness
 
 ## License
 

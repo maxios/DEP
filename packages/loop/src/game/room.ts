@@ -17,6 +17,7 @@ import { Store, type StoreEvent } from '../store'
 import type { Verdict } from './suite'
 import { GameError, loadGame, type LoadedGame } from './game'
 import { playSuiteDay } from './play'
+import { RUNNER_MISSING, cucumberFor } from './suite'
 
 export interface GameCheck {
   /** The loader's verdict, by check; a failing check carries the loader's message. */
@@ -97,16 +98,19 @@ export function describeGame(root: string, document: string): GameListing {
   const { game, levels } = loaded
   const arena = game.arena.startsWith(root) ? game.arena.slice(root.length + 1) : game.arena
   const judge = stepFiles(join(game.arena, 'steps'), root)
+  const runner = cucumberFor(game.arena)
   const checks: GameCheck['checks'] = [...CHECKS.map((c) => ({ code: c, passed: true })),
-    judge.length ? { code: 'JUDGE', passed: true } : { code: 'JUDGE', passed: false, message: `the judge's steps are missing: nothing in ${arena}/steps; the game cannot be played until they exist` }]
+    judge.length ? { code: 'JUDGE', passed: true } : { code: 'JUDGE', passed: false, message: `the judge's steps are missing: nothing in ${arena}/steps; the game cannot be played until they exist` },
+    runner ? { code: 'RUNNER', passed: true } : { code: 'RUNNER', passed: false, message: RUNNER_MISSING }]
+  const blocking = checks.find((c) => !c.passed)
   return {
     ...base,
     id: game.id, levels: levels.length, options: game.actions.options, situation: game.situation,
     levelsExpression: game.levels, scoring: { pass: game.scoring.pass, fail: game.scoring.fail, regression: game.scoring.regression },
     mayWrite: game.actions.mayWrite, arena, levelsIndependent: game.levelsIndependent,
-    days: days(root, game.id), checks, judge, playable: judge.length > 0,
+    days: days(root, game.id), checks, judge, playable: !blocking,
     perDay: Math.min(40, levels.length), policy: policyTable(join(root, document)),
-    ...(judge.length ? {} : { why: checks.at(-1)!.message }),
+    ...(blocking ? { why: blocking.message } : {}),
   }
 }
 

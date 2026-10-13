@@ -19,6 +19,8 @@ dep:
       rel: USES
     - target: ../games/doc-maintenance.md
       rel: NEXT
+    - target: game-templates.md
+      rel: NEXT
 ---
 
 # The loop: block

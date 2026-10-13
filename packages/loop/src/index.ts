@@ -26,3 +26,6 @@ export { readJudgement, type JudgementOptions, type JudgementReport } from './ju
 export { ClaudePlayer, promptFor, anthropicAsk, type Ask, type Answer, type Prompt, type ClaudePlayerOptions } from './players/claude'
 export { learnFromOutcomes, followUpSimilarity, followUpAdvisor, type ScoredAsk } from './follow-ups'
 export { describeGame, gameLevels, playGameDay, saveGameRules, type GameListing, type GameCheck } from './game/room'
+export { listTemplates, findTemplate, startFromTemplate, templatePaths, type TemplateListing, type StartedGame, type StartOptions } from './game/template'
+export { TEMPLATES, ruleFor, situations, type GameTemplate } from './game/templates/index'
+export { cucumberFor } from './game/suite'

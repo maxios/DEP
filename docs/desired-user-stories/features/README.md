@@ -5,7 +5,7 @@
 Source of truth: [`../dep-context.feature.md`](../dep-context.feature.md).
 These files are generated mirrors — edit the source and re-run the splitter.
 
-42 flows, 341 scenarios.
+43 flows, 349 scenarios.
 
 | Flow | Story | Scenarios | Tags |
 | --- | --- | --- | --- |
@@ -51,3 +51,4 @@ These files are generated mirrors — edit the source and re-run the splitter.
 | [FLOW-63 Choosing which parts of the loop run](flow-63-choosing-which-parts-of-the-loop-run.feature) | As the person who runs a project with the loop on, I want to choose which parts of it run — recording, usage, the heartbeat, how owners act, whether a model is ever asked and how often — so that I turn on only what I trust, and can see at a glance what is running and why. | 8 | @flow-63 @project-lead @should |
 | [FLOW-64 See the loop in the console](flow-64-see-the-loop-in-the-console.feature) | As the person the owners work for, I want the console to show the loop at a glance — which parts run, each owner's heartbeat, what woke them and what they did, what is waiting for me, how follow-ups were scored, and what the agent has learned — and to let me answer what was brought to me, so that I can watch the loop work and step in without leaving the console. | 7 | @flow-64 @human-author @console @heartbeat @loop @should |
 | [FLOW-65 Design and play a game from the console](flow-65-design-and-play-a-game-from-the-console.feature) | As the person whose agent is learning, I want to see my project's games, what each level is and what it expects, whether a game can be played and why not, to change its rules safely, and to play a day and watch it learn, so that the agent learns my way of doing things from games I can shape without leaving the console. | 9 | @flow-65 @project-lead @console @loop @should |
+| [FLOW-66 Start a game from a template](flow-66-start-a-game-from-a-template.feature) | As the person whose agents are learning, I want to start a game for the kind of agent I run (a tester, a React component author, a code reviewer, an API author) from a template whose policy I can read and change, so that each agent learns the way my team works without my writing a game from nothing. | 8 | @flow-66 @project-lead @human-author @loop @games @should |

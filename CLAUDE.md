@@ -45,6 +45,10 @@ dep vectorize --only docs/ref/schema.md     # refresh one document
 dep mcp --print-config --root .  # Claude Desktop entry for this machine (absolute paths, no Node needed)
 dep mcp --root .                 # tools: dep_context, dep_search, dep_validate, dep_graph, dep_query, dep_metadata, dep_index, dap_resolve, dap_node, dap_trace, dep_version
 
+# Games for agents (needs the loop on, and Cucumber in the project)
+dep game templates               # games for kinds of agents: tester, react-component, code-reviewer, api-change
+dep game new --template tester   # write the game document, its scenarios and its judge into the project
+
 # Keep the binary current
 dep version                      # prints the installed version
 dep upgrade [--check]            # replace the binary with the latest release (verifies it first)
@@ -102,6 +106,11 @@ The CLI parses markdown files with YAML frontmatter, builds a directed graph of 
 - `cli/src/commands/setup.ts` — `dep setup`: self-install for a downloaded copy (copy to `<DEP_HOME>/bin`, user PATH via `reg` on Windows, merge the `dep` entry into `claude_desktop_config.json`, then doctor). A non-installed copy run with no args does this by itself. `cli/scripts/bundle.ts` builds the Claude Desktop `.mcpb` bundles (manifest 0.3, binary server, `user_config.project_root`) with the dependency-free zip writer in `scripts/zip.ts`; `install.cmd` is the cmd-only Windows installer
 - `cli/src/commands/doctor.ts` — `dep doctor`: self-check on a throwaway project (validate, hash index, context, MCP handshake; `--full` loads the local model), JSON report with the user's home redacted, `--issue` → prefilled GitHub issue URL. `prompts/install-dep.md` is the agent-facing install prompt built on it
 - `cli/src/commands/upgrade.ts` — `dep version` / `dep upgrade` (self-update from GitHub releases; the download must report a version before it replaces the binary; previous kept as `dep.prev`)
+- `cli/src/loop-config.ts` — Resolves the `loop:` block of `.docspec` (and `DEP_LOOP`) into the parts that run; `commands/loop.ts` reports each part, on or off, and why
+- `cli/src/heart/` — The heartbeat (`dep beat`): pulse an owner's documents, decide what needs them, act by rules or a model, record outcomes
+- `cli/src/console/` — `dep console`: a local server (`server.ts`) with one screen per tab in `screens/` (graph, health, decisions, traversal, review, reader, loop, games); every write refuses cross-site requests
+- `cli/src/commands/game.ts` — `dep game templates` / `dep game new --template <name>`: writes a game document, its Cucumber scenarios and judge from a template
+- `packages/loop/` — The loop engine (vendored, pinned maze-core): the context game, and agent games in `src/game/` (`template.ts` + `templates/` for tester, react-component, code-reviewer, api-change). Game documents live in `docs/games/`, their arenas in `games/<name>/`
 - `cli/src/embeddings/hash.ts` — Deterministic, offline embedding provider (`vectorization.provider: hash`); lexical, used by tests and as a no-model fallback
 - `cli/src/embeddings/` — Embedding providers for semantic search (`local.ts` uses @huggingface/transformers, `openai.ts` for OpenAI API, `provider.ts` factory)
 - `cli/src/vectorstore/` — SQLite-backed vector store (`db.ts` for storage, `chunker.ts` for document splitting, `similarity.ts` for cosine similarity)

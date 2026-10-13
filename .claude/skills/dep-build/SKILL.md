@@ -36,8 +36,12 @@ A bundle checks out with `unzip -l dist/dep-<t>.mcpb` (manifest.json + `server/d
 ## Reinstall the local binary from source
 
 ```bash
-cd cli && bun run build:local && cp dist/dep ~/.dep/bin/dep && ~/.dep/bin/dep doctor
+cd cli && bun run build:local \
+  && cp dist/dep ~/.dep/bin/dep.new && mv -f ~/.dep/bin/dep.new ~/.dep/bin/dep \
+  && ~/.dep/bin/dep doctor
 ```
+
+Replace the file, never copy over it: on macOS a `cp` onto the installed binary keeps its inode, the kernel's cached code signature no longer matches, and the next launch is killed outright (exit 137, no output). A rename gives the new binary a fresh inode — the same swap `dep upgrade` makes.
 
 Keep the previous one if in doubt (`cp ~/.dep/bin/dep ~/.dep/bin/dep.prev` first). The installed binary otherwise upgrades itself only from GitHub releases (`dep upgrade`, and daily when `dep mcp` starts), so a local build is how unreleased work reaches Claude Desktop on this machine. Update the memory note about the installed binary when you do this.
 

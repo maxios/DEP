@@ -22,6 +22,7 @@ import { consoleCommand } from './commands/console'
 import { reportCommand } from './commands/report'
 import { beatCommand } from './commands/beat'
 import { loopCommand } from './commands/loop'
+import { gameCommand } from './commands/game'
 import { doctorCommand } from './commands/doctor'
 import { setupCommand } from './commands/setup'
 import { runningFromSource } from './commands/upgrade'
@@ -185,6 +186,13 @@ switch (command) {
     break
   }
 
+  case 'game': {
+    const sub = args[1] && !args[1].startsWith('--') ? args[1] : undefined
+    const gameFlags = parseFlags(args.slice(sub ? 2 : 1))
+    await gameCommand(getRoot(gameFlags), sub, gameFlags as any)
+    break
+  }
+
   case 'beat': {
     const owner = args[1] && !args[1].startsWith('--') ? args[1] : undefined
     const beatFlags = parseFlags(args.slice(owner ? 2 : 1))
@@ -334,6 +342,8 @@ Usage:
   dep vectorize [--force] [--provider local|openai|hash] [--only <file>] [--install-hook] [--dry] [--json]
                                         Build/refresh the vector index (or install a post-commit hook that does)
   dep loop [--json]                     Which parts of the loop run in this project, and why (off unless .docspec turns it on)
+  dep game templates [--json]           Games for kinds of agents: tester, react-component, code-reviewer, api-change
+  dep game new --template <name>        Start a game from a template: its document, scenarios and judge
   dep beat <owner> [--act [--model [id]]] [--json]  One heartbeat for an owner: what needs them now (--act: act by rule; --model: let Claude decide)
   dep beat [<owner>] --record           Every beat so far and the wake ratio; --stop / --start toggle the kill switch
   dep console [--port N] [--json]       Serve a local console: the graph, health, procedures, and what agents asked for

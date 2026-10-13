@@ -43,6 +43,7 @@ export interface DocspecOverrides {
   customTypes?: Array<{ id: string; extends: string }>
   customRelationships?: Array<{ id: string; meaning: string }>
   requireIndexFiles?: boolean
+  fallbackOwner?: string
 }
 
 export const DEFAULT_AUDIENCES: AudienceSpec[] = [
@@ -168,21 +169,22 @@ export class ProjectFixture {
       )
     }
 
+    const docs = this.docsRoot()
     lines.push(
       '',
       'architecture:',
       '  directory_map:',
-      '    tutorials: docs/tutorials',
-      '    how-to: docs/how-to',
-      '    reference: docs/reference',
-      '    explanation: docs/explanation',
-      '    decision-records: docs/decision-records',
+      `    tutorials: ${docs}/tutorials`,
+      `    how-to: ${docs}/how-to`,
+      `    reference: ${docs}/reference`,
+      `    explanation: ${docs}/explanation`,
+      `    decision-records: ${docs}/decision-records`,
       `  require_index_files: ${o.requireIndexFiles ?? true}`,
       '  link_style: relative',
       '',
       'governance:',
       '  ownership_strategy: per-document',
-      '  fallback_owner: "@dep-core"',
+      `  fallback_owner: "${o.fallbackOwner ?? '@dep-core'}"`,
       '  review_cadence:',
     )
     for (const [type, days] of Object.entries(cadence)) {
@@ -211,6 +213,17 @@ export class ProjectFixture {
 
   audienceIds(): string[] {
     return this.audiences.map((a) => a.id)
+  }
+
+  /** The documentation root, relative to the project root and without a leading `./`. */
+  docsRoot(): string {
+    return (this.docspecOverrides.docsRoot ?? './docs').replace(/^\.\//, '')
+  }
+
+  /** The directory each document type is kept in, as the .docspec maps it. */
+  typeDirectories(): string[] {
+    const docs = this.docsRoot()
+    return ['tutorials', 'how-to', 'reference', 'explanation', 'decision-records'].map((dir) => `${docs}/${dir}`)
   }
 
   // ── documents ────────────────────────────────────────────────────────────

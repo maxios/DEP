@@ -1,10 +1,12 @@
 import { buildGraph } from '../graph'
 import { loadDocspec } from '../config'
 import { extractTitle as extractTitleFromPath } from '../parser'
-import { writeFileSync } from 'fs'
-import { join, relative, dirname, basename } from 'path'
+import { existsSync, writeFileSync } from 'fs'
+import { join, relative, dirname, basename, posix as posixPath } from 'path'
+import { stringify as yamlStringify } from 'yaml'
 import type { DepNode } from '../types'
 import { posix } from '../paths'
+import { generateTimestamp, readDepFile } from '../writer'
 
 export function indexCommand(root: string, flags: { json?: boolean; dry?: boolean }) {
   const config = loadDocspec(root)
@@ -27,14 +29,14 @@ export function indexCommand(root: string, flags: { json?: boolean; dry?: boolea
 
     if (docsInDir.length === 0) continue
 
-    const content = generateDirectoryIndex(typeName, docsInDir)
+    const content = generateDirectoryIndex(root, typeName, docsInDir)
     generated.push({ path: relIndexPath, content })
   }
 
   // Generate root index
   const rootIndexPath = join(root, config.project.docs_root, 'index.md')
   const rootRelPath = posix(relative(root, rootIndexPath))
-  const rootContent = generateRootIndex(graph, config)
+  const rootContent = generateRootIndex(root, rootRelPath, graph, config)
   generated.push({ path: rootRelPath, content: rootContent })
 
   if (flags.json) {
@@ -56,7 +58,7 @@ export function indexCommand(root: string, flags: { json?: boolean; dry?: boolea
   }
 }
 
-function generateDirectoryIndex(typeName: string, docs: DepNode[]): string {
+function generateDirectoryIndex(root: string, typeName: string, docs: DepNode[]): string {
   const sorted = docs.sort((a, b) => a.path.localeCompare(b.path))
 
   const lines: string[] = [
@@ -72,7 +74,7 @@ function generateDirectoryIndex(typeName: string, docs: DepNode[]): string {
   }
 
   for (const doc of sorted) {
-    const title = extractTitle(doc)
+    const title = extractTitle(root, doc)
     const lifecycle = lifecycleIcon(doc.lifecycle)
     const fileName = basename(doc.path)
     lines.push(`- [${title}](${fileName}) ${lifecycle} \`${doc.metadata.confidence}\` — ${doc.metadata.audience.join(', ')}`)
@@ -81,19 +83,49 @@ function generateDirectoryIndex(typeName: string, docs: DepNode[]): string {
   return lines.join('\n') + '\n'
 }
 
-function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnType<typeof loadDocspec>): string {
+/**
+ * What the root index says about itself. One already on disk keeps its owner,
+ * its creation date, its tags and the relationships it declares — the generator
+ * owns the listing under them, not them. A first root index belongs to the
+ * project's fallback owner. Either way it serves every audience and was
+ * verified now, since it was just rebuilt from the set.
+ */
+function rootIndexMetadata(path: string, config: ReturnType<typeof loadDocspec>): Record<string, unknown> {
+  const now = generateTimestamp()
+  const audience = config.audiences.map((a) => a.id)
+  if (existsSync(path)) {
+    try {
+      return { ...readDepFile(path).dep, audience, last_verified: now }
+    } catch {
+      // not a DEP document yet: it starts afresh below
+    }
+  }
+  return {
+    type: 'reference',
+    audience,
+    owner: config.governance.fallback_owner,
+    created: now,
+    last_verified: now,
+    confidence: 'high',
+    depends_on: ['.docspec'],
+    tags: ['navigation', 'root', 'index'],
+    links: [],
+  }
+}
+
+function generateRootIndex(
+  root: string,
+  rootRelPath: string,
+  graph: ReturnType<typeof buildGraph>,
+  config: ReturnType<typeof loadDocspec>,
+): string {
+  // Links are written from where the root index sits, whatever the documentation root is called.
+  const indexDir = posixPath.dirname(rootRelPath)
+  const linkTo = (path: string) => posixPath.relative(indexDir, posix(path))
+  const dep = rootIndexMetadata(join(root, rootRelPath), config)
   const lines: string[] = [
     '---',
-    'dep:',
-    '  type: reference',
-    `  audience: [${config.audiences.map((a) => a.id).join(', ')}]`,
-    '  owner: "@dep-core"',
-    `  created: 2026-03-22`,
-    `  last_verified: ${new Date().toISOString()}`,
-    '  confidence: high',
-    '  depends_on: [.docspec]',
-    '  tags: [navigation, root, index]',
-    '  links: []',
+    yamlStringify({ dep }, { lineWidth: 0 }).trim(),
     '---',
     '',
     `# ${config.project.name} — Documentation Root`,
@@ -110,8 +142,7 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
     lines.push(`### ${audience.name}`)
     lines.push('')
     const epPath = audience.entry_point.replace(/^\.\//, '')
-    const epRelPath = posix(relative(config.project.docs_root, epPath))
-    lines.push(`**Entry point**: [${basename(audience.entry_point)}](${epRelPath})`)
+    lines.push(`**Entry point**: [${basename(audience.entry_point)}](${linkTo(epPath)})`)
     lines.push('')
 
     // Find all docs for this audience
@@ -120,9 +151,7 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
     )
 
     for (const doc of docs) {
-      const title = extractTitle(doc)
-      const relPath = posix(relative('docs', doc.path))
-      lines.push(`- [${title}](${relPath})`)
+      lines.push(`- [${extractTitle(root, doc)}](${linkTo(doc.path)})`)
     }
     lines.push('')
   }
@@ -145,9 +174,7 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
     lines.push(`### ${capitalize(type)}`)
     lines.push('')
     for (const node of nodes) {
-      const title = extractTitle(node)
-      const relPath = posix(relative('docs', node.path))
-      lines.push(`- [${title}](${relPath})`)
+      lines.push(`- [${extractTitle(root, node)}](${linkTo(node.path)})`)
     }
     lines.push('')
   }
@@ -155,9 +182,9 @@ function generateRootIndex(graph: ReturnType<typeof buildGraph>, config: ReturnT
   return lines.join('\n')
 }
 
-function extractTitle(node: DepNode): string {
-  const fullPath = join(process.cwd(), node.path)
-  return extractTitleFromPath(fullPath)
+/** A document's title, read from the project root rather than from wherever the request was made. */
+function extractTitle(root: string, node: DepNode): string {
+  return extractTitleFromPath(join(root, node.path))
 }
 
 function capitalize(s: string): string {
