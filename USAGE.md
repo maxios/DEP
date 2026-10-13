@@ -121,6 +121,9 @@ lives. Add `--json` to any command when a program is the reader.
   keep retrieval current              dep vectorize                processed / reused
   say what the context was used for   dep report <id> --used <ids> used of offered
   watch the set and who reads it      dep console                  a local URL to open
+  see which parts of the loop run     dep loop                     each part, on/off, why
+  check whether an owner is needed    dep beat <owner>             woke or not, next beat
+  teach an agent your team's way      dep game new --template …    game files written
   find the procedure for a request    dep dap resolve "…"          scored trees
   follow a procedure one step         dep dap node <tree> <node>   one node, nothing more
   see a whole procedure               dep dap trace <tree>         ASCII tree
@@ -730,7 +733,86 @@ step.support.alreadySupplied // what an earlier step already gave you
 
 ---
 
-## 11. From Claude Desktop (MCP)
+## 11. The loop and games: `loop` · `beat` · `game`
+
+The loop is everything DEP does beyond answering: recording requests, usage
+reports, a heartbeat per owner, proposals and (only if you allow it) a model.
+It is off unless `.docspec` turns it on; this repository has
+`loop: { enabled: true, heartbeat: { act: rules } }`. Every key is in
+[loop configuration](docs/reference/loop-configuration.md).
+
+### `dep loop --root .`
+
+```
+loop                 on                                         set in .docspec
+recording requests   on                                         by default
+usage reports        on                                         by default
+heartbeat            on, acts by rules                          set in .docspec
+proposals            wait for review                            by default
+models               off                                        by default
+```
+
+### `dep beat @dep-core --root .`
+
+One beat: pulse the owner's documents, say whether anything needs them, and
+when they are checked next. `--act` acts on what it finds (rules; `--model`
+to decide with Claude), `--record` lists every beat so far, `--stop` /
+`--start` is the kill switch.
+
+```
+Nothing needs @dep-core.
+Next beat 2026-10-13T17:05:18.724Z.
+```
+
+```
+$ dep beat --record --root .
+2026-10-13T17:03:18.724Z  @dep-core          ·
+
+1 beats, 0 woke — wake ratio 0.00
+```
+
+### `dep game templates --root .`
+
+A game teaches an agent how your team decides something, one situation per
+level, with a judge the agent cannot reach. A template gives you one to start
+from; its policy is a draft you change.
+
+```
+tester            Tester agent: 180 levels, chooses unit-test | integration-test | e2e-test | contract-test | quarantine-flaky | skip
+                  teaches which test a change needs: the smallest one that guards it, a contract where others depend on it, none where it adds nothing
+
+react-component   React component agent: 96 levels, chooses pure-component | container | extract-hook | move-copy | lift-state | memoize
+…
+Start one with: dep game new --template <name>
+```
+
+### `dep game new --template code-reviewer --root .`
+
+```
+Started game.code-reviewer from the code-reviewer template:
+  games/code-reviewer/features/code-reviewer.feature
+  games/code-reviewer/steps/code-reviewer.steps.ts
+  games/code-reviewer/.gitignore
+  docs/games/code-reviewer.md
+
+It cannot be played yet: the judge cannot be run: @cucumber/cucumber is not installed where the arena can reach it. Install it in the project with `bun add -d @cucumber/cucumber` (or npm install -D @cucumber/cucumber)
+Link docs/games/code-reviewer.md from a document your readers start from (dep link <that document> --target ... --rel NEXT), or dep validate reports it as an orphan.
+```
+
+Run it again and nothing is overwritten (exit 1):
+
+```
+the game.code-reviewer game already exists (docs/games/code-reviewer.md, games/code-reviewer/features/code-reviewer.feature, games/code-reviewer/steps/code-reviewer.steps.ts); nothing was overwritten
+```
+
+To change what the judge expects, edit the expected column of the feature
+file and the table in the game document together. Play it from the console's
+Games tab (`dep console`). All four templates are in
+[game templates](docs/reference/game-templates.md).
+
+---
+
+## 12. From Claude Desktop (MCP)
 
 `dep mcp` speaks the Model Context Protocol over stdio. Three ways to connect
 Claude Desktop, none needing a runtime or a shell: open the release's
@@ -763,7 +845,7 @@ Packages) install the binary too: `"command": "npx", "args": ["-y",
 "@maxios/dep-mcp", "--root", …]`. Never assume Node is there — the binary
 route above needs nothing.
 
-## 12. From Claude Code
+## 13. From Claude Code
 
 The plugin exposes the procedures as skills; each one runs the matching tree.
 
@@ -778,7 +860,7 @@ Install: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketpl
 
 ---
 
-## 13. Reading the glyphs
+## 14. Reading the glyphs
 
 ```
   ● FRESH   verified within its cadence        ✓ passed     → outgoing edge
@@ -791,7 +873,7 @@ Install: `/plugin marketplace add <repo>` then `/plugin install dep@dep-marketpl
 
 ---
 
-## 14. When something looks wrong
+## 15. When something looks wrong
 
 ```
   YOU SEE                                  BECAUSE                          DO
