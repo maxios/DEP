@@ -1,0 +1,106 @@
+@play @react-component
+Feature: Shaping a React component
+
+  Scenario Outline: A component is given the shape it needs
+    Given a component whose data is <data>, whose device access is <device>, whose state is <state>, whose copy is <copy>, whose logic is <logic>, used <reuse>
+    When the author's choice is applied
+    Then the choice made is <expected>
+
+    Examples:
+      | data    | device | state  | copy   | logic | reuse | expected       |
+      | none    | none   | none   | none   | light | once  | pure-component |
+      | none    | none   | none   | none   | light | many  | memoize        |
+      | none    | none   | none   | none   | heavy | once  | extract-hook   |
+      | none    | none   | none   | none   | heavy | many  | extract-hook   |
+      | none    | none   | none   | inline | light | once  | move-copy      |
+      | none    | none   | none   | inline | light | many  | move-copy      |
+      | none    | none   | none   | inline | heavy | once  | move-copy      |
+      | none    | none   | none   | inline | heavy | many  | move-copy      |
+      | none    | none   | local  | none   | light | once  | pure-component |
+      | none    | none   | local  | none   | light | many  | memoize        |
+      | none    | none   | local  | none   | heavy | once  | extract-hook   |
+      | none    | none   | local  | none   | heavy | many  | extract-hook   |
+      | none    | none   | local  | inline | light | once  | move-copy      |
+      | none    | none   | local  | inline | light | many  | move-copy      |
+      | none    | none   | local  | inline | heavy | once  | move-copy      |
+      | none    | none   | local  | inline | heavy | many  | move-copy      |
+      | none    | none   | shared | none   | light | once  | lift-state     |
+      | none    | none   | shared | none   | light | many  | lift-state     |
+      | none    | none   | shared | none   | heavy | once  | lift-state     |
+      | none    | none   | shared | none   | heavy | many  | lift-state     |
+      | none    | none   | shared | inline | light | once  | move-copy      |
+      | none    | none   | shared | inline | light | many  | move-copy      |
+      | none    | none   | shared | inline | heavy | once  | move-copy      |
+      | none    | none   | shared | inline | heavy | many  | move-copy      |
+      | none    | used   | none   | none   | light | once  | container      |
+      | none    | used   | none   | none   | light | many  | container      |
+      | none    | used   | none   | none   | heavy | once  | container      |
+      | none    | used   | none   | none   | heavy | many  | container      |
+      | none    | used   | none   | inline | light | once  | container      |
+      | none    | used   | none   | inline | light | many  | container      |
+      | none    | used   | none   | inline | heavy | once  | container      |
+      | none    | used   | none   | inline | heavy | many  | container      |
+      | none    | used   | local  | none   | light | once  | container      |
+      | none    | used   | local  | none   | light | many  | container      |
+      | none    | used   | local  | none   | heavy | once  | container      |
+      | none    | used   | local  | none   | heavy | many  | container      |
+      | none    | used   | local  | inline | light | once  | container      |
+      | none    | used   | local  | inline | light | many  | container      |
+      | none    | used   | local  | inline | heavy | once  | container      |
+      | none    | used   | local  | inline | heavy | many  | container      |
+      | none    | used   | shared | none   | light | once  | container      |
+      | none    | used   | shared | none   | light | many  | container      |
+      | none    | used   | shared | none   | heavy | once  | container      |
+      | none    | used   | shared | none   | heavy | many  | container      |
+      | none    | used   | shared | inline | light | once  | container      |
+      | none    | used   | shared | inline | light | many  | container      |
+      | none    | used   | shared | inline | heavy | once  | container      |
+      | none    | used   | shared | inline | heavy | many  | container      |
+      | fetched | none   | none   | none   | light | once  | container      |
+      | fetched | none   | none   | none   | light | many  | container      |
+      | fetched | none   | none   | none   | heavy | once  | container      |
+      | fetched | none   | none   | none   | heavy | many  | container      |
+      | fetched | none   | none   | inline | light | once  | container      |
+      | fetched | none   | none   | inline | light | many  | container      |
+      | fetched | none   | none   | inline | heavy | once  | container      |
+      | fetched | none   | none   | inline | heavy | many  | container      |
+      | fetched | none   | local  | none   | light | once  | container      |
+      | fetched | none   | local  | none   | light | many  | container      |
+      | fetched | none   | local  | none   | heavy | once  | container      |
+      | fetched | none   | local  | none   | heavy | many  | container      |
+      | fetched | none   | local  | inline | light | once  | container      |
+      | fetched | none   | local  | inline | light | many  | container      |
+      | fetched | none   | local  | inline | heavy | once  | container      |
+      | fetched | none   | local  | inline | heavy | many  | container      |
+      | fetched | none   | shared | none   | light | once  | container      |
+      | fetched | none   | shared | none   | light | many  | container      |
+      | fetched | none   | shared | none   | heavy | once  | container      |
+      | fetched | none   | shared | none   | heavy | many  | container      |
+      | fetched | none   | shared | inline | light | once  | container      |
+      | fetched | none   | shared | inline | light | many  | container      |
+      | fetched | none   | shared | inline | heavy | once  | container      |
+      | fetched | none   | shared | inline | heavy | many  | container      |
+      | fetched | used   | none   | none   | light | once  | container      |
+      | fetched | used   | none   | none   | light | many  | container      |
+      | fetched | used   | none   | none   | heavy | once  | container      |
+      | fetched | used   | none   | none   | heavy | many  | container      |
+      | fetched | used   | none   | inline | light | once  | container      |
+      | fetched | used   | none   | inline | light | many  | container      |
+      | fetched | used   | none   | inline | heavy | once  | container      |
+      | fetched | used   | none   | inline | heavy | many  | container      |
+      | fetched | used   | local  | none   | light | once  | container      |
+      | fetched | used   | local  | none   | light | many  | container      |
+      | fetched | used   | local  | none   | heavy | once  | container      |
+      | fetched | used   | local  | none   | heavy | many  | container      |
+      | fetched | used   | local  | inline | light | once  | container      |
+      | fetched | used   | local  | inline | light | many  | container      |
+      | fetched | used   | local  | inline | heavy | once  | container      |
+      | fetched | used   | local  | inline | heavy | many  | container      |
+      | fetched | used   | shared | none   | light | once  | container      |
+      | fetched | used   | shared | none   | light | many  | container      |
+      | fetched | used   | shared | none   | heavy | once  | container      |
+      | fetched | used   | shared | none   | heavy | many  | container      |
+      | fetched | used   | shared | inline | light | once  | container      |
+      | fetched | used   | shared | inline | light | many  | container      |
+      | fetched | used   | shared | inline | heavy | once  | container      |
+      | fetched | used   | shared | inline | heavy | many  | container      |

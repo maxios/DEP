@@ -19,6 +19,8 @@ dep:
   links:
     - target: loop-configuration.md
       rel: USES
+    - target: ../games/react-component.md
+      rel: NEXT
 ---
 
 # Game templates
